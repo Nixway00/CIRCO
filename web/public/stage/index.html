@@ -1020,18 +1020,26 @@ var DIR = (function(){
   var star = ext(st, 0.01, gold, hat); star.position.set(0, 0.09, 0.196);
   /* arms */
   function arm(sd){
-    var sh = new THREE.Group(); sh.position.set(sd*0.3, 0.52, 0); torso.add(sh);
-    var up = lathe([[0,0],[0.075,0],[0.072,-0.2],[0.065,-0.36],[0,-0.36]], coat, 20); sh.add(up);
-    var el = new THREE.Group(); el.position.y = -0.36; sh.add(el);
-    M(new THREE.SphereGeometry(0.066, 16, 12), coat, 0, 0, 0, el);
-    var fo = lathe([[0,0],[0.064,0],[0.06,-0.18],[0.058,-0.3],[0,-0.3]], coat, 20); el.add(fo);
-    var cuff = M(new THREE.CylinderGeometry(0.066, 0.07, 0.05, 20), gold, 0, -0.31, 0, el);
-    var hand = M(new THREE.SphereGeometry(0.075, 20, 16), cream, 0, -0.39, 0.01, el);
-    M(new THREE.SphereGeometry(0.03, 12, 10), cream, sd*-0.06, -0.37, 0.04, el);
+    // shoulder pivot sits just outside the barrel coat so the arm never sinks into the body
+    var sh = new THREE.Group(); sh.position.set(sd*0.345, 0.5, 0.01); torso.add(sh);
+    M(new THREE.SphereGeometry(0.095, 20, 16), coat, 0, 0, 0, sh);                                   // puffed shoulder
+    var up = lathe([[0,0.02],[0.088,0],[0.084,-0.12],[0.078,-0.26],[0.072,-0.33],[0,-0.33]], coat, 24); sh.add(up);
+    var el = new THREE.Group(); el.position.y = -0.33; sh.add(el);
+    M(new THREE.SphereGeometry(0.074, 18, 14), coat, 0, 0, 0, el);                                   // elbow
+    var fo = lathe([[0,0],[0.072,0],[0.07,-0.12],[0.066,-0.24],[0,-0.24]], coat, 24); el.add(fo);
+    var cuff = M(new THREE.TorusGeometry(0.068, 0.022, 10, 28), gold, 0, -0.25, 0, el); cuff.rotation.x = Math.PI/2;
+    var hand = new THREE.Group(); hand.position.set(0, -0.33, 0.005); el.add(hand);
+    var palm = M(new THREE.SphereGeometry(0.068, 20, 16), cream, 0, 0, 0, hand); palm.scale.set(1, 1.05, 0.72);
+    for (var f = 0; f < 4; f++){                                                                     // glove fingers
+      var fx = (f - 1.5)*0.03;
+      var fg = M(new THREE.CylinderGeometry(0.017, 0.016, 0.06, 10), cream, fx, -0.07, 0.012, hand);
+      M(new THREE.SphereGeometry(0.017, 10, 8), cream, fx, -0.1, 0.012, hand);
+    }
+    var th = M(new THREE.CylinderGeometry(0.018, 0.017, 0.055, 10), cream, sd*-0.07, -0.02, 0.03, hand); th.rotation.z = sd*0.9;
     return { sh:sh, el:el, hand:hand };
   }
   var L = arm(-1), Rt = arm(1);
-  var pin = new THREE.Group(); pin.position.set(0, -0.4, 0.05); Rt.el.add(pin);
+  var pin = new THREE.Group(); pin.position.set(0, -0.36, 0.05); Rt.el.add(pin);
   M(new THREE.CylinderGeometry(0.012, 0.003, 0.78, 12), new THREE.MeshStandardMaterial({ color:0xdfe8ff, metalness:1, roughness:0.12 }), 0, 0.33, 0, pin);
   M(new THREE.SphereGeometry(0.065, 20, 16), PM({ color:0xff3d6e, emissive:0xff3d6e, emissiveIntensity:0.3 }), 0, 0.73, 0, pin);
   pin.rotation.z = -0.3;
@@ -1043,11 +1051,11 @@ var DIR = (function(){
   return { g:g, torso:torso, head:head, hat:hat, L:L, R:Rt, pin:pin, eyes:eyes, mouth:mouth, shapeCape:shapeCape, spot:spot, t:0, blink:2.5, talk:0 };
 })();
 resize();
-var dirPose = { lsx:0.1, lsz:0.15, lel:-0.2, rsx:0.1, rsz:-0.15, rel:-0.2, hat:0, lookY:0.2 };
+var dirPose = { lsx:0.1, lsz:0.15, lel:-0.2, rsx:0.1, rsz:-0.15, rel:-0.2, lez:0, rez:0, hat:0, lookY:0.2 };
 function lerpP(key, v, k){ dirPose[key] += (v - dirPose[key]) * k; }
 function animDirector(dt){
   var k = Math.min(1, dt*5), ph = S.phase, t = S.t, D = DIR;
-  var tgt = { lsx:0.05, lsz:0.12, lel:-0.15, rsx:0.05, rsz:-0.12, rel:-0.25, hat:0, lookY:0.25 };
+  var tgt = { lsx:0.05, lsz:0.2, lel:-0.25, rsx:0.05, rsz:-0.2, rel:-0.3, lez:0, rez:0, hat:0, lookY:0.25 };
   if (ph === 'scelta'){ tgt.rsx = -2.6; tgt.rsz = -0.3; tgt.rel = -0.3; tgt.lsz = 0.5; tgt.lsx = -0.6; tgt.lel = -0.8; tgt.lookY = 0.1 + Math.sin(time*2)*0.3; }
   if (ph === 'gonfiaggio'){ tgt.lsx = -1.3 + Math.sin(time*3)*0.15; tgt.lsz = 0.25; tgt.lel = -0.4; tgt.rsx = 0.1; }
   if (ph === 'countdown'){ tgt.rsx = -1.6 - Math.sin(time*7)*0.12; tgt.rsz = -0.1; tgt.rel = -0.9; tgt.lsx = -0.4; tgt.lsz = 0.2; tgt.lookY = 0.55; }
@@ -1056,7 +1064,8 @@ function animDirector(dt){
   if (ph === 'vincitore'){ tgt.hat = 1; tgt.lsx = -2.9; tgt.lsz = 0.2; tgt.lel = -0.9; tgt.rsx = -0.5 + Math.sin(time*9)*0.35; tgt.rsz = -0.6; tgt.rel = -0.6; }
   if (ph === 'rinvio'){ tgt.lsx = -0.9; tgt.lsz = 0.9; tgt.rsx = -0.9; tgt.rsz = -0.9; tgt.lookY = 0.1; }
   if (typeof INTRO !== 'undefined' && INTRO.on){
-    tgt = { lsx:0.05, lsz:0.12, lel:-0.15, rsx:-2.7, rsz:-0.5 + Math.sin(time*8)*0.35, rel:-0.4, hat:0, lookY:0 };
+    // a proper hello: left arm lifted out to the side, forearm swinging from the elbow; right hand keeps the pin
+    tgt = { lsx:-0.2, lsz:2.35, lel:-0.15, lez:-0.35 + Math.sin(time*7)*0.45, rsx:0.05, rsz:-0.28, rel:-0.35, rez:0, hat:0, lookY:0.05 };
     if (INTRO.t > 0.3 && INTRO.t < 0.4) DIR.talk = 2;
   }
   if (typeof TOUR !== 'undefined' && TOUR.on){
@@ -1068,8 +1077,9 @@ function animDirector(dt){
     if (tp === 'hat'){ tgt.hat = 1; tgt.lsx = -2.9; tgt.lsz = 0.2; tgt.lel = -0.9; }
   }
   for (var key in tgt) lerpP(key, tgt[key], k);
-  D.L.sh.rotation.set(dirPose.lsx, 0, dirPose.lsz); D.L.el.rotation.x = dirPose.lel;
-  D.R.sh.rotation.set(dirPose.rsx, 0, dirPose.rsz); D.R.el.rotation.x = dirPose.rel;
+  // side swing is mirrored: lsz > 0 and rsz < 0 move the arms out, away from the coat
+  D.L.sh.rotation.set(dirPose.lsx, 0, -dirPose.lsz); D.L.el.rotation.set(dirPose.lel, 0, dirPose.lez);
+  D.R.sh.rotation.set(dirPose.rsx, 0, -dirPose.rsz); D.R.el.rotation.set(dirPose.rel, 0, dirPose.rez);
   D.hat.position.y = 0.2 + dirPose.hat*0.14; D.hat.rotation.x = -dirPose.hat*0.5;
   D.head.rotation.y = dirPose.lookY; D.head.rotation.z = Math.sin(time*1.3)*0.04;
   D.torso.position.y = 0.6 + Math.sin(time*2.2)*0.01; D.torso.rotation.z = Math.sin(time*1.1)*0.02;
@@ -1832,7 +1842,7 @@ var INTRO = { on: !reduced && !/[?&]tour=auto/.test(location.search), t:0, stage
 var introRight = new THREE.Vector3(), introHead = new THREE.Vector3(), introCam = new THREE.Vector3(), flyFrom = new THREE.Vector3(), flyLookFrom = new THREE.Vector3(),
     flyTo = new THREE.Vector3(), flyLookTo = new THREE.Vector3(), flyCtrl = new THREE.Vector3(), flyFov0 = 36, flyFov1 = 40;
 var INTRO_FOV = 38;
-function INTRO_SHIFTX(){ return MOBILE_LAYOUT ? 0.2 : 0.14; }   // he stands left of centre, the speech balloon fills the right
+function INTRO_SHIFTX(){ return MOBILE_LAYOUT ? 0.1 : 0.12; }   // he stands left of centre, the speech balloon fills the right
 function setIK(v){ document.documentElement.style.setProperty('--ik', v.toFixed(3)); }
 var INTRO_LINES = [[0.25, 'Welcome to $CIRCO, anon. Grab a seat, the show never stops.'], [2.4, 'The show starts in 3…'], [3.4, 'The show starts in 2…'], [4.4, 'The show starts in 1…'], [5.2, 'Showtime! 🎪']];
 if (INTRO.on){ document.body.classList.add('intro'); document.documentElement.style.setProperty('--ik', '0'); }
@@ -1874,7 +1884,7 @@ function introFrame(dt){
   if (INTRO.stage === 'hold'){
     INTRO.t += dt;
     DIR.g.getWorldPosition(introHead);
-    var ry = DIR.g.rotation.y + 0.18, d = MOBILE_LAYOUT ? 5.6 : 4.4, sc = DIR.g.scale.x;
+    var ry = DIR.g.rotation.y + 0.18, d = MOBILE_LAYOUT ? 8.6 : 6.8, sc = DIR.g.scale.x;
     introHead.y += 1.05*sc;                                   // his chest: the camera stays level, nothing leans
     introCam.set(introHead.x + Math.sin(ry)*d, introHead.y + 0.15, introHead.z + Math.cos(ry)*d);
     carousel.visible = false;
