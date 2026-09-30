@@ -133,3 +133,7 @@ See [docs/operations.md](docs/operations.md) for setup, environment variables, d
 ## Risks
 
 $CIRCO is a memecoin. Its price can go to zero. Tokens spent on tickets are burned and cannot be recovered. Nothing here is financial advice. Only play with money you can afford to lose, and check the rules of your country before playing.
+
+## License
+
+Code: [MIT](LICENSE). The $CIRCO name, the Ringmaster and the artwork are the project's brand and are not covered by the code license.
