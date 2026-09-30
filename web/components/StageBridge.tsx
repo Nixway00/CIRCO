@@ -11,6 +11,9 @@ import { buildTicketTx, circoBalanceClient } from '@/lib/tickets';
  * it reads the game from Supabase (Realtime), sends it to the stage, and turns the stage's
  * requests (buy tickets, chat, mission, connect) into real wallet actions.
  */
+/** Changes on every deploy, so phones never keep an old copy of the stage. */
+const STAGE_VERSION = (process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 8);
+
 export default function StageBridge() {
   const frame = useRef<HTMLIFrameElement>(null);
   const { connection } = useConnection();
@@ -135,5 +138,5 @@ export default function StageBridge() {
     return () => window.removeEventListener('message', onMessage);
   }, [publicKey, connection, sendTransaction, signMessage, setVisible, post, pushState]);
 
-  return <iframe ref={frame} className="stage" src="/stage/index.html?data=live" title="$CIRCO live stage" allow="autoplay" />;
+  return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}`} title="$CIRCO live stage" allow="autoplay" />;
 }
