@@ -204,6 +204,18 @@ body.recording #recTitle{ display:block; }
 #mCta, .iconbtn{ display:none; }
 nav.pages .sm{ display:none; }
 .actions .btn{ white-space:nowrap; }
+.howto .steps3{ list-style:none; margin:4px 0 0; padding:0; display:flex; flex-direction:column; gap:10px; }
+.howto .steps3 li{ display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.45; color:var(--muted); }
+.howto .steps3 b{ flex:none; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; background:var(--electric); color:#fff; font-family:'Unbounded',sans-serif; font-size:12px; }
+.howto strong{ color:var(--ink); }
+.linkish{ background:none; border:0; color:var(--cyan); font:inherit; font-size:13px; cursor:pointer; padding:6px 0; min-height:32px; }
+.mSteps{ display:none; }
+@media (max-width: 900px){
+  .mSteps{ display:flex; justify-content:center; gap:6px; margin:2px 0 4px; }
+  .mSteps span{ font-size:12px; padding:5px 10px; border-radius:999px; color:var(--muted); border:1px solid var(--line); }
+  .mSteps span.on{ background:var(--electric); border-color:var(--electric); color:#fff; box-shadow:0 0 14px rgba(47,123,255,.6); }
+}
+#bpOdds{ font-size:13px; color:var(--cyan); text-align:center; min-height:18px; }
 #toast{ position:absolute; top:88px; left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--lineHi); border-radius:12px; padding:10px 16px; font-size:14px; opacity:0; transition:opacity .3s; pointer-events:none; backdrop-filter:blur(10px); }
 #toast.on{ opacity:1; }
 #loading{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Unbounded',sans-serif; color:var(--muted); z-index:5; background:var(--night); transition:opacity .6s; }
@@ -293,6 +305,7 @@ nav.pages .sm{ display:none; }
     <label class="small" for="bpRange" style="position:absolute;left:-9999px">Number of tickets</label>
     <input type="range" id="bpRange" min="1" max="10" value="1">
     <div class="cost" id="bpCost">10,000 $CIRCO burned</div>
+    <div id="bpOdds" aria-live="polite"></div>
     <div class="row2"><button class="btn" type="button" id="bpCancel">Cancel</button><button class="btn primary" type="button" id="bpGo">Buy 1 ticket</button></div>
   </section>
   <div class="tabs" role="tablist" aria-label="Panels">
@@ -300,6 +313,15 @@ nav.pages .sm{ display:none; }
     <button type="button" role="tab" aria-selected="false" data-tab="colR">Tickets</button>
   </div>
   <div class="col show" id="colL">
+    <section class="panel howto" id="howto" aria-label="How it works">
+      <div class="head"><h2>How it works</h2><button type="button" class="linkish" id="howHide" aria-label="Hide how it works">Hide</button></div>
+      <ol class="steps3">
+        <li><b>1</b><span><strong>Buy $CIRCO.</strong> Every trade pumps the balloon with real SOL.</span></li>
+        <li><b>2</b><span><strong>Burn for tickets.</strong> <span id="howPrice">10,000</span> $CIRCO each, up to 10 per round.</span></li>
+        <li><b>3</b><span><strong>Pop!</strong> The wheel picks a ticket: it takes 95% of the prize, the last ticket bought takes 5%.</span></li>
+      </ol>
+      <button type="button" class="linkish" id="howRules">Full rules →</button>
+    </section>
     <section class="panel" id="popped" aria-live="polite">
       <div class="small" id="poppedTitle">Balloon popped</div>
       <div class="big" id="poppedAmt">0.00 SOL</div>
@@ -328,6 +350,7 @@ nav.pages .sm{ display:none; }
       <div class="legend">
         <div><span>Your tickets</span><b id="myT">0 / 10</b></div>
         <div><span>Your odds</span><b id="myP">0%</b></div>
+        <div><span>If you win</span><b id="myWin">0.00 SOL</b></div>
         <div><span>Last ticket</span><b id="lastB" style="font-size:13px">none yet</b></div>
         <div class="small">The last ticket before the pop wins 5% of the prize.</div>
       </div>
@@ -345,6 +368,7 @@ nav.pages .sm{ display:none; }
   </div>
   <div class="hud" aria-live="polite">
     <div id="hudTitle">Round 1</div>
+    <div class="mSteps" id="mSteps" aria-hidden="true"><span data-p="scelta">Pick</span><span data-p="gonfiaggio">Inflate</span><span data-p="countdown">Countdown</span><span data-p="estrazione">Draw</span></div>
     <div id="hudBig">Picking the balloon</div>
     <div class="bar" id="hudBarWrap"><span id="hudBar"></span></div>
     <div id="hudSub"></div>
@@ -1210,6 +1234,7 @@ function totalTickets(){ var n=0; S.tickets.forEach(function(v){ n+=v; }); retur
 function renderMe(){
   var mine = S.tickets.get(ME) || 0, tot = totalTickets();
   $('myT').textContent = mine+' / 10'; $('myP').textContent = tot ? fmt(mine/tot*100,1)+'%' : '0%';
+  $('myWin').textContent = '~'+fmt(S.cap*0.95)+' SOL';
 }
 function renderTickets(withColors){
   var list = $('tList'), tot = totalTickets();
@@ -1236,7 +1261,7 @@ function renderWinners(){
 }
 function setStepper(ph){
   var map = { rinvio:'countdown', scelta:'scelta', gonfiaggio:'gonfiaggio', countdown:'countdown', esplosione:'countdown', estrazione:'estrazione', vincitore:'estrazione' };
-  document.querySelectorAll('.stepper .s').forEach(function(el){ el.classList.toggle('on', el.dataset.p === map[ph]); });
+  document.querySelectorAll('.stepper .s, #mSteps span').forEach(function(el){ el.classList.toggle('on', el.dataset.p === map[ph]); });
 }
 function buy(wallet, n, bonus){
   var have = S.tickets.get(wallet) || 0, add = Math.min(n, 10-have);
@@ -1256,6 +1281,8 @@ function bpRender(){
   var mx = bpMax(); bpN = Math.max(mx ? 1 : 0, Math.min(bpN, mx));
   $('bpN').textContent = bpN; $('bpRange').max = Math.max(1, mx); $('bpRange').value = bpN; $('bpRange').disabled = !mx;
   $('bpCost').textContent = fmt(bpN*PRICE,0)+' $CIRCO burned';
+  var mineNow = S.tickets.get(ME) || 0, totNow = totalTickets();
+  $('bpOdds').textContent = mx ? 'With '+(mineNow+bpN)+' tickets: '+fmt((mineNow+bpN)/(totNow+bpN)*100,1)+'% chance at ~'+fmt(S.cap*0.95)+' SOL (if nobody else buys)' : '';
   $('bpInfo').textContent = mx ? 'You can buy '+mx+' more this round.' : 'You already hold the maximum of 10 tickets this round.';
   $('bpGo').textContent = bpN === 1 ? 'Buy 1 ticket' : 'Buy '+bpN+' tickets'; $('bpGo').disabled = !mx;
 }
@@ -1505,7 +1532,20 @@ var CAMS = {
   estrazione: { p:[1.9, 2.9, 9.4], l:[0, 2.3, 0] },
   vincitore:  { p:[1.2, 2.8, 9.0], l:[0, 2.35, 0] }
 };
+var HINTS = {
+  gonfiaggio: 'Every trade pumps my balloon. Grab tickets now: up to 10 per wallet.',
+  countdown: 'It is full! Last chance to buy. The very last ticket takes 5%.',
+  estrazione: 'Every ticket is a slice of my wheel. More tickets, bigger slice.',
+  rinvio: 'Not enough tickets: prize and tickets roll into the next round.'
+};
+var hintUntil = 0;
+function phaseHint(phase){
+  if (!HINTS[phase] || INTRO.on || (typeof TOUR !== 'undefined' && TOUR.on) || /[?&]live=1/.test(location.search)) return;
+  try { if (localStorage.getItem('circo_hint_'+phase)) return; localStorage.setItem('circo_hint_'+phase, '1'); } catch(e){ return; }
+  speechX = null; introBubble(HINTS[phase]); hintUntil = time + 6;
+}
 function enter(phase){
+  setTimeout(function(){ phaseHint(phase); }, 900);
   S.phase = phase; S.t = 0; setStepper(phase);
   var c = CAMS[phase]; camPos.set(c.p[0], c.p[1], c.p[2]); camTarget.set(c.l[0], c.l[1], c.l[2]);
   var ty = TYPES[S.type];
@@ -1664,7 +1704,7 @@ window.addEventListener('message', function(e){
     P = new Map(m.leaderboard.map(function(l){ return [sh(l.wallet), { t:l.tickets_bought, b:+l.tokens_burned, wins:l.wins, won:+l.sol_won, bonus:+l.bonus_sol, rounds:l.rounds_played }]; }));
     refreshSheet();
   }
-  if (m.price){ PRICE = +m.price; $('priceEach').textContent = fmt(PRICE,0)+' $CIRCO each'; $('bpCost').textContent = fmt(bpN*PRICE,0)+' $CIRCO burned'; }
+  if (m.price){ PRICE = +m.price; $('howPrice').textContent = fmt(PRICE,0); $('priceEach').textContent = fmt(PRICE,0)+' $CIRCO each'; $('bpCost').textContent = fmt(bpN*PRICE,0)+' $CIRCO burned'; }
   if (m.chatMin !== undefined){ CHAT_MIN = +m.chatMin; renderChatGate(); }
   if (m.pumpUrl){ PUMP_URL = m.pumpUrl; $('buyCoin').href = PUMP_URL; $('mCoin').href = PUMP_URL; $('buyCoin').target = '_blank'; }
   if (m.toast) toast(m.toast);
@@ -1948,6 +1988,7 @@ function frame(){
   lookNow.lerp(tourOn ? (PORTRAIT ? new THREE.Vector3(-1.9, 1.05, 2.1) : new THREE.Vector3(-1.4, 1.25, 1.6)) : camTarget, Math.min(1, dt*(camSpeed + 0.4)));
   if (shake > 0){ camera.position.x += (Math.random()-0.5)*shake; camera.position.y += (Math.random()-0.5)*shake; shake = Math.max(0, shake - dt*0.9); }
   camera.lookAt(lookNow);
+  if (hintUntil){ if (time < hintUntil) placeSpeech(dt); else { hintUntil = 0; $('speech').classList.remove('on'); } }
   flash.intensity = Math.max(0, flash.intensity - dt*9);
   composer.render();
 }
@@ -1984,6 +2025,9 @@ function tourStart(){ document.body.classList.add('touring'); TOUR.on = true; $(
 function tourEnd(){ document.body.classList.remove('touring'); TOUR.on = false; $('bubble').classList.remove('on'); document.querySelectorAll('.spotlit').forEach(function(el){ el.classList.remove('spotlit'); }); try { localStorage.setItem('circo_tutorial_done', '1'); } catch(e){} }
 $('bubNext').addEventListener('click', function(){ if (TOUR.i < TOUR_STEPS.length-1) tourShow(TOUR.i+1); else tourEnd(); });
 $('bubSkip').addEventListener('click', tourEnd);
+try { if (localStorage.getItem('circo_howto_hidden')) $('howto').style.display = 'none'; } catch(e){}
+$('howHide').addEventListener('click', function(){ $('howto').style.display = 'none'; try { localStorage.setItem('circo_howto_hidden', '1'); } catch(e){} });
+$('howRules').addEventListener('click', function(){ var b = document.querySelector('nav.pages [data-page="regolamento"]'); if (b) b.click(); });
 if (TOUR.auto){ $('bubSkip').style.display = 'none'; $('bubNext').style.display = 'none'; document.body.classList.add('recording'); setTimeout(resize, 50); }
 var headV = new THREE.Vector3();
 function tourFrame(dt){
