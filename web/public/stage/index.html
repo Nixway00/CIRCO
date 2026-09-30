@@ -163,11 +163,21 @@ body.livemode #liveBar{ display:flex; }
 .mission .acts{ display:flex; gap:8px; flex-wrap:wrap; }
 #bubble{ position:fixed; z-index:9; width:min(340px, calc(100vw - 32px)); display:none; flex-direction:column; gap:10px; padding:16px 18px; border-radius:20px; background:#F4F7FF; color:#081033; box-shadow:0 18px 50px rgba(0,0,0,.45); }
 #bubble.on{ display:flex; }
+#speech{ position:fixed; left:0; top:0; z-index:9; display:none; width:min(250px, 56vw); padding:14px 16px; border-radius:22px; background:#FFFFFF; color:#0a1033;
+  box-shadow:0 10px 30px rgba(0,0,0,.35); transform-origin:0% 100%; pointer-events:none; will-change:transform; }
+#speech.on{ display:block; }
+#speech::before{ content:""; position:absolute; left:-14px; bottom:18px; width:26px; height:22px; background:#FFFFFF; clip-path:polygon(100% 0, 0 100%, 100% 70%); }
+#speech p{ margin:0; font-family:'Unbounded',sans-serif; font-weight:600; font-size:clamp(15px, 4.2vw, 19px); line-height:1.35; }
+#speech.pop p{ animation:speechPop .35s cubic-bezier(.3,1.6,.5,1); }
+@keyframes speechPop{ 0%{ transform:scale(.6); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
 #bubble.intro .dots, #bubble.intro #bubNext{ display:none; }
 #bubble.intro #bubSkip{ height:36px; font-size:13px; }
 #bubble.intro p{ font-size:18px; }
-header.top, .hud, #mCta, footer.stats, .tabs, .col, .note, nav.pages{ transition:opacity .7s ease; }
-body.intro header.top, body.intro .hud, body.intro #mCta, body.intro footer.stats, body.intro .tabs, body.intro .col, body.intro .note, body.intro nav.pages, body.intro #liveBar{ opacity:0; pointer-events:none; }
+header.top, nav.pages, #liveBar{ transition:opacity .9s ease .5s; }
+.hud, #mCta, footer.stats, .tabs, .col, .note{ transition:transform 1.5s cubic-bezier(.65,0,.25,1) .35s, opacity 1s ease .6s; }
+body.intro header.top, body.intro nav.pages, body.intro #liveBar{ opacity:0; pointer-events:none; transition:none; }
+body.intro .hud, body.intro #mCta, body.intro footer.stats, body.intro .tabs, body.intro .col, body.intro .note{ opacity:0; transform:translateY(55vh); pointer-events:none; transition:none; }
+body.intro .overlay{ background:none; }
 body.intro{ overflow:hidden; }
 body.touring .hud{ opacity:0; transition:opacity .4s; }
 body.recording{ overflow:hidden !important; }
@@ -206,10 +216,9 @@ nav.pages .sm{ display:none; }
   nav.pages{ overflow-x:auto; }
   .cards{ grid-template-columns:repeat(2, minmax(0,1fr)); }
   body{ overflow:auto; }
-  #stage{ position:relative; height:52vh; min-height:330px; transition:height 1.1s cubic-bezier(.65,0,.25,1); }
-  body.intro #stage{ height:100vh; height:100dvh; }
+  #stage{ position:fixed; top:0; left:0; right:0; height:100vh; height:100lvh; }
   #bubble.intro{ bottom:calc(28px + env(safe-area-inset-bottom,0px)) !important; }
-  .overlay{ position:static; }
+  .overlay{ position:relative; inset:auto; min-height:100vh; padding-top:52vh; padding-top:52lvh; background:linear-gradient(to bottom, rgba(3,7,22,0) 0, rgba(3,7,22,0) calc(52lvh - 90px), rgba(3,7,22,.96) 52lvh, var(--night) 60lvh); }
   header.top{ position:fixed; height:60px; padding:0 14px; z-index:3; grid-template-columns:1fr auto; }
   header.top .stepper{ display:none; }
   .actions .btn:not(.primary){ display:none; }
@@ -389,6 +398,7 @@ nav.pages .sm{ display:none; }
     </div>
   </div>
   <div id="recTitle" aria-hidden="true"><b>$CIRCO</b><span>The 24/7 memecoin circus</span></div>
+  <div id="speech" aria-live="polite"><p id="speechText"></p></div>
   <section id="bubble" role="dialog" aria-live="polite" aria-label="The Ringmaster explains">
     <div class="who">The Ringmaster</div>
     <p id="bubText"></p>
@@ -1066,7 +1076,7 @@ function animDirector(dt){
   D.torso.position.y = 0.6 + Math.sin(time*2.2)*0.01; D.torso.rotation.z = Math.sin(time*1.1)*0.02;
   D.blink -= dt; var bl = D.blink < 0.12 ? Math.max(0.08, Math.abs(D.blink - 0.06)/0.06) : 1; if (D.blink < 0) D.blink = 2.5 + Math.random()*3;
   D.eyes.forEach(function(e){ e.scale.y = bl; });
-  if (D.talk > 0){ D.talk -= dt; D.mouth.scale.y = 0.25 + Math.abs(Math.sin(time*16))*0.55; D.head.rotation.x = Math.sin(time*7)*0.05; D.spot.intensity += (1.3 - D.spot.intensity)*Math.min(1, dt*6); }
+  if (D.talk > 0){ D.talk -= dt; D.mouth.scale.y = 0.25 + Math.abs(Math.sin(time*16))*0.55; D.head.rotation.x = Math.sin(time*7)*0.05; D.spot.intensity += (0.8 - D.spot.intensity)*Math.min(1, dt*6); }
   else { D.mouth.scale.y += (0.25 - D.mouth.scale.y)*Math.min(1, dt*8); D.head.rotation.x *= 0.9; D.spot.intensity *= 0.94; }
   D.shapeCape(time);
   if (ph === 'esplosione' && t < 0.4) D.g.position.y = Math.sin(t*25)*0.03; else D.g.position.y = 0;
@@ -1147,11 +1157,23 @@ function launchConfetti(){
 }
 
 /* resize */
+var lastW = 0, lastH = 0, BASE_FOV = 40, VIEW_SHIFT = 0, MOBILE_LAYOUT = false;
+function applyView(fov, shift){
+  var w = lastW, h = lastH;
+  camera.fov = fov;
+  if (shift > 0.0001) camera.setViewOffset(w, h, 0, h*shift, w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
 function resize(){
   var w = stage.clientWidth, h = stage.clientHeight;
-  renderer.setSize(w, h, false); composer.setSize(w, h); bloom.setSize(w, h);
-  camera.aspect = w/h; if (typeof INTRO === 'undefined' || !INTRO.on) camera.fov = w < 700 ? 52 : 40; camera.updateProjectionMatrix();
-  PORTRAIT = camera.aspect < 0.95;
+  if (w !== lastW || h !== lastH){ lastW = w; lastH = h; renderer.setSize(w, h, false); composer.setSize(w, h); bloom.setSize(w, h); }
+  camera.aspect = w/h;
+  MOBILE_LAYOUT = window.innerWidth <= 900 && !document.body.classList.contains('recording');
+  // phones: the visible stage is the top 52% of a full-height canvas, so widen the lens and shift the view up
+  BASE_FOV = MOBILE_LAYOUT ? 2*Math.atan(Math.tan(26*Math.PI/180)/0.52)*180/Math.PI : (w < 700 ? 52 : 40);
+  VIEW_SHIFT = MOBILE_LAYOUT ? 0.24 : 0;
+  if (typeof INTRO === 'undefined' || !INTRO.on) applyView(BASE_FOV, VIEW_SHIFT); else camera.updateProjectionMatrix();
+  PORTRAIT = MOBILE_LAYOUT || camera.aspect < 0.95;
   if (typeof DIR !== 'undefined'){   // on phones the Ringmaster steps closer to the stage so both read bigger
     if (PORTRAIT){ DIR.g.position.set(-1.25, 0, 1.9); DIR.g.scale.setScalar(0.72); DIR.g.rotation.y = 0.5; }
     else { DIR.g.position.set(-2.25, 0, 2.3); DIR.g.scale.setScalar(0.85); DIR.g.rotation.y = 0.75; }
@@ -1159,7 +1181,6 @@ function resize(){
 }
 var PORTRAIT = false;
 window.addEventListener('resize', resize); resize();
-if (window.ResizeObserver) new ResizeObserver(function(){ resize(); }).observe(stage);
 
 /* ================= UI ================= */
 var feedEl = $('feed'), toastT = null;
@@ -1809,8 +1830,9 @@ function update(dt){
 }
 /* ---------- opening: the Ringmaster welcomes you, counts down, then the camera flies out to the stage ---------- */
 var INTRO = { on: !reduced && !/[?&]tour=auto/.test(location.search), t:0, stage:'hold', hold:5.4, fly:2.6, ft:0, msg:-1, afterTut:false };
-var introHead = new THREE.Vector3(), introCam = new THREE.Vector3(), flyFrom = new THREE.Vector3(), flyLookFrom = new THREE.Vector3(),
+var introRight = new THREE.Vector3(), introHead = new THREE.Vector3(), introCam = new THREE.Vector3(), flyFrom = new THREE.Vector3(), flyLookFrom = new THREE.Vector3(),
     flyTo = new THREE.Vector3(), flyLookTo = new THREE.Vector3(), flyCtrl = new THREE.Vector3(), flyFov0 = 36, flyFov1 = 40;
+var INTRO_FOV = 38;
 var INTRO_LINES = [[0.25, 'Welcome to $CIRCO, anon. Grab a seat, the show never stops.'], [2.4, 'The show starts in 3…'], [3.4, 'The show starts in 2…'], [4.4, 'The show starts in 1…'], [5.2, 'Showtime! 🎪']];
 if (INTRO.on) document.body.classList.add('intro');
 function normalCam(out){
@@ -1819,39 +1841,49 @@ function normalCam(out){
   return out.set(camPos.x + o, camPos.y, camPos.z);
 }
 function easeInOutCubic(k){ return k < 0.5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3)/2; }
+var mouthV = new THREE.Vector3(), speechX = null, speechY = null;
 function introBubble(text){
-  var b = $('bubble'); b.classList.add('on', 'intro'); $('bubText').textContent = text; $('bubSkip').textContent = 'Skip intro';
-  if (window.innerWidth > 900){
-    DIR.head.getWorldPosition(headV); headV.project(camera);
-    var r = renderer.domElement.getBoundingClientRect();
-    b.style.left = Math.min(window.innerWidth - b.offsetWidth - 16, Math.max(16, r.left + (headV.x*0.5 + 0.5)*r.width + 90)) + 'px';
-    b.style.top = Math.min(window.innerHeight - b.offsetHeight - 16, Math.max(80, r.top + (-headV.y*0.5 + 0.5)*r.height - 70)) + 'px';
-  }
+  var sp = $('speech'); sp.classList.add('on'); $('speechText').textContent = text;
+  sp.classList.remove('pop'); void sp.offsetWidth; sp.classList.add('pop');
   DIR.talk = Math.min(3, 0.8 + text.length*0.03);
+}
+function placeSpeech(dt){
+  // the tail tip sits just right of his mouth; the balloon grows up and to the right from there
+  DIR.mouth.getWorldPosition(mouthV); mouthV.project(camera);
+  var r = renderer.domElement.getBoundingClientRect(), sp = $('speech');
+  var mx = r.left + (mouthV.x*0.5 + 0.5)*r.width, my = r.top + (-mouthV.y*0.5 + 0.5)*r.height;
+  var x = Math.min(window.innerWidth - sp.offsetWidth - 10, mx + 26), y = Math.max(10, my - sp.offsetHeight + 12);
+  if (speechX === null){ speechX = x; speechY = y; }
+  var k = Math.min(1, dt*10); speechX += (x - speechX)*k; speechY += (y - speechY)*k;
+  sp.style.transform = 'translate(' + speechX.toFixed(1) + 'px,' + speechY.toFixed(1) + 'px)';
 }
 function startFly(){
   INTRO.stage = 'fly'; INTRO.ft = 0;
-  $('bubble').classList.remove('on', 'intro'); $('bubSkip').textContent = 'Skip';
+  $('speech').classList.remove('on');
   document.body.classList.remove('intro');                  // UI fades back in while the camera flies out
-  flyFrom.copy(camera.position); flyLookFrom.copy(lookNow); flyFov0 = camera.fov;
+  flyFrom.copy(camera.position); flyLookFrom.copy(lookNow); flyFov0 = INTRO_FOV;
 }
 function endIntro(){
   INTRO.on = false; INTRO.stage = 'done';
   resize();                                                  // restores the normal field of view
-  if (S.phase === 'scelta') carousel.visible = true;
+  carousel.scale.setScalar(1); if (S.phase === 'scelta') carousel.visible = true;
   if (INTRO.afterTut) setTimeout(tutOpen, 400);
 }
 function introFrame(dt){
   if (INTRO.stage === 'hold'){
     INTRO.t += dt;
     DIR.head.getWorldPosition(introHead);
-    var ry = DIR.g.rotation.y, d = PORTRAIT ? 3.9 : 2.6;
+    var ry = DIR.g.rotation.y, d = MOBILE_LAYOUT ? 3.8 : 3.3;
     introCam.set(introHead.x + Math.sin(ry)*d + 0.1, introHead.y + 0.2, introHead.z + Math.cos(ry)*d);
-    introHead.y -= PORTRAIT ? 0.55 : 0.25;   // aim a little low so he stands in the upper part, above the bubble
+    introHead.y -= MOBILE_LAYOUT ? 0.35 : 0.2;
+    // aim to his right so he stands on the left of the frame and the speech balloon fits beside his mouth
+    introRight.subVectors(introHead, introCam).normalize().cross(camera.up).normalize();
+    introHead.addScaledVector(introRight, MOBILE_LAYOUT ? 0.24 : 0.55);
     carousel.visible = false;
-    if (!INTRO.snapped){ camera.position.copy(introCam); lookNow.copy(introHead); INTRO.snapped = true; camera.fov = 36; camera.updateProjectionMatrix(); }
+    if (!INTRO.snapped){ camera.position.copy(introCam); lookNow.copy(introHead); INTRO.snapped = true; applyView(INTRO_FOV, 0); }
     camera.position.lerp(introCam, Math.min(1, dt*3)); lookNow.lerp(introHead, Math.min(1, dt*3));
     while (INTRO.msg + 1 < INTRO_LINES.length && INTRO.t >= INTRO_LINES[INTRO.msg + 1][0]){ INTRO.msg++; introBubble(INTRO_LINES[INTRO.msg][1]); if (INTRO.msg >= 1 && INTRO.msg <= 3) sfx('beep'); }
+    if ($('speech').classList.contains('on')) placeSpeech(dt);
     if (INTRO.t >= INTRO.hold + 0.5) startFly();
     return;
   }
@@ -1863,12 +1895,11 @@ function introFrame(dt){
   var a = 1 - e;
   camera.position.set(a*a*flyFrom.x + 2*a*e*flyCtrl.x + e*e*flyTo.x, a*a*flyFrom.y + 2*a*e*flyCtrl.y + e*e*flyTo.y, a*a*flyFrom.z + 2*a*e*flyCtrl.z + e*e*flyTo.z);
   lookNow.copy(flyLookFrom).lerp(flyLookTo, e);
-  flyFov1 = window.innerWidth < 700 ? 52 : 40;
-  camera.fov = flyFov0 + (flyFov1 - flyFov0)*e; camera.updateProjectionMatrix();
-  if (k > 0.55 && S.phase === 'scelta') carousel.visible = true;
+  applyView(flyFov0 + (BASE_FOV - flyFov0)*e, VIEW_SHIFT*e);
+  if (S.phase === 'scelta'){ var cs = Math.max(0, Math.min(1, (k - 0.35)/0.6)); carousel.visible = cs > 0; carousel.scale.setScalar(0.001 + easeInOutCubic(cs)); }
   if (k >= 1) endIntro();
 }
-function skipIntro(){ if (INTRO.on && INTRO.stage === 'hold') startFly(); }
+
 function frame(){
   requestAnimationFrame(frame);
   var dt = Math.min(clock.getDelta(), 0.05); time += dt;
@@ -1890,8 +1921,8 @@ function frame(){
   if (tourOn) tourFrame(dt);
   if (INTRO.on && !tourOn){ introFrame(dt); camera.lookAt(lookNow); composer.render(); return; }
   var camSpeed = 1.6;
-  camera.position.lerp(tourOn ? (camera.aspect < 0.8 ? new THREE.Vector3(-1.3, 1.6, 6.2) : new THREE.Vector3(-0.2, 1.9, 6.6)) : (PORTRAIT ? new THREE.Vector3(camTarget.x + (camPos.x + orbit - camTarget.x)*0.74, camTarget.y + (camPos.y - camTarget.y)*0.8 - 0.1, camTarget.z + (camPos.z - camTarget.z)*0.74) : new THREE.Vector3(camPos.x + orbit, camPos.y, camPos.z)), Math.min(1, dt*camSpeed));
-  lookNow.lerp(tourOn ? (camera.aspect < 0.8 ? new THREE.Vector3(-1.9, 1.05, 2.1) : new THREE.Vector3(-1.4, 1.25, 1.6)) : camTarget, Math.min(1, dt*(camSpeed + 0.4)));
+  camera.position.lerp(tourOn ? (PORTRAIT ? new THREE.Vector3(-1.3, 1.6, 6.2) : new THREE.Vector3(-0.2, 1.9, 6.6)) : (PORTRAIT ? new THREE.Vector3(camTarget.x + (camPos.x + orbit - camTarget.x)*0.74, camTarget.y + (camPos.y - camTarget.y)*0.8 - 0.1, camTarget.z + (camPos.z - camTarget.z)*0.74) : new THREE.Vector3(camPos.x + orbit, camPos.y, camPos.z)), Math.min(1, dt*camSpeed));
+  lookNow.lerp(tourOn ? (PORTRAIT ? new THREE.Vector3(-1.9, 1.05, 2.1) : new THREE.Vector3(-1.4, 1.25, 1.6)) : camTarget, Math.min(1, dt*(camSpeed + 0.4)));
   if (shake > 0){ camera.position.x += (Math.random()-0.5)*shake; camera.position.y += (Math.random()-0.5)*shake; shake = Math.max(0, shake - dt*0.9); }
   camera.lookAt(lookNow);
   flash.intensity = Math.max(0, flash.intensity - dt*9);
@@ -1929,8 +1960,7 @@ function tourShow(i){
 function tourStart(){ document.body.classList.add('touring'); TOUR.on = true; $('bubble').classList.add('on'); tourShow(0); if (!TOUR.auto) $('bubNext').focus(); }
 function tourEnd(){ document.body.classList.remove('touring'); TOUR.on = false; $('bubble').classList.remove('on'); document.querySelectorAll('.spotlit').forEach(function(el){ el.classList.remove('spotlit'); }); try { localStorage.setItem('circo_tutorial_done', '1'); } catch(e){} }
 $('bubNext').addEventListener('click', function(){ if (TOUR.i < TOUR_STEPS.length-1) tourShow(TOUR.i+1); else tourEnd(); });
-$('bubSkip').addEventListener('click', function(){ if (INTRO.on) skipIntro(); else tourEnd(); });
-$('stage').addEventListener('click', function(){ if (INTRO.on && INTRO.t > 1) skipIntro(); });
+$('bubSkip').addEventListener('click', tourEnd);
 if (TOUR.auto){ $('bubSkip').style.display = 'none'; $('bubNext').style.display = 'none'; document.body.classList.add('recording'); setTimeout(resize, 50); }
 var headV = new THREE.Vector3();
 function tourFrame(dt){
