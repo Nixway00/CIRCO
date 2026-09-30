@@ -374,8 +374,8 @@ body.recording #recTitle{ display:block; }
 (function(){
 'use strict';
 var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-var LITE = /[?&]lite=1/.test(location.search) || (/Android/i.test(navigator.userAgent) && (navigator.deviceMemory || 8) <= 3);
-var MAX_DPR = LITE ? 1 : (/iPhone|iPad|Android/i.test(navigator.userAgent) ? 3 : 2);   // phones get native sharpness; lowered automatically if the device cannot keep up
+var LITE = /[?&]lite=1/.test(location.search);   // only on request: everyone else gets full quality
+var MAX_DPR = LITE ? 1 : 3;   // native screen resolution, never lowered automatically
 if (LITE) reduced = true;
 function $(id){ return document.getElementById(id); }
 
@@ -419,7 +419,9 @@ scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
 
 // Post-processing bypasses the canvas antialiasing, so the render target does its own MSAA (WebGL2)
 var msaa = (!LITE && renderer.capabilities.isWebGL2) ? 4 : 0;
-var composer = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { samples: msaa, type: THREE.HalfFloatType }));
+var rtType = renderer.extensions.has('EXT_color_buffer_half_float') || renderer.extensions.has('EXT_color_buffer_float') ? THREE.HalfFloatType : THREE.UnsignedByteType;
+var composer = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { samples: msaa, type: rtType }));
+composer.setPixelRatio(renderer.getPixelRatio());
 composer.addPass(new THREE.RenderPass(scene, camera));
 var bloom = new THREE.UnrealBloomPass(new THREE.Vector2(512, 512), 0.6, 0.5, 0.9);
 if (!LITE) composer.addPass(bloom);
@@ -483,7 +485,7 @@ beam.position.y = 4.5; scene.add(beam);
 
 /* glowing dust */
 var dust = (function(){
-  var n = reduced ? 250 : 700, g = new THREE.BufferGeometry(), p = new Float32Array(n*3);
+  var n = LITE ? 250 : 700, g = new THREE.BufferGeometry(), p = new Float32Array(n*3);
   for (var i=0;i<n;i++){ p[i*3]=(Math.random()-0.5)*22; p[i*3+1]=Math.random()*9; p[i*3+2]=(Math.random()-0.5)*16-2; }
   g.setAttribute('position', new THREE.BufferAttribute(p,3));
   var m = new THREE.Points(g, new THREE.PointsMaterial({ color:0x6fa6ff, size:0.035, transparent:true, opacity:0.7, depthWrite:false, blending:THREE.AdditiveBlending }));
@@ -835,7 +837,7 @@ function explode(hex){
   var centers = [];
   if (cur.kind === 'classico'){ var cc = new THREE.Vector3(); cur.balloon.userData.body.getWorldPosition(cc); centers.push({ c:cc, s:cur.balloon.userData.body.scale.x }); }
   else cur.bubbles.forEach(function(b){ var w = new THREE.Vector3(); b.getWorldPosition(w); centers.push({ c:w, s:b.scale.x*cur.def.scale*1.4 }); });
-  var n = reduced ? 200 : 700, g = new THREE.BufferGeometry(), p = new Float32Array(n*3), v = [];
+  var n = LITE ? 200 : 700, g = new THREE.BufferGeometry(), p = new Float32Array(n*3), v = [];
   for (var i=0;i<n;i++){
     var src = centers[i % centers.length], dir = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
     p[i*3]=src.c.x+dir.x*src.s; p[i*3+1]=src.c.y+dir.y*src.s; p[i*3+2]=src.c.z+dir.z*src.s;
@@ -1090,7 +1092,7 @@ function buildWheel(entries){
 var wSpin = { from:0, to:0 };
 
 /* winner confetti */
-var CONF_N = reduced ? 120 : 360;
+var CONF_N = LITE ? 120 : 360;
 var confetti = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.09, 0.05), new THREE.MeshBasicMaterial({ side:THREE.DoubleSide, transparent:true }), CONF_N);
 confetti.visible = false; scene.add(confetti);
 var confData = [], dummy = new THREE.Object3D();
@@ -1754,22 +1756,9 @@ function update(dt){
     confetti.instanceMatrix.needsUpdate = true;
   }
 }
-var perf = { t:0, n:0, step:0, warm:4 };
-function adaptQuality(raw){
-  if (perf.step >= 2) return;
-  if (perf.warm > 0){ perf.warm -= raw; return; }
-  perf.t += raw; perf.n++;
-  if (perf.t < 4) return;
-  var fps = perf.n / perf.t; perf.t = 0; perf.n = 0;
-  if (fps >= 32) return;
-  perf.step++; perf.warm = 1.5;
-  if (perf.step === 1){ MAX_DPR = 1.4; }
-  if (perf.step === 2){ MAX_DPR = 1; bloom.enabled = false; }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, MAX_DPR)); resize();
-}
 function frame(){
   requestAnimationFrame(frame);
-  var raw = clock.getDelta(), dt = Math.min(raw, 0.05); time += dt; adaptQuality(raw);
+  var dt = Math.min(clock.getDelta(), 0.05); time += dt;
   if (!S.paused){ S.t += dt; if (!LIVE) market(dt); else liveClock(); update(dt); }
   if (!S.paused) animDirector(dt);
   sheetTick += dt; if (sheetTick > 1.5 && (page === 'classifiche' || page === 'profilo')){ sheetTick = 0; refreshSheet(); }
