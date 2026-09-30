@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { env } from './env.ts';
-import type { Config, RoundState, TicketTotal } from './rules.ts';
+import type { Config, Phase, RoundState, TicketTotal } from './rules.ts';
 
 export const db = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
@@ -12,20 +12,30 @@ export async function loadConfig(): Promise<Config> {
   return o as unknown as Config;
 }
 
-export async function currentRound(): Promise<(RoundState & { carried_sol: number }) | null> {
-  const { data, error } = await db.from('rounds').select('*').in('phase', ['inflate', 'countdown']).order('id', { ascending: false }).limit(1).maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
+export type Round = RoundState & { carried_sol: number; winner_wallet: string | null; last_buyer: string | null; prize_sol: number | null; draw_total_tickets: number | null; forced_gala: boolean };
+
+function toRound(d: any): Round {
   return {
-    ...data,
-    capacity_sol: Number(data.capacity_sol), collected_sol: Number(data.collected_sol), carried_sol: Number(data.carried_sol),
-    started_at: Date.parse(data.started_at), countdown_ends_at: data.countdown_ends_at ? Date.parse(data.countdown_ends_at) : null,
+    ...d,
+    capacity_sol: Number(d.capacity_sol), collected_sol: Number(d.collected_sol), carried_sol: Number(d.carried_sol),
+    prize_sol: d.prize_sol === null ? null : Number(d.prize_sol),
+    started_at: Date.parse(d.started_at), countdown_ends_at: d.countdown_ends_at ? Date.parse(d.countdown_ends_at) : null,
   };
 }
 
-export async function ticketTotals(roundId: number, burnOnly = false): Promise<TicketTotal[]> {
+async function roundIn(phases: Phase[]): Promise<Round | null> {
+  const { data, error } = await db.from('rounds').select('*').in('phase', phases).order('id', { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return data ? toRound(data) : null;
+}
+/** The round currently selling tickets (inflating or counting down). */
+export const openRound = () => roundIn(['inflate', 'countdown']);
+/** A round whose draw started but did not finish (for example the engine restarted mid-draw). */
+export const drawingRound = () => roundIn(['drawing']);
+
+export async function ticketTotals(roundId: number, purchasesOnly = false): Promise<TicketTotal[]> {
   let q = db.from('tickets').select('wallet,count,created_at,kind').eq('round_id', roundId);
-  if (burnOnly) q = q.eq('kind', 'burn');
+  if (purchasesOnly) q = q.in('kind', ['burn', 'late']);       // free tickets never win the last-ticket bonus
   const { data, error } = await q;
   if (error) throw error;
   const m = new Map<string, TicketTotal>();
@@ -41,4 +51,11 @@ export async function prizeCollected(roundId: number, carried: number): Promise<
   const { data, error } = await db.from('fees').select('amount_sol').eq('round_id', roundId).eq('wallet', 'prize');
   if (error) throw error;
   return carried + data!.reduce((a, f) => a + Number(f.amount_sol), 0);
+}
+
+export interface AddResult { given: number; credited: number; duplicate: boolean }
+export async function addTickets(roundId: number | null, wallet: string, count: number, kind: string, burnTx: string | null, tokens: string, cap: number): Promise<AddResult> {
+  const { data, error } = await db.rpc('add_tickets', { p_round: roundId, p_wallet: wallet, p_count: count, p_kind: kind, p_burn_tx: burnTx, p_tokens: tokens, p_cap: cap });
+  if (error) throw error;
+  return data as AddResult;
 }

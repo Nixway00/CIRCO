@@ -122,3 +122,53 @@ export function splitPrize(prizeSol: number, cfg: Config) {
   const bonus = Math.floor(prizeSol * cfg.last_ticket_bonus * 1e9) / 1e9;
   return { winner: Math.floor((prizeSol - bonus) * 1e9) / 1e9, bonus };
 }
+
+// ---------- money and ticket placement (pure, tested) ----------
+export const LAMPORTS = 1_000_000_000;
+
+/** Fees count toward the open balloon only while it inflates; later ones wait for the next round. */
+export function feeTargetsCurrentRound(phase: Phase | null): boolean {
+  return phase === 'inflate';
+}
+
+/** SOL collected above capacity when the balloon fills: carried to the next round. */
+export function overflowOnFull(collectedSol: number, capacitySol: number): number {
+  return Math.max(0, Math.round((collectedSol - capacitySol) * LAMPORTS)) / LAMPORTS;
+}
+
+/** Integer lamports so nothing is lost to rounding: the winner gets the remainder after the bonus. */
+export function payoutPlan(prizeSol: number, lastBuyerWallet: string | null, cfg: Config) {
+  const total = Math.max(0, Math.floor(prizeSol * LAMPORTS));
+  const bonus = lastBuyerWallet ? Math.floor(total * cfg.last_ticket_bonus) : 0;
+  return { winner: total - bonus, bonus };
+}
+
+/**
+ * Where a verified burn goes. The memo names a round; if that round is still selling (and the burn
+ * landed before the countdown ended) the tickets are normal. Otherwise they are 'late' and go to the
+ * round that is open now, or become credits if no round is open at this instant.
+ */
+export function placeBurn(
+  memoRoundId: number,
+  blockTimeMs: number,
+  open: { id: number; phase: Phase; countdown_ends_at: number | null } | null,
+): { roundId: number | null; kind: 'burn' | 'late' } {
+  // sales are open only while inflating, or in the countdown before its end (extensions move the end)
+  const selling = !!open && (open.phase === 'inflate' || (open.phase === 'countdown' && (open.countdown_ends_at === null || blockTimeMs <= open.countdown_ends_at)));
+  if (!open || !selling) return { roundId: null, kind: 'late' };   // closed right now: credit for the next round
+  if (open.id === memoRoundId) return { roundId: open.id, kind: 'burn' };
+  return { roundId: open.id, kind: 'late' };                        // memo named an older round: count it in the open one
+}
+
+/** A sent payment whose blockhash expired without landing can be safely rebuilt and sent again. */
+export function payoutNextStep(
+  status: 'pending' | 'sent' | 'confirmed' | 'skipped',
+  chain: { found: boolean; failed: boolean; blockHeight: number; lastValidHeight: number | null },
+): 'send' | 'wait' | 'confirm' | 'resend' | 'done' {
+  if (status === 'confirmed' || status === 'skipped') return 'done';
+  if (status === 'pending') return 'send';
+  if (chain.found && !chain.failed) return 'confirm';
+  if (chain.found && chain.failed) return 'resend';
+  if (chain.lastValidHeight !== null && chain.blockHeight > chain.lastValidHeight) return 'resend';
+  return 'wait';
+}

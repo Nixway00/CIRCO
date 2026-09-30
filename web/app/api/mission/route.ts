@@ -34,12 +34,12 @@ export async function POST(req: Request) {
   const { data: cfg } = await db.from('config').select('key,value').in('key', ['mission_bonus_tickets', 'max_tickets_per_wallet']);
   const bonus = Number(cfg?.find(c => c.key === 'mission_bonus_tickets')?.value ?? 3);
   const cap = Number(cfg?.find(c => c.key === 'max_tickets_per_wallet')?.value ?? 10);
-  const { data: held } = await db.from('tickets').select('count').eq('round_id', round.id).eq('wallet', wallet);
-  const have = (held ?? []).reduce((a, t) => a + t.count, 0);
-  const give = Math.max(0, Math.min(bonus, cap - have));
+  // same atomic path as purchases, so the 10-ticket cap holds even under simultaneous requests
+  const { data: added, error: addErr } = await db.rpc('add_tickets', { p_round: round.id, p_wallet: wallet, p_count: bonus, p_kind: 'mission', p_burn_tx: null, p_tokens: '0', p_cap: cap });
+  if (addErr) return NextResponse.json({ error: addErr.message }, { status: 500 });
+  const give = (added as { given: number }).given;
   if (!give) return NextResponse.json({ error: 'You already hold 10 tickets this round. Claim in the next round.' }, { status: 409 });
 
-  await db.from('tickets').insert({ round_id: round.id, wallet, count: give, kind: 'mission' });
   await db.from('mission_claims').insert({ wallet, day_utc: day, post_url: m[0], round_id: round.id, tickets: give });
   return NextResponse.json({ ok: true, tickets: give, round: round.id });
 }

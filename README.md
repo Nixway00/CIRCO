@@ -55,6 +55,16 @@ Done:
 - [x] Deployment kit: wallet script, Helius webhook script, pm2 and Docker
 - [x] Supabase project live (organization CIRCO, free plan, Paris), both migrations applied, security check clean
 
+Engine safety (done, migration `0003_engine_safety.sql`):
+- [x] Draws resume after a restart; winner stored once, payouts written before they are sent (never paid twice)
+- [x] Burns counted from the Helius webhook too, so closing the browser loses nothing; burns after sales close become credits
+- [x] 10-ticket cap enforced inside the database (tested with 30 simultaneous purchases); extra tickets become credits
+- [x] Fees that arrive during countdown or draw, and overflow above capacity, roll into the next balloon
+- [x] 0.01 SOL reserve always kept in the prize wallet for network fees (fund it with ~0.02 SOL before launch)
+- [x] Ticket price and chat minimum on the stage follow the config
+- [x] Stats, leaderboard and history served from a snapshot refreshed every 15 s
+- [x] Chat anti-spam (one message every 4 s, no repeats)
+
 Still to do before launch:
 - [ ] **End-to-end test on a throwaway token** with tiny balloons (set `balloons` capacities to 0.05 SOL in `config`).
 - [ ] **Deploy:** engine on a VPS (for example with `pm2`), site on Vercel, Helius webhook pointed at the engine.

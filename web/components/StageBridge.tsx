@@ -20,76 +20,77 @@ export default function StageBridge() {
   const { publicKey, sendTransaction, signMessage } = useWallet();
   const { setVisible } = useWalletModal();
   const price = useRef(10000);
+  const chatMin = useRef(10000);
   const meRef = useRef<string | null>(null);
 
   const post = useCallback((m: Record<string, unknown>) => {
     frame.current?.contentWindow?.postMessage({ type: 'circo-state', ...m }, window.location.origin);
   }, []);
 
-  const pushState = useCallback(async () => {
-    const [{ data: rounds }, { data: trades }, { data: chat }, { data: cfg }] = await Promise.all([
+  // Live, per-round data: small queries, re-run on every game event.
+  const pushLive = useCallback(async () => {
+    const [{ data: rounds }, { data: trades }, { data: chat }, { data: cfgRows }] = await Promise.all([
       supabase.from('rounds').select('*').order('id', { ascending: false }).limit(2),
       supabase.from('trades').select('tx,wallet,side,amount_sol').order('id', { ascending: false }).limit(12),
       supabase.from('chat_messages').select('id,wallet,body,is_ringmaster').order('id', { ascending: false }).limit(30),
-      supabase.from('config').select('value').eq('key', 'ticket_price_tokens').maybeSingle(),
+      supabase.from('config').select('key,value').in('key', ['ticket_price_tokens', 'chat_min_tokens']),
     ]);
-    if (cfg) price.current = Number(cfg.value);
+    for (const c of cfgRows ?? []) { if (c.key === 'ticket_price_tokens') price.current = Number(c.value); if (c.key === 'chat_min_tokens') chatMin.current = Number(c.value); }
     const round = rounds?.[0], prev = rounds?.[1];
     let tickets: { wallet: string; tickets: number }[] = [], lastBuyer: string | null = null;
     if (round) {
       const { data: t } = await supabase.from('tickets').select('wallet,count,kind,created_at').eq('round_id', round.id).order('created_at');
       const m = new Map<string, number>();
-      for (const x of t ?? []) { m.set(x.wallet, (m.get(x.wallet) ?? 0) + x.count); if (x.kind === 'burn') lastBuyer = x.wallet; }
+      for (const x of t ?? []) { m.set(x.wallet, (m.get(x.wallet) ?? 0) + x.count); if (x.kind === 'burn' || x.kind === 'late') lastBuyer = x.wallet; }
       tickets = [...m].map(([wallet, n]) => ({ wallet, tickets: n }));
     }
-    const { data: lb } = await supabase.from('leaderboard').select('tokens_burned');
-    const { data: bb } = await supabase.from('buybacks').select('sol_spent');
-    const { data: done } = await supabase.from('rounds').select('prize_sol').eq('phase', 'done');
-    const stats = {
-      burned: (lb ?? []).reduce((a, r) => a + Number(r.tokens_burned), 0),
-      buyback: (bb ?? []).reduce((a, r) => a + Number(r.sol_spent), 0),
-      prizes: (done ?? []).reduce((a, r) => a + Number(r.prize_sol), 0),
-      rounds: (done ?? []).length,
-    };
-    // History, Leaderboards and Profile inside the stage
+    const pumpUrl = (process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').startsWith('https://pump.fun/coin/') && !(process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').includes('YOUR_MINT') ? process.env.NEXT_PUBLIC_PUMPFUN_URL : undefined;
+    post({ round, prev, tickets, lastBuyer, trades: (trades ?? []).reverse(), chat: (chat ?? []).reverse(), price: price.current, chatMin: chatMin.current, pumpUrl });
+  }, [post]);
+
+  // Stats, leaderboard and history: one precomputed snapshot written by the engine, never aggregated here.
+  const pushSnapshots = useCallback(async () => {
     const B2T: Record<string, string> = { green: 'verde', blue: 'blu', red: 'rosso', gold: 'oro' };
+    const { data: snaps } = await supabase.from('snapshots').select('key,data');
+    const snap = (k: string) => snaps?.find(x => x.key === k)?.data;
+    const st = snap('stats') ?? {};
+    const stats = { burned: Number(st.tokens_burned ?? 0), buyback: Number(st.sol_bought_back ?? 0), prizes: Number(st.sol_paid ?? 0), rounds: Number(st.rounds_played ?? 0) };
     const me = meRef.current;
-    const [{ data: summary }, { data: board }] = await Promise.all([
-      supabase.from('round_summary').select('*').order('id', { ascending: false }).limit(30),
-      supabase.from('leaderboard').select('*').order('sol_won', { ascending: false }).limit(50),
-    ]);
-    let mine = new Map<number, number>();
+    const mine = new Map<number, number>();
+    let leaderboard: any[] = (snap('leaderboard') as any[]) ?? [];
     if (me) {
-      const { data: myT } = await supabase.from('tickets').select('round_id,count').eq('wallet', me);
+      const [{ data: myT }, { data: meRow }] = await Promise.all([
+        supabase.from('tickets').select('round_id,count').eq('wallet', me).order('id', { ascending: false }).limit(500),
+        leaderboard.some(l => l.wallet === me) ? Promise.resolve({ data: null }) : supabase.from('leaderboard').select('*').eq('wallet', me).maybeSingle(),
+      ]);
       for (const t of myT ?? []) mine.set(t.round_id, (mine.get(t.round_id) ?? 0) + t.count);
+      if (meRow) leaderboard = [...leaderboard, meRow];
     }
-    const history = (summary ?? []).map(r => ({
+    const history = ((snap('history') as any[]) ?? []).map(r => ({
       round: r.id, type: B2T[r.balloon], cap: Number(r.capacity_sol), tickets: r.total_tickets, wallets: r.wallets,
       mine: mine.get(r.id) ?? 0, rinvio: r.phase === 'postponed', winner: r.winner_wallet, winT: r.winner_tickets ?? 0,
       main: Number(r.prize_sol ?? 0) * 0.95, last: r.last_buyer, bonus: r.last_buyer ? Number(r.prize_sol ?? 0) * 0.05 : 0,
     }));
-    let leaderboard = board ?? [];
-    if (me && !leaderboard.some(l => l.wallet === me)) {
-      const { data: meRow } = await supabase.from('leaderboard').select('*').eq('wallet', me).maybeSingle();
-      if (meRow) leaderboard = [...leaderboard, meRow];
-    }
-    const pumpUrl = (process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').startsWith('https://pump.fun/coin/') && !(process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').includes('YOUR_MINT') ? process.env.NEXT_PUBLIC_PUMPFUN_URL : undefined;
-    post({ round, prev, tickets, lastBuyer, trades: (trades ?? []).reverse(), chat: (chat ?? []).reverse(), stats, history, leaderboard, pumpUrl });
+    post({ stats, history, leaderboard });
   }, [post]);
 
-  // live updates: any change in the game tables re-sends the state (debounced)
+  const pushState = useCallback(async () => { await Promise.all([pushLive(), pushSnapshots()]); }, [pushLive, pushSnapshots]);
+
+  // live updates: game tables re-send the round, the snapshot table re-sends stats (both debounced)
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const bump = () => { if (timer) clearTimeout(timer); timer = setTimeout(pushState, 250); };
+    let tLive: ReturnType<typeof setTimeout> | null = null, tSnap: ReturnType<typeof setTimeout> | null = null;
+    const live = () => { if (tLive) clearTimeout(tLive); tLive = setTimeout(pushLive, 250); };
+    const snaps = () => { if (tSnap) clearTimeout(tSnap); tSnap = setTimeout(pushSnapshots, 500); };
     const ch = supabase.channel('stage')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds' }, bump)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, bump)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trades' }, bump)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, bump)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds' }, live)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, live)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trades' }, live)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, live)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'snapshots' }, snaps)
       .subscribe();
-    const safety = setInterval(pushState, 15_000);
+    const safety = setInterval(pushState, 30_000);
     return () => { supabase.removeChannel(ch); clearInterval(safety); };
-  }, [pushState]);
+  }, [pushLive, pushSnapshots, pushState]);
 
   // wallet identity and balance for the chat gate
   useEffect(() => {
@@ -121,7 +122,7 @@ export default function StageBridge() {
           await connection.confirmTransaction(sig, 'confirmed');
           const res = await fetch('/api/tickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
           const out = await res.json();
-          post({ toast: res.ok ? `Done: you hold ${out.tickets} tickets this round.` : out.error });
+          post({ toast: !res.ok ? out.error : out.credited > 0 ? `Done: ${out.given} tickets this round, ${out.credited} saved for the next rounds.` : `Done: you hold ${out.tickets} tickets this round.` });
           circoBalanceClient(connection, publicKey).then(balance => post({ me: publicKey.toBase58(), balance }));
         }
         if (m.type === 'circo-chat' && m.text) {

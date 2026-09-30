@@ -316,7 +316,7 @@ nav.pages .sm{ display:none; }
   </div>
   <div class="col" id="colR">
     <section class="panel">
-      <div class="head"><h2 id="tTitle">Round tickets</h2><span class="small">10,000 $CIRCO each</span></div>
+      <div class="head"><h2 id="tTitle">Round tickets</h2><span class="small" id="priceEach">10,000 $CIRCO each</span></div>
       <div class="duo">
         <div><b id="tCount">0</b><span>tickets</span></div>
         <div><b id="tBurn">0</b><span>tokens burned</span></div>
@@ -1213,7 +1213,7 @@ function renderMe(){
 }
 function renderTickets(withColors){
   var list = $('tList'), tot = totalTickets();
-  $('tCount').textContent = fmt(tot,0); $('tBurn').textContent = fmtBig(tot*10000); renderMe();
+  $('tCount').textContent = fmt(tot,0); $('tBurn').textContent = fmtBig(tot*PRICE); renderMe();
   if (!tot){ list.innerHTML = '<div class="small">Sales are open. Up to 10 tickets per wallet.</div>'; return; }
   var html = '';
   if (withColors){
@@ -1240,13 +1240,13 @@ function setStepper(ph){
 }
 function buy(wallet, n, bonus){
   var have = S.tickets.get(wallet) || 0, add = Math.min(n, 10-have);
-  if (!bonus && wallet === ME) add = Math.min(add, Math.floor(S.bal/10000));
+  if (!bonus && wallet === ME) add = Math.min(add, Math.floor(S.bal/PRICE));
   if (add <= 0) return 0;
   if (bonus){ S.tickets.set(wallet, have+add); S.lastBuyer = wallet; $('lastB').textContent = wallet; var pq = pl(wallet); pq.t += add; if (!have) pq.rounds++; renderLive();
     addFeed('Bonus tickets ×'+add, '#5CE1FF', wallet, 'shared on X', 'mission'); renderTickets(false); kick(0.35); return add; }
-  if (wallet === ME){ S.bal -= add*10000; renderChatGate(); }
-  S.tickets.set(wallet, have+add); S.stats.burned += add*10000; S.lastBuyer = wallet; var pp = pl(wallet); pp.t += add; pp.b += add*10000; if (!have) pp.rounds++; $('lastB').textContent = wallet; renderLive();
-  addFeed('Tickets ×'+add, '#FFD34D', wallet, fmt(add*10000,0)+' burned', 'burn');
+  if (wallet === ME){ S.bal -= add*PRICE; renderChatGate(); }
+  S.tickets.set(wallet, have+add); S.stats.burned += add*PRICE; S.lastBuyer = wallet; var pp = pl(wallet); pp.t += add; pp.b += add*PRICE; if (!have) pp.rounds++; $('lastB').textContent = wallet; renderLive();
+  addFeed('Tickets ×'+add, '#FFD34D', wallet, fmt(add*PRICE,0)+' burned', 'burn');
   renderTickets(false); renderStats(); kick(0.35);
   return add;
 }
@@ -1255,7 +1255,7 @@ function bpMax(){ return Math.max(0, 10 - (S.tickets.get(ME) || 0)); }
 function bpRender(){
   var mx = bpMax(); bpN = Math.max(mx ? 1 : 0, Math.min(bpN, mx));
   $('bpN').textContent = bpN; $('bpRange').max = Math.max(1, mx); $('bpRange').value = bpN; $('bpRange').disabled = !mx;
-  $('bpCost').textContent = fmt(bpN*10000,0)+' $CIRCO burned';
+  $('bpCost').textContent = fmt(bpN*PRICE,0)+' $CIRCO burned';
   $('bpInfo').textContent = mx ? 'You can buy '+mx+' more this round.' : 'You already hold the maximum of 10 tickets this round.';
   $('bpGo').textContent = bpN === 1 ? 'Buy 1 ticket' : 'Buy '+bpN+' tickets'; $('bpGo').disabled = !mx;
 }
@@ -1272,7 +1272,7 @@ $('bpGo').addEventListener('click', function(){
   if (S.phase !== 'gonfiaggio' && S.phase !== 'countdown'){ bpOpen(false); toast('Sales just closed.'); return; }
   if (LIVE){ bpOpen(false); parent.postMessage({ type:'circo-buy', round:S.liveRoundId, n:bpN }, '*'); toast('Confirm the burn in your wallet…'); return; }
   var got = buy(ME, bpN); bpOpen(false); sfx('coin');
-  toast(got ? 'You bought '+got+(got === 1 ? ' ticket: ' : ' tickets: ')+fmt(got*10000,0)+' $CIRCO burned.' : 'You already hold the maximum of 10 tickets this round.');
+  toast(got ? 'You bought '+got+(got === 1 ? ' ticket: ' : ' tickets: ')+fmt(got*PRICE,0)+' $CIRCO burned.' : 'You already hold the maximum of 10 tickets this round.');
 });
 var PUMP_URL = '';
 function coinClick(e){ if (!PUMP_URL){ e.preventDefault(); toast('$CIRCO is not launched yet. The Pump.fun link arrives on launch day.'); } }
@@ -1421,11 +1421,11 @@ function pageRegolamento(){
     d('How it works', '<p>Every $CIRCO trade creates fees. Part of them inflates a balloon full of coins. When the balloon is full, a countdown starts: everyone holding tickets joins the draw, and the wheel picks the winner.</p>', true)+
     d('Where the fees go', '<ul><li>45% into the balloon prize.</li><li>45% into automatic $CIRCO buyback and burn.</li><li>10% to the team for servers, development and running costs.</li></ul><p>All three wallets are public: <a href="#">prize ↗</a>, <a href="#">buyback ↗</a>, <a href="#">team ↗</a>.</p>')+
     d('The balloons', '<ul><li>Green balloon dog: 0.5 SOL, 40% of rounds, 50 tickets minimum.</li><li>Blue balloon: 1 SOL, 35%, 100 tickets minimum.</li><li>Red rocket: 2 SOL, 20%, 150 tickets minimum.</li><li>Gold trophy: 5 SOL, 5%, 300 tickets minimum.</li></ul><p>The first three rounds always use the blue 1 SOL balloon. Every day at 01:00 UTC, if no gold trophy came out in the last 24 hours, the next balloon is a gold trophy. The countdown is always on screen.</p>')+
-    d('Tickets', '<ul><li>One ticket costs 10,000 $CIRCO, burned at purchase. The team can change the price in tokens when $CIRCO moves a lot, announcing it on X first.</li><li>Up to 10 tickets per wallet per round.</li><li>Tickets are sold while the balloon inflates and during the countdown. Sales close when the countdown ends.</li><li>Tickets count for the current round only, unless the round is postponed.</li></ul>')+
+    d('Tickets', '<ul><li>One ticket costs '+fmt(PRICE,0)+' $CIRCO, burned at purchase. The team can change the price in tokens when $CIRCO moves a lot, announcing it on X first.</li><li>Up to 10 tickets per wallet per round.</li><li>Tickets are sold while the balloon inflates and during the countdown. Sales close when the countdown ends.</li><li>Tickets count for the current round only, unless the round is postponed.</li></ul>')+
     d('Daily mission', '<ul><li>Share a round on X and paste the link to your post: you get 3 bonus tickets, once a day.</li><li>Bonus tickets burn nothing, count toward the 10-ticket cap and the round minimum.</li><li>One X account per wallet.</li></ul>')+
     d('Countdown, minimum and postponement', '<ul><li>The countdown lasts 3 minutes.</li><li>If the balloon is not full after 30 minutes, it goes to the countdown anyway with the prize collected so far.</li><li>Each balloon has a ticket minimum. If it is not reached, the countdown extends by 1 minute, up to 3 times.</li><li>If tickets are still under the minimum after the third extension, the round is postponed: the prize and the tickets carry over to the next round.</li><li>After three postponements in a row, the next round is drawn anyway with the tickets it has.</li></ul>')+
     d('Draw and prizes', '<ul><li>Every ticket is one slice of the wheel: more tickets, better odds.</li><li>The winner receives 95% of the prize.</li><li>The buyer of the last ticket before sales close receives 5%.</li><li>Payouts are automatic and every transaction appears in History.</li><li>Team wallets can buy tickets and win like anyone else. They are labeled as team wallets.</li><li>The draw is provably fair: when a round starts we publish the hash of a secret; when sales close we mix that secret with the closing Solana blockhash; after the draw we reveal the secret, so anyone can recompute the winner from the win page.</li></ul>')+
-    d('Chat', '<p>Anyone can read the live chat. Wallets holding at least 10,000 $CIRCO can write.</p>')+
+    d('Chat', '<p>Anyone can read the live chat. Wallets holding at least '+fmt(CHAT_MIN,0)+' $CIRCO can write.</p>')+
     d('Tutorial', '<p><button class="btn" type="button" id="tutAgain">Replay the tutorial</button></p>')+
     d('Risks', '<p>$CIRCO is a memecoin: its price can drop to zero. Tokens spent on tickets are burned and cannot be recovered. Only play with money you can afford to lose.</p>')+
   '</div>';
@@ -1472,6 +1472,7 @@ function hud(title, big, bar, sub, timer){
 
 /* ================= state machine ================= */
 var FEW = /[?&]pochi=1/.test(location.search);
+var PRICE = 10000, CHAT_MIN = 10000;   // live mode: both come from the game config
 var LIVE = /[?&]data=live/.test(location.search);   // real game data from the parent page
 var FORCED = (function(){ try { return new URLSearchParams(location.search).get('tipo'); } catch(e){ return null; } })();
 function nextCheckpoint(now){ var d = new Date(now); var c = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 1, 0, 0); if (c <= now) c += 864e5; return c; }
@@ -1663,6 +1664,8 @@ window.addEventListener('message', function(e){
     P = new Map(m.leaderboard.map(function(l){ return [sh(l.wallet), { t:l.tickets_bought, b:+l.tokens_burned, wins:l.wins, won:+l.sol_won, bonus:+l.bonus_sol, rounds:l.rounds_played }]; }));
     refreshSheet();
   }
+  if (m.price){ PRICE = +m.price; $('priceEach').textContent = fmt(PRICE,0)+' $CIRCO each'; $('bpCost').textContent = fmt(bpN*PRICE,0)+' $CIRCO burned'; }
+  if (m.chatMin !== undefined){ CHAT_MIN = +m.chatMin; renderChatGate(); }
   if (m.pumpUrl){ PUMP_URL = m.pumpUrl; $('buyCoin').href = PUMP_URL; $('mCoin').href = PUMP_URL; $('buyCoin').target = '_blank'; }
   if (m.toast) toast(m.toast);
 });
@@ -1694,14 +1697,14 @@ function chatAdd(who, text, cls){
 }
 function ringmaster(text){ chatAdd('Ringmaster', text, 'rm'); if (typeof DIR !== 'undefined') DIR.talk = Math.min(4, 1 + text.length*0.04); }
 function renderChatGate(){
-  var ok = S.bal >= 10000;
+  var ok = S.bal >= CHAT_MIN;
   $('chatIn').disabled = !ok; $('chatSend').disabled = !ok;
-  $('chatIn').placeholder = ok ? 'Say something to the circus' : 'Hold 10,000 $CIRCO to chat';
-  $('chatGate').textContent = ok ? 'You hold '+fmtBig(S.bal)+' $CIRCO, so you can write.' : 'You can read the chat. Writing needs 10,000 $CIRCO.';
+  $('chatIn').placeholder = ok ? 'Say something to the circus' : 'Hold '+fmt(CHAT_MIN,0)+' $CIRCO to chat';
+  $('chatGate').textContent = ok ? 'You hold '+fmtBig(S.bal)+' $CIRCO, so you can write.' : 'You can read the chat. Writing needs '+fmt(CHAT_MIN,0)+' $CIRCO.';
 }
 $('chatForm').addEventListener('submit', function(e){
   e.preventDefault(); var v = $('chatIn').value.trim();
-  if (!v || S.bal < 10000) return;
+  if (!v || S.bal < CHAT_MIN) return;
   if (LIVE){ parent.postMessage({ type:'circo-chat', text:v }, '*'); $('chatIn').value = ''; return; }
   chatAdd(ME, v, 'self'); $('chatIn').value = '';
 });
@@ -1952,25 +1955,25 @@ renderChatGate(); ringmaster('Welcome to $CIRCO, the 24/7 memecoin circus. No re
 enter('scelta'); renderStats(); renderMe();
 var TUT = [
   ['Welcome to the circus', 'Every $CIRCO trade pumps the balloon in the middle of the stage. The coins flying in are the prize growing.'],
-  ['Buy a ticket', 'While the balloon inflates you can buy up to 10 tickets. Every ticket burns 10,000 $CIRCO.'],
+  ['Buy a ticket', 'While the balloon inflates you can buy up to 10 tickets. Every ticket burns {PRICE} $CIRCO.'],
   ['Pop and spin', 'When the balloon is full, the countdown starts. Then it pops and the wheel spins. More tickets, more slices are yours.'],
   ['The last-ticket bonus', 'The last ticket bought before sales close wins 5% of the prize. The rest goes to the wheel winner.']
 ];
 var tutI = 0;
-function tutShow(i){ tutI = i; $('tutTitle').textContent = TUT[i][0]; $('tutText').textContent = TUT[i][1];
+function tutShow(i){ tutI = i; $('tutTitle').textContent = TUT[i][0]; $('tutText').textContent = TUT[i][1].replace('{PRICE}', fmt(PRICE,0));
   document.querySelectorAll('#tutDots span').forEach(function(d, k){ d.classList.toggle('on', k === i); });
   $('tutNext').textContent = i === TUT.length-1 ? 'Start playing' : 'Next'; }
 var TOUR = { on:false, i:0, auto:/[?&]tour=auto/.test(location.search), t:0 };
 var TOUR_STEPS = [
   { text:'Welcome to $CIRCO, anon. I am the Ringmaster. Every trade pumps my balloon, and yes, those coins inside are real SOL.', pose:'wave', spot:null },
-  { text:'Want a seat at the draw? Buy up to 10 tickets. Each one burns 10,000 $CIRCO. Supply go down. Beautiful.', pose:'point', spot:'buyBtn' },
+  { text:'Want a seat at the draw? Buy up to 10 tickets. Each one burns {PRICE} $CIRCO. Supply go down. Beautiful.', pose:'point', spot:'buyBtn' },
   { text:'When the balloon is full I get three minutes of suspense, then I pop it. The wheel picks the winner. More tickets, fatter slice.', pose:'pin', spot:null },
   { text:'Pro tip: the last ticket before the pop takes 5% of the prize. Sniping is not just allowed, it is encouraged.', pose:'point', spot:'lastB' },
   { text:'Share a round on X once a day and I throw in 3 free tickets. Now go. The show never stops.', pose:'hat', spot:null }
 ];
 function tourShow(i){
   TOUR.i = i; TOUR.t = 0; var st = TOUR_STEPS[i];
-  $('bubText').textContent = st.text;
+  $('bubText').textContent = st.text.replace('{PRICE}', fmt(PRICE,0));
   $('bubDots').innerHTML = TOUR_STEPS.map(function(_, k){ return '<span'+(k === i ? ' class="on"' : '')+'></span>'; }).join('');
   $('bubNext').textContent = i === TOUR_STEPS.length-1 ? 'Let me play' : 'Next';
   document.querySelectorAll('.spotlit').forEach(function(el){ el.classList.remove('spotlit'); });

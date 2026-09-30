@@ -80,3 +80,44 @@ test('last buyer and prize split', () => {
   const s = splitPrize(1, cfg);
   assert.equal(s.bonus, 0.05); assert.equal(s.winner, 0.95);
 });
+
+import { feeTargetsCurrentRound, overflowOnFull, payoutPlan, placeBurn, payoutNextStep } from '../src/rules.ts';
+
+test('fees only feed a balloon that is still inflating', () => {
+  assert.equal(feeTargetsCurrentRound('inflate'), true);
+  assert.equal(feeTargetsCurrentRound('countdown'), false);
+  assert.equal(feeTargetsCurrentRound('drawing'), false);
+  assert.equal(feeTargetsCurrentRound(null), false);
+});
+
+test('overflow above capacity is carried, never negative', () => {
+  assert.equal(overflowOnFull(1.2345, 1), 0.2345);
+  assert.equal(overflowOnFull(0.8, 1), 0);
+});
+
+test('payout split is exact in lamports', () => {
+  const p = payoutPlan(1, 'B', cfg);
+  assert.equal(p.bonus, 50_000_000); assert.equal(p.winner, 950_000_000);
+  const q = payoutPlan(0.333333333, 'B', cfg);
+  assert.equal(q.winner + q.bonus, 333_333_333);
+  assert.equal(payoutPlan(1, null, cfg).winner, 1_000_000_000);
+});
+
+test('burns are placed without ever losing tickets', () => {
+  const open = { id: 9, phase: 'countdown' as const, countdown_ends_at: 10_000 };
+  assert.deepEqual(placeBurn(9, 9_000, open), { roundId: 9, kind: 'burn' });
+  assert.deepEqual(placeBurn(9, 11_000, open), { roundId: null, kind: 'late' }); // landed after sales closed: credit, not this draw
+  assert.deepEqual(placeBurn(8, 5_000, open), { roundId: 9, kind: 'late' });    // memo for an old round
+  assert.deepEqual(placeBurn(9, 5_000, null), { roundId: null, kind: 'late' }); // between rounds: credit
+  assert.deepEqual(placeBurn(9, 5_000, { id: 9, phase: 'drawing', countdown_ends_at: 1 }), { roundId: null, kind: 'late' });
+});
+
+test('payouts are never sent twice', () => {
+  const base = { found: false, failed: false, blockHeight: 100, lastValidHeight: 150 };
+  assert.equal(payoutNextStep('pending', base), 'send');
+  assert.equal(payoutNextStep('sent', base), 'wait');                           // may still land: do not resend
+  assert.equal(payoutNextStep('sent', { ...base, found: true }), 'confirm');
+  assert.equal(payoutNextStep('sent', { ...base, blockHeight: 151 }), 'resend'); // expired without landing
+  assert.equal(payoutNextStep('sent', { ...base, found: true, failed: true }), 'resend');
+  assert.equal(payoutNextStep('confirmed', base), 'done');
+});

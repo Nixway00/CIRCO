@@ -13,6 +13,13 @@ export async function POST(req: Request) {
   const { data: cfg } = await db.from('config').select('value').eq('key', 'chat_min_tokens').single();
   const min = Number(cfg?.value ?? 10000);
   if ((await circoBalance(wallet)) < min) return NextResponse.json({ error: `Hold ${min.toLocaleString('en-US')} $CIRCO to chat.` }, { status: 403 });
+  // anti-spam: one message every 4 seconds per wallet, no repeating the same line within a minute
+  const { data: last } = await db.from('chat_messages').select('body,created_at').eq('wallet', wallet).order('id', { ascending: false }).limit(1).maybeSingle();
+  if (last) {
+    const age = Date.now() - Date.parse(last.created_at);
+    if (age < 4_000) return NextResponse.json({ error: 'Slow down: one message every few seconds.' }, { status: 429 });
+    if (age < 60_000 && last.body.trim().toLowerCase() === text.toLowerCase()) return NextResponse.json({ error: 'You just said that.' }, { status: 429 });
+  }
   const { error } = await db.from('chat_messages').insert({ wallet, body: text });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
