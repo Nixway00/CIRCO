@@ -4,7 +4,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import bs58 from 'bs58';
 import { supabase } from '@/lib/supabase';
-import { buildTicketTx, circoBalanceClient } from '@/lib/tickets';
+import { buildTicketTx, buildGameTx, circoBalanceClient } from '@/lib/tickets';
 
 /**
  * The 3D stage runs in an iframe in "live data" mode. This component is its only source of truth:
@@ -33,9 +33,18 @@ export default function StageBridge() {
       supabase.from('rounds').select('*').order('id', { ascending: false }).limit(2),
       supabase.from('trades').select('tx,wallet,side,amount_sol').order('id', { ascending: false }).limit(12),
       supabase.from('chat_messages').select('id,wallet,body,is_ringmaster').order('id', { ascending: false }).limit(30),
-      supabase.from('config').select('key,value').in('key', ['ticket_price_tokens', 'chat_min_tokens']),
+      supabase.from('config').select('key,value').in('key', ['ticket_price_tokens', 'chat_min_tokens', 'game_price_tokens', 'game_shots', 'game_hit_chance', 'game_daily_ticket_cap']),
     ]);
-    for (const c of cfgRows ?? []) { if (c.key === 'ticket_price_tokens') price.current = Number(c.value); if (c.key === 'chat_min_tokens') chatMin.current = Number(c.value); }
+    const cfgMap = Object.fromEntries((cfgRows ?? []).map(c => [c.key, Number(c.value)]));
+    if (cfgMap.ticket_price_tokens) price.current = cfgMap.ticket_price_tokens;
+    if (cfgMap.chat_min_tokens !== undefined) chatMin.current = cfgMap.chat_min_tokens;
+    let wonToday = 0;
+    if (meRef.current) {
+      const d = new Date(), day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString();
+      const { data: g } = await supabase.from('games').select('tickets_given,credited').eq('wallet', meRef.current).eq('status', 'played').gte('played_at', day);
+      wonToday = (g ?? []).reduce((a, x) => a + (x.tickets_given ?? 0) + (x.credited ?? 0), 0);
+    }
+    const gameInfo = { price: cfgMap.game_price_tokens ?? 10000, shots: cfgMap.game_shots ?? 3, chance: cfgMap.game_hit_chance ?? 0.3, remaining: Math.max(0, (cfgMap.game_daily_ticket_cap ?? 5) - wonToday) };
     const round = rounds?.[0], prev = rounds?.[1];
     let tickets: { wallet: string; tickets: number }[] = [], lastBuyer: string | null = null;
     if (round) {
@@ -45,7 +54,7 @@ export default function StageBridge() {
       tickets = [...m].map(([wallet, n]) => ({ wallet, tickets: n }));
     }
     const pumpUrl = (process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').startsWith('https://pump.fun/coin/') && !(process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').includes('YOUR_MINT') ? process.env.NEXT_PUBLIC_PUMPFUN_URL : undefined;
-    post({ round, prev, tickets, lastBuyer, trades: (trades ?? []).reverse(), chat: (chat ?? []).reverse(), price: price.current, chatMin: chatMin.current, pumpUrl });
+    post({ round, prev, tickets, lastBuyer, trades: (trades ?? []).reverse(), chat: (chat ?? []).reverse(), price: price.current, chatMin: chatMin.current, pumpUrl, gameInfo });
   }, [post]);
 
   // Stats, leaderboard and history: one precomputed snapshot written by the engine, never aggregated here.
@@ -114,7 +123,7 @@ export default function StageBridge() {
       try {
         if (m.type === 'circo-ready') { pushState(); return; }
         if (m.type === 'circo-connect') { setVisible(true); return; }
-        if (!publicKey) { setVisible(true); post({ toast: 'Connect your wallet first.' }); return; }
+        if (!publicKey) { setVisible(true); post(m.type === 'circo-game' ? { gameError: 'Connect your wallet first.' } : { toast: 'Connect your wallet first.' }); return; }
         if (m.type === 'circo-buy' && m.round && m.n) {
           const tx = await buildTicketTx(connection, publicKey, m.round, m.n, price.current);
           const sig = await sendTransaction(tx, connection);
@@ -124,6 +133,22 @@ export default function StageBridge() {
           const out = await res.json();
           post({ toast: !res.ok ? out.error : out.credited > 0 ? `Done: ${out.given} tickets this round, ${out.credited} saved for the next rounds.` : `Done: you hold ${out.tickets} tickets this round.` });
           circoBalanceClient(connection, publicKey).then(balance => post({ me: publicKey.toBase58(), balance }));
+        }
+        if (m.type === 'circo-game') {
+          try {
+            const st = await fetch('/api/game/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: publicKey.toBase58() }) });
+            const game = await st.json();
+            if (!st.ok) { post({ gameError: game.error }); return; }
+            const tx = await buildGameTx(connection, publicKey, game.id, game.price);
+            const sig = await sendTransaction(tx, connection);
+            await connection.confirmTransaction(sig, 'confirmed');
+            const pl = await fetch('/api/game/play', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: game.id, signature: sig }) });
+            const out = await pl.json();
+            if (!pl.ok) { post({ gameError: out.error }); return; }
+            post({ game: out });
+            pushLive();
+          } catch (err) { post({ gameError: (err as Error).message }); }
+          return;
         }
         if (m.type === 'circo-chat' && m.text) {
           const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(await signed('chat')), body: m.text }) });
@@ -138,7 +163,7 @@ export default function StageBridge() {
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [publicKey, connection, sendTransaction, signMessage, setVisible, post, pushState]);
+  }, [publicKey, connection, sendTransaction, signMessage, setVisible, post, pushState, pushLive]);
 
   return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}`} title="$CIRCO live stage" allow="autoplay" />;
 }

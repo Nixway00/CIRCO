@@ -121,3 +121,16 @@ test('payouts are never sent twice', () => {
   assert.equal(payoutNextStep('sent', { ...base, found: true, failed: true }), 'resend');
   assert.equal(payoutNextStep('confirmed', base), 'done');
 });
+
+import { gameOutcome, gameTicketsAllowed } from '../src/rules.ts';
+
+test('shooting gallery: deterministic, about 30% of shots hit, capped per day', () => {
+  assert.deepEqual(gameOutcome('s', 'sig', 3, 0.3), gameOutcome('s', 'sig', 3, 0.3));
+  let hits = 0, shots = 0;
+  for (let i = 0; i < 4000; i++) { for (const h of gameOutcome('secret' + i, 'sig' + i, 3, 0.3)) { shots++; if (h) hits++; } }
+  const rate = hits / shots;
+  assert.ok(rate > 0.28 && rate < 0.32, `hit rate ${rate}`);
+  assert.equal(gameTicketsAllowed(3, 0, 5), 3);
+  assert.equal(gameTicketsAllowed(3, 4, 5), 1);
+  assert.equal(gameTicketsAllowed(2, 5, 5), 0);
+});

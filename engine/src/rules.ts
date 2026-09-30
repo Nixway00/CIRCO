@@ -172,3 +172,20 @@ export function payoutNextStep(
   if (chain.lastValidHeight !== null && chain.blockHeight > chain.lastValidHeight) return 'resend';
   return 'wait';
 }
+
+// ---------- shooting gallery (pure, tested) ----------
+/**
+ * Each shot hits with probability `chance`. Randomness = sha256(secret committed before the burn :
+ * burn signature), so neither the player (does not know the secret) nor the engine (cannot pick the
+ * player's signature) can steer the result. Anyone can recompute it once the secret is revealed.
+ */
+export function gameOutcome(secret: string, burnSignature: string, shots: number, chance: number): boolean[] {
+  const h = createHash('sha256').update(`${secret}:${burnSignature}`).digest();
+  const out: boolean[] = [];
+  for (let i = 0; i < shots; i++) out.push(h.readUInt32BE((i * 4) % 28) / 0x1_0000_0000 < chance);
+  return out;
+}
+/** Tickets a wallet can still win in games today; wins above it are simply not paid. */
+export function gameTicketsAllowed(hits: number, wonToday: number, dailyCap: number): number {
+  return Math.max(0, Math.min(hits, dailyCap - wonToday));
+}

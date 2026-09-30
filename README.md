@@ -65,6 +65,12 @@ Engine safety (done, migration `0003_engine_safety.sql`):
 - [x] Stats, leaderboard and history served from a snapshot refreshed every 15 s
 - [x] Chat anti-spam (one message every 4 s, no repeats)
 
+Minigames (migration `0004_games.sql`):
+- [x] Shooting gallery: burn 10,000 $CIRCO for 3 shots, 30% hit chance each, every hit = 1 ticket (0.9 tickets per 10,000 on average, so buying directly stays slightly cheaper)
+- [x] Fair: the engine commits to a secret before the burn; the result is sha256(secret:burn signature), revealed after the game
+- [x] Daily cap of 5 game tickets per wallet (config `game_daily_ticket_cap`); game tickets respect the 10-per-round cap, extras become credits
+- [x] Game burns settled from the Helius webhook too, so closing the page loses nothing
+
 Still to do before launch:
 - [ ] **End-to-end test on a throwaway token** with tiny balloons (set `balloons` capacities to 0.05 SOL in `config`).
 - [ ] **Deploy:** engine on a VPS (for example with `pm2`), site on Vercel, Helius webhook pointed at the engine.

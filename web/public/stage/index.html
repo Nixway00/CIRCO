@@ -216,6 +216,18 @@ nav.pages .sm{ display:none; }
   .mSteps span.on{ background:var(--electric); border-color:var(--electric); color:#fff; box-shadow:0 0 14px rgba(47,123,255,.6); }
 }
 #bpOdds{ font-size:13px; color:var(--cyan); text-align:center; min-height:18px; }
+.gameBtn{ width:100%; margin-top:10px; justify-content:center; font-weight:700; background:linear-gradient(90deg, rgba(255,61,110,.22), rgba(255,211,77,.22)); border-color:rgba(255,211,77,.45); }
+#mCta .gameBtn{ grid-column:1 / -1; margin-top:0; }
+#gameModal{ position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; background:rgba(3,7,22,.78); backdrop-filter:blur(6px); padding:16px; }
+#gameModal[hidden]{ display:none; }
+.gBox{ width:min(560px, 100%); max-height:100%; overflow:auto; background:var(--panel); border:1px solid var(--lineHi); border-radius:22px; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.gHead{ display:flex; align-items:center; justify-content:space-between; }
+.gHead h2{ margin:0; font-family:'Unbounded',sans-serif; font-size:18px; }
+.iconbtn2{ width:44px; height:44px; padding:0; justify-content:center; }
+#gCanvas{ width:100%; aspect-ratio:4 / 3; border-radius:14px; display:block; touch-action:manipulation; cursor:crosshair; }
+#gInfo{ margin:0; font-size:15px; line-height:1.5; text-align:center; }
+.gActs{ display:flex; gap:8px; } .gActs .btn{ flex:1; height:50px; font-size:16px; justify-content:center; }
+#gFair{ margin:0; word-break:break-all; }
 #toast{ position:absolute; top:88px; left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--lineHi); border-radius:12px; padding:10px 16px; font-size:14px; opacity:0; transition:opacity .3s; pointer-events:none; backdrop-filter:blur(10px); }
 #toast.on{ opacity:1; }
 #loading{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Unbounded',sans-serif; color:var(--muted); z-index:5; background:var(--night); transition:opacity .6s; }
@@ -354,6 +366,7 @@ nav.pages .sm{ display:none; }
         <div><span>Last ticket</span><b id="lastB" style="font-size:13px">none yet</b></div>
         <div class="small">The last ticket before the pop wins 5% of the prize.</div>
       </div>
+      <button class="btn gameBtn" type="button" id="gameBtn">🎯 Shooting gallery · win tickets</button>
     </section>
     <section class="panel" id="chatPanel" style="flex:1; min-height:0">
       <div class="head"><h2>Live chat</h2><span class="small" id="chatCount">holders only</span></div>
@@ -376,6 +389,7 @@ nav.pages .sm{ display:none; }
   <div id="mCta">
     <button class="btn primary" type="button" id="mBuy">Buy tickets</button>
     <a class="btn linkbtn" href="#" id="mCoin" target="_blank" rel="noopener">Buy $CIRCO ↗</a>
+    <button class="btn gameBtn" type="button" id="mGame">🎯 Shooting gallery · win tickets</button>
   </div>
   <footer class="stats">
     <div class="statset">
@@ -423,6 +437,15 @@ nav.pages .sm{ display:none; }
   </div>
   <div id="recTitle" aria-hidden="true"><b>$CIRCO</b><span>The 24/7 memecoin circus</span></div>
   <div id="speech" aria-live="polite"><p id="speechText"></p></div>
+  <section id="gameModal" role="dialog" aria-modal="true" aria-labelledby="gTitle" hidden>
+    <div class="gBox">
+      <div class="gHead"><h2 id="gTitle">🎯 Shooting gallery</h2><button type="button" class="btn iconbtn2" id="gClose" aria-label="Close">✕</button></div>
+      <canvas id="gCanvas" aria-label="Shooting gallery booth"></canvas>
+      <p id="gInfo" aria-live="polite"></p>
+      <div class="gActs"><button class="btn primary" type="button" id="gPlay">Play</button></div>
+      <p class="small" id="gFair"></p>
+    </div>
+  </section>
   <section id="bubble" role="dialog" aria-live="polite" aria-label="The Ringmaster explains">
     <div class="who">The Ringmaster</div>
     <p id="bubText"></p>
@@ -1706,6 +1729,9 @@ window.addEventListener('message', function(e){
   }
   if (m.price){ PRICE = +m.price; $('howPrice').textContent = fmt(PRICE,0); $('priceEach').textContent = fmt(PRICE,0)+' $CIRCO each'; $('bpCost').textContent = fmt(bpN*PRICE,0)+' $CIRCO burned'; }
   if (m.chatMin !== undefined){ CHAT_MIN = +m.chatMin; renderChatGate(); }
+  if (m.gameInfo){ G.price = m.gameInfo.price; G.shots = m.gameInfo.shots; G.chance = m.gameInfo.chance; if (G.state !== 'shooting') G.remaining = m.gameInfo.remaining; if (!$('gameModal').hidden && G.state === 'idle') gInfo(); }
+  if (m.game){ gStartShooting(m.game); }
+  if (m.gameError){ G.state = 'idle'; gInfo(); $('gInfo').innerHTML = m.gameError + '<br>' + $('gInfo').innerHTML; }
   if (m.pumpUrl){ PUMP_URL = m.pumpUrl; $('buyCoin').href = PUMP_URL; $('mCoin').href = PUMP_URL; $('buyCoin').target = '_blank'; }
   if (m.toast) toast(m.toast);
 });
@@ -1716,6 +1742,139 @@ if (LIVE){
   document.querySelector('.note').textContent = 'Live on Solana.';
   parent.postMessage({ type:'circo-ready' }, '*');
 }
+
+/* ---------- shooting gallery ---------- */
+var G = { state:'idle', price:10000, shots:3, chance:0.3, remaining:5, outcomes:[], shot:0, won:0, balloons:[], fx:[], darts:[], result:null, raf:0, t:0, pointer:null };
+var GCOL = ['#2F7BFF', '#FF3D6E', '#FFD34D', '#5CE1FF', '#2EF2A6', '#B18CFF'];
+function gResetBalloons(){
+  G.balloons = [];
+  for (var i = 0; i < 7; i++) G.balloons.push({ x: i/7, row: i % 2, c: GCOL[i % GCOL.length], alive: true, wob: Math.random()*6, dodge: 0 });
+}
+function gOpen(){
+  if (G.state === 'shooting') return;
+  G.state = 'idle'; G.result = null; G.shot = 0; G.won = 0; G.outcomes = []; G.fx = []; G.darts = [];
+  gResetBalloons(); gInfo();
+  $('gameModal').hidden = false; $('gPlay').focus();
+  if (!G.raf) G.raf = requestAnimationFrame(gLoop);
+}
+function gClose(){ if (G.state === 'paying') return; $('gameModal').hidden = true; cancelAnimationFrame(G.raf); G.raf = 0; }
+function gInfo(msg){
+  var play = $('gPlay');
+  if (msg){ $('gInfo').textContent = msg; }
+  else if (G.state === 'idle'){
+    $('gInfo').innerHTML = G.shots+' shots, each has a '+Math.round(G.chance*100)+'% chance to pop a balloon.<br><b>Every pop = 1 ticket</b> for this round. Today you can still win <b>'+G.remaining+'</b>.';
+  }
+  play.hidden = !(G.state === 'idle' || G.state === 'done');
+  play.textContent = G.state === 'done' ? 'Play again · '+fmt(G.price,0)+' $CIRCO' : 'Play · '+fmt(G.price,0)+' $CIRCO';
+  play.disabled = G.remaining <= 0;
+  if (G.remaining <= 0 && (G.state === 'idle' || G.state === 'done')) $('gInfo').innerHTML += '<br>You reached today\'s limit. Come back tomorrow.';
+}
+function gStartShooting(res){
+  G.result = res; G.outcomes = res.outcomes || []; G.shot = 0; G.won = 0; G.state = 'shooting';
+  $('gFair').textContent = res.commit ? 'Fair draw: commit '+res.commit.slice(0,16)+'…' : '';
+  gInfo('Tap the balloons! '+G.outcomes.length+' shots left.');
+}
+function gShoot(px, py){
+  if (G.state !== 'shooting' || G.shot >= G.outcomes.length) return;
+  var hit = G.outcomes[G.shot++];
+  var target = null, best = 1e9;
+  G.balloons.forEach(function(b){ if (!b.alive) return; var d = Math.hypot(b.sx - px, b.sy - py); if (d < best){ best = d; target = b; } });
+  G.darts.push({ x0: gW()/2, y0: gH()*1.05, x1: hit && target ? target.sx : px, y1: hit && target ? target.sy : py, t: 0, hit: hit, target: target });
+  sfx('tick');
+}
+function gAfterDart(d){
+  if (d.hit && d.target){
+    d.target.alive = false; G.won++;
+    for (var i = 0; i < 26; i++){ var a = Math.random()*Math.PI*2, v = 60 + Math.random()*160; G.fx.push({ x: d.target.sx, y: d.target.sy, vx: Math.cos(a)*v, vy: Math.sin(a)*v, life: 1, c: d.target.c }); }
+    G.fx.push({ x: d.target.sx, y: d.target.sy, vx: 0, vy: -50, life: 1.6, text: '+1 🎟' });
+    sfx('pop');
+  } else {
+    if (d.target) d.target.dodge = 1;
+    G.fx.push({ x: d.x1, y: d.y1, vx: 0, vy: -30, life: 1.1, text: 'Missed!' });
+  }
+  var left = G.outcomes.length - G.shot;
+  if (left > 0) gInfo((d.hit ? 'Pop! ' : 'So close. ')+left+(left === 1 ? ' shot left.' : ' shots left.'));
+  else setTimeout(gFinish, 700);
+}
+function gFinish(){
+  G.state = 'done';
+  var r = G.result || {};
+  if (G.remaining !== undefined) G.remaining = Math.max(0, G.remaining - (r.given || 0) - (r.credited || 0));
+  var msg = G.won ? 'You won <b>'+G.won+(G.won === 1 ? ' ticket' : ' tickets')+'</b>!' : 'No pops this time.';
+  if (r.credited) msg += '<br>'+r.credited+' saved for the next rounds (10 per round max).';
+  if (r.capped) msg += '<br>'+r.capped+' not paid: daily limit reached.';
+  $('gInfo').innerHTML = msg;
+  if (r.secret) $('gFair').textContent = 'Fair draw: sha256(secret) = '+r.commit+' · secret '+r.secret+' · burn '+r.burn_tx;
+  gInfo_btn();
+  if (G.won) sfx('fanfare');
+}
+function gInfo_btn(){ var play = $('gPlay'); play.hidden = false; play.textContent = 'Play again · '+fmt(G.price,0)+' $CIRCO'; play.disabled = G.remaining <= 0; }
+function gW(){ return $('gCanvas').clientWidth; } function gH(){ return $('gCanvas').clientHeight; }
+function gLoop(ts){
+  G.raf = requestAnimationFrame(gLoop);
+  var cv = $('gCanvas'), dpr = Math.min(window.devicePixelRatio || 1, 3), w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return;
+  if (cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  var x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  var dt = Math.min(0.05, (ts - (G.t || ts))/1000); G.t = ts;
+  // booth
+  var g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0b1a55'); g.addColorStop(1, '#030716'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  var stripes = 12, sw = w/stripes;
+  for (var i = 0; i < stripes; i++){ x.fillStyle = i % 2 ? '#F4F7FF' : '#1f56e8'; x.beginPath(); x.moveTo(i*sw, 0); x.lineTo((i+1)*sw, 0); x.lineTo((i+1)*sw, h*0.1); x.quadraticCurveTo((i+0.5)*sw, h*0.17, i*sw, h*0.1); x.fill(); }
+  for (var j = 0; j < 14; j++){ x.fillStyle = (Math.floor(ts/400) + j) % 2 ? '#FFD34D' : '#fff1c1'; x.beginPath(); x.arc((j+0.5)*w/14, h*0.13, 3, 0, 7); x.fill(); }
+  x.fillStyle = '#FFD34D'; x.fillRect(0, h*0.86, w, 4); x.fillStyle = '#1b2a6e'; x.fillRect(0, h*0.86 + 4, w, h);
+  x.fillStyle = 'rgba(255,211,77,.9)'; x.font = '600 '+Math.round(h*0.045)+'px Unbounded, sans-serif'; x.textAlign = 'center';
+  x.fillText('SHOTS '+(G.state === 'shooting' ? Math.max(0, G.outcomes.length - G.shot) : G.shots)+' · WON '+G.won, w/2, h*0.94);
+  // balloons: two rows drifting in opposite directions
+  G.balloons.forEach(function(b, k){
+    b.x += dt*0.05*(b.row ? -1 : 1); if (b.x > 1.08) b.x -= 1.16; if (b.x < -0.08) b.x += 1.16;
+    b.dodge = Math.max(0, b.dodge - dt*1.5);
+    b.sx = b.x*w + Math.sin(ts/300 + k)*b.dodge*30; b.sy = h*(b.row ? 0.58 : 0.36) + Math.sin(ts/600 + b.wob)*6;
+    if (!b.alive) return;
+    var r = Math.min(w, h)*0.07;
+    x.strokeStyle = 'rgba(234,242,255,.5)'; x.lineWidth = 1; x.beginPath(); x.moveTo(b.sx, b.sy + r*1.1); x.quadraticCurveTo(b.sx + 6, b.sy + r*1.8, b.sx, b.sy + r*2.4); x.stroke();
+    var rg = x.createRadialGradient(b.sx - r*0.35, b.sy - r*0.4, r*0.1, b.sx, b.sy, r*1.2); rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.25, b.c); rg.addColorStop(1, '#030716');
+    x.fillStyle = rg; x.beginPath(); x.ellipse(b.sx, b.sy, r*0.85, r, 0, 0, 7); x.fill();
+    x.fillStyle = b.c; x.beginPath(); x.moveTo(b.sx - 4, b.sy + r); x.lineTo(b.sx + 4, b.sy + r); x.lineTo(b.sx, b.sy + r + 7); x.fill();
+  });
+  if (G.balloons.every(function(b){ return !b.alive; })) gResetBalloons();
+  // darts
+  G.darts = G.darts.filter(function(d){
+    d.t += dt*3.2; var k = Math.min(1, d.t), px = d.x0 + (d.x1 - d.x0)*k, py = d.y0 + (d.y1 - d.y0)*k;
+    var ang = Math.atan2(d.y1 - d.y0, d.x1 - d.x0);
+    x.save(); x.translate(px, py); x.rotate(ang); x.fillStyle = '#EAF2FF'; x.fillRect(-26, -2, 26, 4); x.fillStyle = '#FF3D6E'; x.beginPath(); x.moveTo(-26, 0); x.lineTo(-34, -6); x.lineTo(-34, 6); x.fill();
+    x.fillStyle = '#c9d4ea'; x.beginPath(); x.moveTo(0, -3); x.lineTo(8, 0); x.lineTo(0, 3); x.fill(); x.restore();
+    if (k >= 1 && !d.done){ d.done = true; gAfterDart(d); }
+    return k < 1 || d.t < 1.25;
+  });
+  // particles and labels
+  G.fx = G.fx.filter(function(p){
+    p.life -= dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vy += p.text ? 0 : 260*dt;
+    x.globalAlpha = Math.max(0, Math.min(1, p.life));
+    if (p.text){ x.fillStyle = p.text === 'Missed!' ? '#A4B8EC' : '#FFD34D'; x.font = '700 '+Math.round(h*0.06)+'px Unbounded, sans-serif'; x.fillText(p.text, p.x, p.y); }
+    else { x.fillStyle = p.c; x.fillRect(p.x, p.y, 5, 5); }
+    x.globalAlpha = 1; return p.life > 0;
+  });
+  // crosshair
+  if (G.pointer && G.state === 'shooting'){ x.strokeStyle = '#FFD34D'; x.lineWidth = 2; x.beginPath(); x.arc(G.pointer.x, G.pointer.y, 14, 0, 7); x.moveTo(G.pointer.x - 20, G.pointer.y); x.lineTo(G.pointer.x + 20, G.pointer.y); x.moveTo(G.pointer.x, G.pointer.y - 20); x.lineTo(G.pointer.x, G.pointer.y + 20); x.stroke(); }
+}
+$('gameBtn').addEventListener('click', gOpen); $('mGame').addEventListener('click', gOpen);
+$('gClose').addEventListener('click', gClose);
+$('gameModal').addEventListener('click', function(e){ if (e.target === $('gameModal')) gClose(); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('gameModal').hidden) gClose(); });
+$('gCanvas').addEventListener('pointermove', function(e){ var r = this.getBoundingClientRect(); G.pointer = { x: e.clientX - r.left, y: e.clientY - r.top }; });
+$('gCanvas').addEventListener('pointerdown', function(e){ var r = this.getBoundingClientRect(); G.pointer = { x: e.clientX - r.left, y: e.clientY - r.top }; gShoot(G.pointer.x, G.pointer.y); });
+$('gPlay').addEventListener('click', function(){
+  if (G.remaining <= 0) return;
+  G.state = 'paying'; G.shot = 0; G.won = 0; G.outcomes = []; $('gFair').textContent = ''; gInfo('Confirm the burn in your wallet…'); $('gPlay').hidden = true;
+  if (LIVE){ parent.postMessage({ type:'circo-game' }, '*'); return; }
+  // demo: local randomness, nothing is burned
+  setTimeout(function(){
+    var o = []; for (var i = 0; i < G.shots; i++) o.push(Math.random() < G.chance);
+    var hits = o.filter(Boolean).length, allowed = Math.min(hits, G.remaining);
+    gStartShooting({ outcomes:o, given:allowed, credited:0, capped:hits - allowed, commit:'demo-mode-no-burn' });
+  }, 700);
+});
 
 /* ---------- live chat (simulated in demo mode) ---------- */
 var CROWD = {

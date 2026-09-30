@@ -19,39 +19,41 @@ export async function mintDecimals(): Promise<number> {
 
 export interface VerifiedBurn { wallet: string; tickets: number; roundId: number; tokens: bigint; blockTime: number }
 
-/**
- * A ticket purchase is one transaction that
- *  - burns exactly tickets × price × 10^decimals of $CIRCO from the signer, and
- *  - carries a memo "CIRCO:<roundId>:<tickets>".
- * Anything else is rejected. The site only submits the signature; the engine decides.
- */
-export async function verifyTicketBurn(signature: string, priceTokens: number): Promise<VerifiedBurn> {
+export interface Burn { wallet: string; memo: string | null; burned: bigint; decimals: number; blockTime: number }
+
+/** Reads one confirmed transaction: who signed it, its memo, and how much $CIRCO the signer burned. */
+export async function readBurn(signature: string): Promise<Burn> {
   const tx = await connection.getParsedTransaction(signature, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' });
   if (!tx || tx.meta?.err) throw new Error('transaction not found or failed');
   const signer = tx.transaction.message.accountKeys.find(k => k.signer)?.pubkey.toBase58();
   if (!signer) throw new Error('no signer');
-
   const ixs = tx.transaction.message.instructions as (ParsedInstruction | PartiallyDecodedInstruction)[];
   let memo: string | null = null;
   let burned = 0n;
   for (const ix of ixs) {
-    const pid = ix.programId.toBase58();
-    if (MEMO_PROGRAMS.has(pid)) memo = 'parsed' in ix ? String(ix.parsed) : null;
+    if (MEMO_PROGRAMS.has(ix.programId.toBase58())) memo = 'parsed' in ix ? String(ix.parsed) : null;
     if ('parsed' in ix && (ix.parsed?.type === 'burn' || ix.parsed?.type === 'burnChecked')) {
       const info = ix.parsed.info;
-      if (info.mint !== MINT.toBase58()) continue;
-      if (info.authority !== signer) continue;
+      if (info.mint !== MINT.toBase58() || info.authority !== signer) continue;
       burned += BigInt(info.amount ?? info.tokenAmount?.amount ?? 0);
     }
   }
-  const m = memo?.match(/^CIRCO:(\d+):(\d+)$/);
+  return { wallet: signer, memo, burned, decimals: await mintDecimals(), blockTime: (tx.blockTime ?? 0) * 1000 };
+}
+
+/**
+ * A ticket purchase is one transaction that burns exactly tickets × price $CIRCO from the signer
+ * and carries the memo "CIRCO:<roundId>:<tickets>". Anything else is rejected.
+ */
+export async function verifyTicketBurn(signature: string, priceTokens: number): Promise<VerifiedBurn> {
+  const b = await readBurn(signature);
+  const m = b.memo?.match(/^CIRCO:(\d+):(\d+)$/);
   if (!m) throw new Error('missing or malformed memo');
   const roundId = Number(m[1]), tickets = Number(m[2]);
-  const dec = await mintDecimals();
-  const expected = BigInt(tickets) * BigInt(priceTokens) * 10n ** BigInt(dec);
   if (tickets < 1 || tickets > 10) throw new Error('bad ticket count');
-  if (burned !== expected) throw new Error(`burned ${burned}, expected ${expected}`);
-  return { wallet: signer, tickets, roundId, tokens: burned / 10n ** BigInt(dec), blockTime: (tx.blockTime ?? 0) * 1000 };
+  const expected = BigInt(tickets) * BigInt(priceTokens) * 10n ** BigInt(b.decimals);
+  if (b.burned !== expected) throw new Error(`burned ${b.burned}, expected ${expected}`);
+  return { wallet: b.wallet, tickets, roundId, tokens: b.burned / 10n ** BigInt(b.decimals), blockTime: b.blockTime };
 }
 
 export async function paySol(to: string, sol: number): Promise<string> {

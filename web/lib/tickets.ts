@@ -24,3 +24,14 @@ export async function circoBalanceClient(connection: Connection, owner: PublicKe
   const res = await connection.getParsedTokenAccountsByOwner(owner, { mint: mint() });
   return res.value.reduce((a, acc) => a + Number((acc.account.data as any).parsed.info.tokenAmount.uiAmount ?? 0), 0);
 }
+
+/** Shooting gallery: burn exactly the game price with memo "CIRCO-GAME:<gameId>". */
+export async function buildGameTx(connection: Connection, owner: PublicKey, gameId: string, priceTokens: number) {
+  const MINT = mint();
+  const info = await getMint(connection, MINT);
+  const ata = getAssociatedTokenAddressSync(MINT, owner);
+  const amount = BigInt(priceTokens) * 10n ** BigInt(info.decimals);
+  return new Transaction()
+    .add(createBurnCheckedInstruction(ata, MINT, owner, amount, info.decimals))
+    .add(new TransactionInstruction({ programId: MEMO_PROGRAM, keys: [], data: Buffer.from(`CIRCO-GAME:${gameId}`) }));
+}

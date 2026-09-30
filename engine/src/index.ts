@@ -9,11 +9,12 @@ import { closingBlock } from './chain.ts';
 import { planPayouts, settlePayouts } from './payouts.ts';
 import { processBurn, grantCredits } from './tickets.ts';
 import { refreshSnapshots } from './snapshots.ts';
+import { startGame, playGame, settleGameFromBurn, type GameConfig } from './games.ts';
 import { distributeCreatorFees } from './fees.ts';
 import { runBuyback } from './buyback.ts';
 import { postPop } from './xpost.ts';
 
-let cfg: Config;
+let cfg: Config & GameConfig;
 let busy = false;
 const MEMO_PROGRAMS = new Set(['MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', 'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVuDwQkkHtCv']);
 const short = (w: string) => `${w.slice(0, 4)}…${w.slice(-4)}`;
@@ -184,18 +185,29 @@ app.post('/helius', async (req, res) => {
         await db.from('trades').upsert({ tx: ev.signature, wallet: ev.feePayer, side, amount_sol: amt }, { onConflict: 'tx', ignoreDuplicates: true });
       }
       if ((ev.instructions ?? []).some((i: any) => MEMO_PROGRAMS.has(i.programId))) {
-        processBurn(ev.signature, cfg).catch(() => {});   // not a ticket burn, or already counted: ignore
+        processBurn(ev.signature, cfg).catch(() => {});         // not a ticket burn, or already counted: ignore
+        settleGameFromBurn(ev.signature, cfg).catch(() => {});  // not a game burn, or already played: ignore
       }
     }
   } catch (e) { console.error('webhook failed', e); return res.status(500).end(); }   // Helius retries
   res.json({ ok: true });
 });
 
+// shooting gallery: start commits to a secret, play settles it with the player's burn
+app.post('/games/start', async (req, res) => {
+  if (req.get('x-engine-secret') !== env.ENGINE_API_SECRET) return res.status(401).end();
+  try { res.json(await startGame(String(req.body.wallet), cfg)); } catch (e) { res.status(409).json({ error: (e as Error).message }); }
+});
+app.post('/games/play', async (req, res) => {
+  if (req.get('x-engine-secret') !== env.ENGINE_API_SECRET) return res.status(401).end();
+  try { res.json(await playGame(String(req.body.id), String(req.body.signature), cfg)); } catch (e) { res.status(400).json({ error: (e as Error).message }); }
+});
+
 app.get('/health', (_req, res) => res.json({ ok: true, busy }));
 
 // ---------- boot ----------
-cfg = await loadConfig();
-setInterval(async () => { try { cfg = await loadConfig(); } catch (e) { console.error('config reload failed', e); } }, 60_000);
+cfg = (await loadConfig()) as Config & GameConfig;
+setInterval(async () => { try { cfg = (await loadConfig()) as Config & GameConfig; } catch (e) { console.error('config reload failed', e); } }, 60_000);
 setInterval(tick, 1000);
 setInterval(() => { refreshSnapshots().catch(e => console.error('snapshots failed', e)); }, 15_000);
 setInterval(() => { distributeCreatorFees().then(r => r && console.log('fees distributed', r)).catch(e => console.error('fee distribution failed', e)); }, 30_000);
