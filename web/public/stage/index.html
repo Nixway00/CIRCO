@@ -2272,8 +2272,10 @@ function replayIntro(){
   if (typeof TOUR !== 'undefined' && TOUR.on) return;
   INTRO_LINES[0][1] = S.type === 'oro' ? 'GOLD NIGHT! Round '+S.round+' has five SOL in the balloon.' : pick(['Round '+S.round+'! A fresh balloon is on its way.', 'Round '+S.round+'. New balloon, new hopium. Take your seats!', 'Ladies and degens, round '+S.round+' is about to begin!']);
   for (var i = 1; i <= 3; i++) INTRO_LINES[i][1] = 'Next balloon in '+(4 - i)+'…';
-  INTRO.on = true; INTRO.t = 0; INTRO.stage = 'hold'; INTRO.ft = 0; INTRO.msg = -1; INTRO.snapped = false; INTRO.afterTut = false;
-  hintUntil = 0; speechX = null;
+  // fly IN from wherever the camera is now: no jump cut
+  INTRO.on = true; INTRO.t = 0; INTRO.stage = 'in'; INTRO.it = 0; INTRO.ft = 0; INTRO.msg = -1; INTRO.snapped = true; INTRO.afterTut = false;
+  hintUntil = 0; speechX = null; $('speech').classList.remove('on');
+  flyFrom.copy(camera.position); flyLookFrom.copy(lookNow);
   document.body.classList.add('intro');
 }
 function endIntro(){
@@ -2282,7 +2284,26 @@ function endIntro(){
   carousel.scale.setScalar(1); if (S.phase === 'scelta') carousel.visible = true;
   if (INTRO.afterTut) setTimeout(tutOpen, 400);
 }
+var INTRO_IN = 2.4;
 function introFrame(dt){
+  if (INTRO.stage === 'in'){
+    // one smooth arc from the stage view down to the Ringmaster, lens narrowing, UI fading out
+    INTRO.it += dt;
+    var ki = Math.min(1, INTRO.it / INTRO_IN), ei = easeInOutCubic(ki);
+    DIR.g.getWorldPosition(introHead);
+    var ryi = DIR.g.rotation.y + 0.18, di = MOBILE_LAYOUT ? 8.6 : 6.8;
+    introHead.y += 1.05*DIR.g.scale.x;
+    introCam.set(introHead.x + Math.sin(ryi)*di, introHead.y + 0.15, introHead.z + Math.cos(ryi)*di);
+    flyCtrl.copy(flyFrom).lerp(introCam, 0.5); flyCtrl.y += 1.2; flyCtrl.z += 1.0;
+    var ai = 1 - ei;
+    camera.position.set(ai*ai*flyFrom.x + 2*ai*ei*flyCtrl.x + ei*ei*introCam.x, ai*ai*flyFrom.y + 2*ai*ei*flyCtrl.y + ei*ei*introCam.y, ai*ai*flyFrom.z + 2*ai*ei*flyCtrl.z + ei*ei*introCam.z);
+    lookNow.copy(flyLookFrom).lerp(introHead, ei);
+    applyView(BASE_FOV + (INTRO_FOV - BASE_FOV)*ei, VIEW_SHIFT*(1 - ei), INTRO_SHIFTX()*ei);
+    setIK(1 - ei);
+    var cs2 = 1 - Math.min(1, ki/0.6); carousel.scale.setScalar(0.001 + cs2); carousel.visible = S.phase === 'scelta' && cs2 > 0.01;
+    if (ki >= 1){ INTRO.stage = 'hold'; INTRO.t = 0; carousel.visible = false; }
+    return;
+  }
   if (INTRO.stage === 'hold'){
     INTRO.t += dt;
     DIR.g.getWorldPosition(introHead);
