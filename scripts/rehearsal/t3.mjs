@@ -1,0 +1,27 @@
+import * as B from './bot.mjs';
+import { execSync } from 'node:child_process';
+const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
+let r = await B.openRound(); log('round', r.id, r.balloon, 'cap', r.capacity_sol, 'collected', r.collected_sol);
+const jp = await B.rest('fees?select=jackpot_sol'); log('jackpot parts so far', jp.reduce((a, f) => a + Number(f.jackpot_sol), 0).toFixed(4), 'SOL (Mega Pop chance 100% for this test)');
+await B.buy(3, 4);
+await B.buy(1, 2, { confirm: false });
+await B.buy(2, 2);
+log('burn order on chain: bot3, bot1 (seen late), bot2 -> last buyer must be bot2 =', B.addr(2).slice(0, 4));
+const w2 = await B.sol(B.addr(2));
+log('filling the balloon'); await B.fee(0.2);
+r = await B.waitPhase(['countdown'], 40000); log('countdown until', r.countdown_ends_at);
+await B.sleep(Math.max(0, Date.parse(r.countdown_ends_at) - Date.now() + 1200));
+log('CRASH TEST: killing the engine right after sales close');
+execSync('pkill -f "[s]rc/index.ts" || true'); await B.sleep(2500);
+const mid = (await B.rest(`rounds?select=phase,winner_wallet&id=eq.${r.id}`))[0];
+log('state while down:', JSON.stringify(mid), 'payouts written:', (await B.rest(`payouts?select=kind,status&round_id=eq.${r.id}`)).map(p => p.kind + ':' + p.status).join(',') || 'none');
+execSync('bash /tmp/devnet/up.sh engine >/dev/null 2>&1'); log('engine restarted');
+for (let i = 0; i < 40; i++) { const x = (await B.rest(`rounds?select=phase&id=eq.${r.id}`))[0]; if (x.phase === 'done') break; await B.sleep(1500); }
+await B.sleep(5000);
+const d = (await B.rest(`rounds?select=*&id=eq.${r.id}`))[0];
+log('DRAW', 'winner', d.winner_wallet?.slice(0, 4), d.winner_tickets, '/', d.draw_total_tickets, 'last buyer', d.last_buyer?.slice(0, 4), 'MEGA', d.mega, 'jackpot won', d.jackpot_won);
+const pays = await B.rest(`payouts?select=kind,wallet,lamports,status&round_id=eq.${r.id}`);
+log('payouts:', JSON.stringify(pays.map(p => [p.kind, p.wallet.slice(0, 4), p.lamports, p.status])));
+log('bot2 balance change', ((await B.sol(B.addr(2))) - w2).toFixed(6));
+log('prize wallet now', await B.sol(B.prizeAddr));
+log('DONE');

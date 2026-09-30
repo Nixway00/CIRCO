@@ -1,0 +1,44 @@
+import * as B from './bot.mjs';
+import { createPrivateKey, sign } from 'node:crypto';
+import { createRequire } from 'node:module';
+const require = createRequire('/tmp/gitrepo/engine/package.json');
+const bs58 = require('bs58').default || require('bs58');
+const log = (...a) => console.log(...a);
+const W = 'http://127.0.0.1:3100';
+function signed(i, action, extra) {
+  const kp = B.bots[i], wallet = kp.publicKey.toBase58();
+  const message = `${action}:${wallet}:${Date.now()}${extra ? ':' + extra : ''}`;
+  const key = createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.from(kp.secretKey.slice(0, 32))]), format: 'der', type: 'pkcs8' });
+  return { wallet, message, signature: bs58.encode(sign(null, Buffer.from(message), key)) };
+}
+const post = async (path, body) => { const r = await fetch(W + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return r.status + ' ' + JSON.stringify(await r.json().catch(() => null)); };
+
+log('nickname + team in one signature (new wallet bot5 -> acrobats already set earlier, so team stays)', await post('/api/profile', signed(5, 'nickname', 'Tester_5:clowns')));
+log('nickname taken (case-insensitive)', await post('/api/profile', signed(4, 'nickname', 'tester_5')));
+log('reserved word', await post('/api/profile', signed(4, 'nickname', 'Ringmaster')));
+log('forged signature', await post('/api/profile', { ...signed(4, 'nickname', 'Fake'), wallet: B.addr(3) }));
+log('team switch right after joining (bot5 team_set_at is fresh? earlier rows had none)', await post('/api/team', signed(5, 'team', 'clowns')));
+log('team switch again within a week', await post('/api/team', signed(5, 'team', 'acrobats')));
+log('chat from a holder', await post('/api/chat', { ...signed(0, 'chat'), body: 'hello circus' }));
+log('chat again within 4 s', await post('/api/chat', { ...signed(0, 'chat'), body: 'second' }));
+log('admin: out of range jackpot share', await post('/api/admin/config', { ...signed(0, 'admin'), key: 'jackpot_share', value: 0.9 }));
+log('admin: guess return above 1 (would beat buying tickets)', await post('/api/admin/config', { ...signed(0, 'admin'), key: 'pick_return', value: 1.2 }));
+log('admin: valid change', await post('/api/admin/config', { ...signed(0, 'admin'), key: 'team_reward_tickets', value: 3 }));
+log('admin: not an admin wallet', await post('/api/admin/config', { ...signed(1, 'admin'), key: 'team_reward_tickets', value: 9 }));
+const r = await B.openRound();
+const sig = (await B.buy(4, 2, { confirm: false })).sig;
+log('tickets through the site', await post('/api/tickets', { signature: sig }));
+log('same burn again (no double tickets)', await post('/api/tickets', { signature: sig }));
+const g = await fetch(W + '/api/game/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: B.addr(4) }) }).then(x => x.json());
+log('game start through the site', JSON.stringify({ id: g.id, commit: !!g.commit }));
+for (let k = 0; k < 3; k++) await fetch(W + '/api/game/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: B.addr(4) }) });
+log('4th+ unpaid game start (anti-spam)', await post('/api/game/start', { wallet: B.addr(4) }));
+const gs = await B.burn(4, 10000, `CIRCO-GAME:${g.id}`);
+log('game play through the site', (await post('/api/game/play', { id: g.id, signature: gs })).slice(0, 90));
+const fs = await B.burn(3, 2000, 'CIRCO-FX:fireworks');
+log('effect through the site', await post('/api/fx', { signature: fs }));
+const ps = await B.burn(1, 10000, `CIRCO-PICK:${r.id}:blue`);
+log('guess through the site', await post('/api/pick', { signature: ps }));
+log('chat rows', JSON.stringify((await B.rest('chat_messages?select=wallet,body&order=id.desc&limit=2')).map(c => [c.wallet.slice(0, 4), c.body.slice(0, 30)])));
+log('config team_reward_tickets', JSON.stringify(await B.rest('config?select=value&key=eq.team_reward_tickets')));
+log('DONE');
