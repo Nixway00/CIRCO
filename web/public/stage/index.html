@@ -1038,6 +1038,10 @@ function animDirector(dt){
   if (ph === 'estrazione'){ tgt.lsx = -1.55; tgt.lsz = 0.3; tgt.lel = -0.1; tgt.rsx = 0.1; tgt.rsz = -0.2; tgt.lookY = 0.45; }
   if (ph === 'vincitore'){ tgt.hat = 1; tgt.lsx = -2.9; tgt.lsz = 0.2; tgt.lel = -0.9; tgt.rsx = -0.5 + Math.sin(time*9)*0.35; tgt.rsz = -0.6; tgt.rel = -0.6; }
   if (ph === 'rinvio'){ tgt.lsx = -0.9; tgt.lsz = 0.9; tgt.rsx = -0.9; tgt.rsz = -0.9; tgt.lookY = 0.1; }
+  if (typeof INTRO !== 'undefined' && INTRO.on){
+    tgt = { lsx:0.05, lsz:0.12, lel:-0.15, rsx:-2.7, rsz:-0.5 + Math.sin(time*8)*0.35, rel:-0.4, hat:0, lookY:0 };
+    if (INTRO.t > 0.3 && INTRO.t < 0.4) DIR.talk = 2;
+  }
   if (typeof TOUR !== 'undefined' && TOUR.on){
     var tp = TOUR_STEPS[TOUR.i].pose;
     tgt = { lsx:0.05, lsz:0.12, lel:-0.15, rsx:0.05, rsz:-0.12, rel:-0.25, hat:0, lookY:0.1 };
@@ -1054,7 +1058,7 @@ function animDirector(dt){
   D.torso.position.y = 0.6 + Math.sin(time*2.2)*0.01; D.torso.rotation.z = Math.sin(time*1.1)*0.02;
   D.blink -= dt; var bl = D.blink < 0.12 ? Math.max(0.08, Math.abs(D.blink - 0.06)/0.06) : 1; if (D.blink < 0) D.blink = 2.5 + Math.random()*3;
   D.eyes.forEach(function(e){ e.scale.y = bl; });
-  if (D.talk > 0){ D.talk -= dt; D.mouth.scale.y = 0.25 + Math.abs(Math.sin(time*16))*0.55; D.head.rotation.x = Math.sin(time*7)*0.05; D.spot.intensity += (3 - D.spot.intensity)*Math.min(1, dt*6); }
+  if (D.talk > 0){ D.talk -= dt; D.mouth.scale.y = 0.25 + Math.abs(Math.sin(time*16))*0.55; D.head.rotation.x = Math.sin(time*7)*0.05; D.spot.intensity += (1.3 - D.spot.intensity)*Math.min(1, dt*6); }
   else { D.mouth.scale.y += (0.25 - D.mouth.scale.y)*Math.min(1, dt*8); D.head.rotation.x *= 0.9; D.spot.intensity *= 0.94; }
   D.shapeCape(time);
   if (ph === 'esplosione' && t < 0.4) D.g.position.y = Math.sin(t*25)*0.03; else D.g.position.y = 0;
@@ -1794,10 +1798,13 @@ function update(dt){
     confetti.instanceMatrix.needsUpdate = true;
   }
 }
+/* opening camera shot (skipped when motion is reduced or when recording the tutorial) */
+var INTRO = { on: !reduced && !/[?&]tour=auto/.test(location.search), t:0, hold:2.6, snapped:false, release:0 };
+var introHead = new THREE.Vector3(), introCam = new THREE.Vector3();
 function frame(){
   requestAnimationFrame(frame);
   var dt = Math.min(clock.getDelta(), 0.05); time += dt;
-  if (!S.paused){ S.t += dt; if (!LIVE) market(dt); else liveClock(); update(dt); }
+  if (!S.paused){ if (!INTRO.on) S.t += dt; if (!LIVE) market(dt); else liveClock(); update(dt); }
   if (!S.paused) animDirector(dt);
   sheetTick += dt; if (sheetTick > 1.5 && (page === 'classifiche' || page === 'profilo')){ sheetTick = 0; refreshSheet(); }
   dust.rotation.y += dt*0.012; dust.position.y = Math.sin(time*0.2)*0.2;
@@ -1813,8 +1820,22 @@ function frame(){
   var orbit = reduced ? 0 : Math.sin(time*0.15)*0.5;
   var tourOn = typeof TOUR !== 'undefined' && TOUR.on;
   if (tourOn) tourFrame(dt);
-  camera.position.lerp(tourOn ? (camera.aspect < 0.8 ? new THREE.Vector3(-1.3, 1.6, 6.2) : new THREE.Vector3(-0.2, 1.9, 6.6)) : (PORTRAIT ? new THREE.Vector3(camTarget.x + (camPos.x + orbit - camTarget.x)*0.74, camTarget.y + (camPos.y - camTarget.y)*0.8 - 0.1, camTarget.z + (camPos.z - camTarget.z)*0.74) : new THREE.Vector3(camPos.x + orbit, camPos.y, camPos.z)), Math.min(1, dt*1.6));
-  lookNow.lerp(tourOn ? (camera.aspect < 0.8 ? new THREE.Vector3(-1.9, 1.05, 2.1) : new THREE.Vector3(-1.4, 1.25, 1.6)) : camTarget, Math.min(1, dt*2));
+  if (INTRO.on && !tourOn){
+    // opening shot: close on the Ringmaster, then a slow pull-back to the stage
+    INTRO.t += dt;
+    DIR.head.getWorldPosition(introHead);
+    var ry = DIR.g.rotation.y, d = PORTRAIT ? 2.5 : 2.1;
+    introHead.y += 0.12;
+    introCam.set(introHead.x + Math.sin(ry)*d + 0.1, introHead.y + 0.25, introHead.z + Math.cos(ry)*d);
+    carousel.visible = false;
+    if (!INTRO.snapped){ camera.position.copy(introCam); lookNow.copy(introHead); INTRO.snapped = true; }
+    camera.position.lerp(introCam, Math.min(1, dt*3)); lookNow.lerp(introHead, Math.min(1, dt*3));
+    if (INTRO.t > INTRO.hold){ INTRO.on = false; INTRO.release = 1.6; if (S.phase === 'scelta') carousel.visible = true; }
+    camera.lookAt(lookNow); composer.render(); return;
+  }
+  var camSpeed = INTRO.release > 0 ? 0.9 : 1.6; if (INTRO.release > 0) INTRO.release -= dt;
+  camera.position.lerp(tourOn ? (camera.aspect < 0.8 ? new THREE.Vector3(-1.3, 1.6, 6.2) : new THREE.Vector3(-0.2, 1.9, 6.6)) : (PORTRAIT ? new THREE.Vector3(camTarget.x + (camPos.x + orbit - camTarget.x)*0.74, camTarget.y + (camPos.y - camTarget.y)*0.8 - 0.1, camTarget.z + (camPos.z - camTarget.z)*0.74) : new THREE.Vector3(camPos.x + orbit, camPos.y, camPos.z)), Math.min(1, dt*camSpeed));
+  lookNow.lerp(tourOn ? (camera.aspect < 0.8 ? new THREE.Vector3(-1.9, 1.05, 2.1) : new THREE.Vector3(-1.4, 1.25, 1.6)) : camTarget, Math.min(1, dt*(camSpeed + 0.4)));
   if (shake > 0){ camera.position.x += (Math.random()-0.5)*shake; camera.position.y += (Math.random()-0.5)*shake; shake = Math.max(0, shake - dt*0.9); }
   camera.lookAt(lookNow);
   flash.intensity = Math.max(0, flash.intensity - dt*9);
