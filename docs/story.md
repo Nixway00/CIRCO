@@ -1,8 +1,4 @@
-# X Article: "We built a memecoin you can play"
-
-Post as an X Article (long-form). Suggested cover: the 3D banner. Suggested images between sections: the stage with a balloon half full, the wheel, the Ringmaster with a tomato.
-
----
+<!-- Also published as an X Article. -->
 
 ## We built a memecoin you can play
 

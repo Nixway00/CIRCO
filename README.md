@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="docs/story.md">The story</a> ·
   <a href="docs/how-it-works.md">How it works</a> ·
   <a href="docs/fairness.md">Provably fair</a> ·
   <a href="docs/architecture.md">Architecture</a> ·
@@ -31,7 +32,7 @@ The Ringmaster, a vinyl-toy circus host, runs the show: he comments every round,
 | --- | --- |
 | **Chain** | Solana |
 | **Launch** | pump.fun, creator fee sharing locked at launch |
-| **Contract address** | announced at launch |
+| **Contract address** | announced at launch, only by the official X account and the site. Anything before that is fake. |
 | **Site** | announced at launch |
 
 ## A round in 30 seconds

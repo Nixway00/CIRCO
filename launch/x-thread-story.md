@@ -82,4 +82,6 @@ Everything is open: the code, the rules, the fairness maths, the rehearsal repor
 
 GitHub: github.com/Nixway00/CIRCO
 
-Launch on pump.fun soon. The tent is up. 🎪
+The only real contract address will be posted from this account on launch day.
+
+The tent is up. 🎪

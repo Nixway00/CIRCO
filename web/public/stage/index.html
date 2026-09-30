@@ -285,7 +285,7 @@ nav.pages .sm{ display:none; }
 }
 @media (min-width: 901px){ .teamStat{ min-width:200px; } .statset{ gap:18px !important; } footer.stats .demo #liveBtn{ display:none; } }
 #stageDock{ position:absolute; right:310px; top:17%; z-index:4; display:flex; flex-direction:column; align-items:flex-end; gap:10px; opacity:var(--ik, 1); }
-body.intro #stageDock, body.livemode #stageDock, body.recording #stageDock, body.touring #stageDock{ display:none; }
+body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.recording #stageDock, body.touring #stageDock{ display:none; }
 .dock{ display:flex; align-items:center; gap:8px; }
 .dockMain{ position:relative; width:48px; height:48px; border-radius:50%; border:1px solid var(--lineHi); background:rgba(8,16,52,.72); backdrop-filter:blur(10px); font-size:22px; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.35); transition:transform .2s; }
 .dock.open .dockMain{ transform:rotate(-12deg) scale(1.06); border-color:var(--gold); box-shadow:0 0 18px rgba(255,211,77,.35); }
@@ -310,6 +310,10 @@ body.intro #stageDock, body.livemode #stageDock, body.recording #stageDock, body
 }
 .pfTag{ font-style:normal; font-size:10px; font-weight:700; color:#0a1033; background:#86efac; border-radius:6px; padding:1px 5px; margin-right:6px; vertical-align:1px; }
 #chatLog .m.pf b{ color:#86efac; }
+.howLinks{ display:flex; justify-content:center; gap:16px; flex-wrap:wrap; }
+.howLinks a{ text-decoration:none; }
+.rulesTop{ margin:0 0 12px; line-height:1.7; }
+.rulesTop a, .rules a{ color:var(--cyan); text-underline-offset:3px; }
 #bpOdds{ font-size:13px; color:var(--cyan); text-align:center; min-height:18px; }
 .gameBtn{ width:100%; margin-top:10px; justify-content:center; font-weight:700; background:linear-gradient(90deg, rgba(255,61,110,.22), rgba(255,211,77,.22)); border-color:rgba(255,211,77,.45); }
 #mCta .gameBtn{ grid-column:1 / -1; margin-top:0; }
@@ -439,7 +443,7 @@ body.intro #stageDock, body.livemode #stageDock, body.recording #stageDock, body
         <li><b>2</b><span><strong>Burn for tickets.</strong> <span id="howPrice">10,000</span> $CIRCO each, up to 10 per round.</span></li>
         <li><b>3</b><span><strong>Pop!</strong> The wheel picks a ticket: it takes 95% of the prize, the last ticket bought takes 5%.</span></li>
       </ol>
-      <button type="button" class="linkish" id="howRules">Full rules →</button>
+      <div class="howLinks"><button type="button" class="linkish" id="howRules">Full rules →</button><a class="linkish" href="https://github.com/Nixway00/CIRCO/blob/main/docs/story.md" target="_blank" rel="noopener">The story ↗</a></div>
     </section>
     <section class="panel" id="popped" aria-live="polite">
       <div class="small" id="poppedTitle">Balloon popped</div>
@@ -1635,7 +1639,7 @@ document.addEventListener('click', function(e){
 });
 function pageRegolamento(){
   function d(title, body, open){ return '<details'+(open?' open':'')+'><summary>'+title+'</summary>'+body+'</details>'; }
-  return '<div class="rules">'+
+  return '<div class="rules"><p class="small rulesTop">Everything is open: <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/story.md" target="_blank" rel="noopener">the story ↗</a> · <a href="https://github.com/Nixway00/CIRCO" target="_blank" rel="noopener">code on GitHub ↗</a> · <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/fairness.md" target="_blank" rel="noopener">check a draw ↗</a> · <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/rehearsal.md" target="_blank" rel="noopener">test report ↗</a></p>'+
     d('How it works', '<p>Every $CIRCO trade creates fees. Part of them inflates a balloon full of coins. When the balloon is full, a countdown starts: everyone holding tickets joins the draw, and the wheel picks the winner.</p>', true)+
     d('Where the fees go', '<ul><li>45% into the balloon prize.</li><li>45% into automatic $CIRCO buyback and burn.</li><li>10% to the team for servers, development and running costs.</li></ul><p>Of what reaches the prize wallet, '+Math.round(SHOW.jackpotShare*100)+'% feeds the Mega Jackpot and the rest fills the balloons.</p><p>All three wallets are public: <a href="#">prize ↗</a>, <a href="#">buyback ↗</a>, <a href="#">team ↗</a>.</p>')+
     d('The balloons', '<ul><li>Green balloon dog: 0.5 SOL, 40% of rounds, 50 tickets minimum.</li><li>Blue balloon: 1 SOL, 35%, 100 tickets minimum.</li><li>Red rocket: 2 SOL, 20%, 150 tickets minimum.</li><li>Gold trophy: 5 SOL, 5%, 300 tickets minimum.</li></ul><p>The first three rounds always use the blue 1 SOL balloon. Every day at 01:00 UTC, if no gold trophy came out in the last 24 hours, the next balloon is a gold trophy. The countdown is always on screen.</p><p>Otherwise the next balloon is drawn from the previous round\'s revealed seed, so anyone can check it on the win page.</p>')+
@@ -1651,7 +1655,7 @@ function pageRegolamento(){
     d('Nickname and X', '<ul><li>A nickname is required to play. It is shown instead of your wallet address.</li><li>You can link your X account in Profile: your @handle is then shown instead. One X account per wallet.</li></ul>')+
     d('Chat', '<p>Anyone can read the live chat. Wallets holding at least '+fmt(CHAT_MIN,0)+' $CIRCO can write. Messages from the coin\'s pump.fun chat appear here too, with a pump.fun tag.</p>')+
     d('Tutorial', '<p><button class="btn" type="button" id="tutAgain">Replay the tutorial</button></p>')+
-    d('Risks', '<p>$CIRCO is a memecoin: its price can drop to zero. Tokens spent on tickets are burned and cannot be recovered. Only play with money you can afford to lose.</p>')+
+    d('Risks', '<p>$CIRCO is a memecoin: its price can drop to zero. Tokens spent on tickets are burned and cannot be recovered. Only play with money you can afford to lose.</p><p>The only official contract address is the one shown on this site and posted by the official X account. Any other token called CIRCO is not ours.</p>')+
   '</div>';
 }
 var TITLES = { storico:'Round history', classifiche:'Leaderboards', profilo:'Your profile', regolamento:'Rules', missioni:'Daily mission' };
@@ -1663,7 +1667,7 @@ function refreshSheet(){
   b.scrollTop = keep;
 }
 function openPage(pg){
-  page = pg;
+  page = pg; document.body.classList.toggle('paging', pg !== 'gioca');
   document.querySelectorAll('nav.pages button').forEach(function(x){ if (x.dataset.page === pg) x.setAttribute('aria-current','page'); else x.removeAttribute('aria-current'); });
   var sh = $('sheet');
   if (pg === 'gioca'){ sh.classList.remove('on'); return; }
