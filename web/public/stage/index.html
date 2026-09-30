@@ -275,14 +275,32 @@ nav.pages .sm{ display:none; }
 .teamBox .tbar em{ display:block; height:100%; background:#FF3D6E; }
 .teamStat .tbar{ display:flex; align-items:center; gap:8px; font-size:13px; }
 .teamStat .tbar b{ font-family:'Unbounded',sans-serif; font-size:13px; }
-.teamStat .tbar span{ white-space:nowrap; }
+.teamStat .tbar span{ white-space:nowrap; flex:none; }
+.teamStat .tbar b{ display:inline; }
 .teamStat .tbar i{ flex:1; min-width:60px; height:8px; border-radius:99px; background:#B18CFF; overflow:hidden; display:block; }
 .teamStat .tbar em{ display:block; height:100%; background:#FF3D6E; border-radius:99px; transition:width .6s; }
 @media (max-width: 900px){
   .statset .stat.teamStat{ grid-column:1 / -1; border-left:0 !important; border-top:1px solid var(--line); margin-top:8px; padding-top:8px !important; display:flex; flex-direction:column; gap:4px; }
   .jackpot{ font-size:11px; }
 }
-@media (min-width: 901px){ .teamStat{ min-width:190px; } }
+@media (min-width: 901px){ .teamStat{ min-width:200px; } .statset{ gap:18px !important; } footer.stats .demo #liveBtn{ display:none; } }
+#stageDock{ position:absolute; right:310px; top:17%; z-index:4; display:flex; flex-direction:column; align-items:flex-end; gap:10px; opacity:var(--ik, 1); }
+body.intro #stageDock, body.livemode #stageDock, body.recording #stageDock, body.touring #stageDock{ display:none; }
+.dock{ display:flex; align-items:center; gap:8px; }
+.dockMain{ position:relative; width:48px; height:48px; border-radius:50%; border:1px solid var(--lineHi); background:rgba(8,16,52,.72); backdrop-filter:blur(10px); font-size:22px; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.35); transition:transform .2s; }
+.dock.open .dockMain{ transform:rotate(-12deg) scale(1.06); border-color:var(--gold); box-shadow:0 0 18px rgba(255,211,77,.35); }
+.dockBadge{ position:absolute; right:-2px; bottom:-2px; width:16px; height:16px; border-radius:50%; border:2px solid #030716; display:none; }
+.dockPanel{ display:flex; flex-direction:column; align-items:flex-end; gap:4px; max-width:0; overflow:hidden; opacity:0; transition:max-width .35s cubic-bezier(.3,1.3,.5,1), opacity .2s; pointer-events:none; }
+.dock.open .dockPanel{ max-width:360px; opacity:1; pointer-events:auto; }
+.dockLabel{ font-size:11px; color:var(--muted); white-space:nowrap; padding:0 4px; text-shadow:0 1px 6px #000; }
+.dockItems{ display:flex; gap:6px; padding:4px; border-radius:999px; background:rgba(8,16,52,.72); border:1px solid var(--line); backdrop-filter:blur(10px); }
+.chip{ display:flex; flex-direction:column; align-items:center; justify-content:center; width:46px; height:46px; border-radius:50%; border:1px solid transparent; background:rgba(47,123,255,.12); color:var(--ink); cursor:pointer; font-size:19px; line-height:1; padding:0; }
+.chip small{ font-size:9px; color:var(--muted); margin-top:2px; font-family:'Unbounded',sans-serif; }
+.chip i{ width:18px; height:18px; border-radius:50%; display:block; box-shadow:0 0 10px currentColor; }
+.chip:hover:not(:disabled){ border-color:var(--lineHi); } .chip:disabled{ opacity:.35; cursor:default; }
+.chip.mine{ border-color:var(--gold); background:rgba(255,211,77,.15); }
+@media (max-width: 1180px){ #stageDock{ right:290px; } }
+@media (max-width: 900px){ #stageDock{ right:12px; top:118px; } #fxBanner{ top:64px; font-size:13px; } }
 #bpOdds{ font-size:13px; color:var(--cyan); text-align:center; min-height:18px; }
 .gameBtn{ width:100%; margin-top:10px; justify-content:center; font-weight:700; background:linear-gradient(90deg, rgba(255,61,110,.22), rgba(255,211,77,.22)); border-color:rgba(255,211,77,.45); }
 #mCta .gameBtn{ grid-column:1 / -1; margin-top:0; }
@@ -447,7 +465,6 @@ nav.pages .sm{ display:none; }
         <div class="small">The last ticket before the pop wins 5% of the prize.</div>
       </div>
       <button class="btn gameBtn" type="button" id="gameBtn">🎯 Shooting gallery</button>
-      <div class="showRow"><button class="btn showBtn" type="button" id="guessBtn">🔮 Guess next</button><button class="btn showBtn" type="button" id="fxBtn">🎆 Effects</button></div>
     </section>
     <section class="panel" id="chatPanel" style="flex:1; min-height:0">
       <div class="head"><h2>Live chat</h2><span class="small" id="chatCount">holders only</span></div>
@@ -468,11 +485,20 @@ nav.pages .sm{ display:none; }
     <div class="bar" id="hudBarWrap"><span id="hudBar"></span></div>
     <div id="hudSub"></div>
   </div>
+  <div id="stageDock" aria-label="Stage actions">
+    <div class="dock" id="dockFx">
+      <div class="dockPanel"><span class="dockLabel">Effects for everyone · burns $CIRCO</span><div class="dockItems" id="dockFxItems"></div></div>
+      <button type="button" class="dockMain" aria-expanded="false" aria-controls="dockFxItems" aria-label="Stage effects">🎆</button>
+    </div>
+    <div class="dock" id="dockPick">
+      <div class="dockPanel"><span class="dockLabel" id="dockPickLabel">Guess the next balloon</span><div class="dockItems" id="dockPickItems"></div></div>
+      <button type="button" class="dockMain" aria-expanded="false" aria-controls="dockPickItems" aria-label="Guess the next balloon">🔮<i class="dockBadge" id="pickBadge"></i></button>
+    </div>
+  </div>
   <div id="mCta">
     <button class="btn primary" type="button" id="mBuy">Buy tickets</button>
     <a class="btn linkbtn" href="#" id="mCoin" target="_blank" rel="noopener">Buy $CIRCO ↗</a>
     <button class="btn gameBtn" type="button" id="mGame">🎯 Shooting gallery · win tickets</button>
-    <div class="showRow"><button class="btn showBtn" type="button" id="mGuess">🔮 Guess next</button><button class="btn showBtn" type="button" id="mFx">🎆 Effects</button></div>
     <div id="mMe" aria-live="polite"><span>Your tickets <b id="mMeT">0 / 10</b></span><span>Odds <b id="mMeP">0%</b></span><span>If you win <b id="mMeW">0.95 SOL</b></span></div>
   </div>
   <footer class="stats">
@@ -1756,7 +1782,7 @@ function enter(phase){
     if (hadHint && LINES[phase]) say(pick(S.type === 'oro' && phase === 'gonfiaggio' ? LINES.gala : LINES[phase]), true);
   }, 900);
   S.saidHalf = S.saidAlmost = S.said10 = false;
-  S.phase = phase; S.t = 0; setStepper(phase);
+  S.phase = phase; S.t = 0; setStepper(phase); if (typeof SHOW !== 'undefined' && SHOW) renderDock();
   var c = CAMS[phase]; camPos.set(c.p[0], c.p[1], c.p[2]); camTarget.set(c.l[0], c.l[1], c.l[2]);
   var ty = TYPES[S.type];
   if (phase === 'scelta' && typeof ringmaster === 'function' && S.round > 1) ringmaster('Round '+S.round+'. Fresh balloon, fresh hopium.');
@@ -1933,7 +1959,7 @@ window.addEventListener('message', function(e){
   if (m.jackpot !== undefined){ SHOW.jackpot = +m.jackpot || 0; renderJackpot(); }
   if (m.teams){ SHOW.teams.clowns = +m.teams.clowns || 0; SHOW.teams.acrobats = +m.teams.acrobats || 0; if (m.teams.ends_at) SHOW.teams.ends = Date.parse(m.teams.ends_at); SHOW.teams.last = m.teams.last_winner || null; renderTeams(); }
   if (m.team !== undefined){ SHOW.myTeam = m.team || ''; SHOW.teamSetAt = m.teamSetAt ? Date.parse(m.teamSetAt) : 0; renderTeams(); }
-  if (m.myPick !== undefined){ SHOW.myPick = m.myPick ? { round: m.myPick.round_id, color: B2T[m.myPick.color], tickets: m.myPick.tickets_if_win } : null; if (!$('pickModal').hidden) renderPick(); }
+  if (m.myPick !== undefined){ SHOW.myPick = m.myPick ? { round: m.myPick.round_id, color: B2T[m.myPick.color], tickets: m.myPick.tickets_if_win } : null; if (!$('pickModal').hidden) renderPick(); renderDock(); }
   if (m.pickResult && m.pickResult.id !== SHOW.lastPickResult){ SHOW.lastPickResult = m.pickResult.id; var pr = m.pickResult;
     toast(pr.status === 'won' ? 'You guessed right! +'+pr.tickets_if_win+' tickets this round.' : pr.status === 'refunded' ? 'Forced balloon: your guess came back as 1 ticket.' : 'Wrong guess this time.'); if (pr.status === 'won') sfx('fanfare'); }
   if (m.fx){ queueFx(m.fx.effect, m.fx.who); }
@@ -2244,13 +2270,15 @@ function renderFxList(){
 function openFx(){ renderFxList(); openModal('fxModal'); }
 $('fxList').addEventListener('click', function(e){
   var b = e.target.closest('[data-fx]'); if (!b) return;
-  var fx = b.dataset.fx; $('fxModal').hidden = true;
+  $('fxModal').hidden = true; doFx(b.dataset.fx);
+});
+function doFx(fx){
   if (LIVE){ parent.postMessage({ type:'circo-fx', effect: fx }, '*'); toast('Confirm the burn in your wallet…'); return; }
   if (!MYNICK){ nickAsk(); return; }
   if (S.bal < (SHOW.fxPrices[fx] || 0)){ toast('Not enough $CIRCO.'); return; }
   S.bal -= SHOW.fxPrices[fx] || 0; S.stats.burned += SHOW.fxPrices[fx] || 0; renderChatGate(); queueFx(fx, ME);
-});
-$('fxBtn').addEventListener('click', openFx); $('mFx').addEventListener('click', openFx);
+}
+
 
 /* ----- guess the next balloon ----- */
 function pickOdds(){ var tot = KEYS.reduce(function(a, k){ return a + TYPES[k].w; }, 0), o = {}; KEYS.forEach(function(k){ o[k] = TYPES[k].w/tot; }); return o; }
@@ -2272,15 +2300,17 @@ function renderPick(){
 function openPick(){ renderPick(); openModal('pickModal'); }
 $('pickList').addEventListener('click', function(e){
   var b = e.target.closest('[data-pick]'); if (!b || b.disabled) return;
-  var k = b.dataset.pick; $('pickModal').hidden = true;
+  $('pickModal').hidden = true; doPick(b.dataset.pick);
+});
+function doPick(k){
   if (LIVE){ parent.postMessage({ type:'circo-pick', round: S.liveRoundId, color: T2B[k] }, '*'); toast('Confirm the burn in your wallet…'); return; }
   if (!MYNICK){ nickAsk(); return; }
   if (S.bal < SHOW.pickPrice){ toast('Not enough $CIRCO.'); return; }
   S.bal -= SHOW.pickPrice; S.stats.burned += SHOW.pickPrice; renderChatGate();
   SHOW.myPick = { round: S.round, color: k, tickets: pickPay(k), forced: nextForced() };
-  toast('Guess saved: '+NAMES[k]+'. Good luck!');
-});
-$('guessBtn').addEventListener('click', openPick); $('mGuess').addEventListener('click', openPick);
+  toast('Guess saved: '+NAMES[k]+'. Good luck!'); renderDock();
+}
+
 /** demo: settle my guess when the next balloon is picked */
 function settleDemoPick(){
   var p = SHOW.myPick; if (!p || p.round !== S.round - 1) return;
@@ -2317,7 +2347,33 @@ function teamSection(){
   return '<section class="teamBox"><h3>Team battle this week</h3><div class="tbar big"><span>🤡 Clowns <b>'+fmtBig(c)+'</b></span><i><em style="width:'+pc+'%"></em></i><span><b>'+fmtBig(a)+'</b> Acrobats 🤸</span></div>'+
     '<p class="small">Tokens burned by each team since Monday (UTC). Every member of the winning team who burned something this week gets bonus tickets for the next rounds.'+(SHOW.teams.last ? ' Last week: '+TEAMN[SHOW.teams.last]+' won.' : '')+'</p></section>';
 }
-renderJackpot(); renderTeams(); renderFxList();
+/* ----- the dock on the stage: small buttons that slide open, so the show stays visible ----- */
+function renderDock(){
+  $('dockFxItems').innerHTML = FXDEF.map(function(d){ return '<button type="button" class="chip" data-fx="'+d[0]+'" title="'+d[2]+': '+d[3]+'" aria-label="'+d[2]+', '+fmt(SHOW.fxPrices[d[0]] || 0, 0)+' $CIRCO">'+d[1]+'<small>'+fmtBig(SHOW.fxPrices[d[0]] || 0)+'</small></button>'; }).join('');
+  var open = pickOpen(), mine = SHOW.myPick && SHOW.myPick.round === S.round ? SHOW.myPick : null;
+  $('dockPickItems').innerHTML = KEYS.map(function(k){
+    var col = '#'+TYPES[k].hex.toString(16).padStart(6, '0');
+    return '<button type="button" class="chip'+(mine && mine.color === k ? ' mine' : '')+'" data-pick="'+k+'" '+(!open || mine ? 'disabled' : '')+' title="'+NAMES[k]+': '+Math.round(pickOdds()[k]*100)+'% chance" aria-label="'+NAMES[k]+', wins '+pickPay(k)+' tickets"><i style="background:'+col+';color:'+col+'"></i><small>×'+pickPay(k)+'</small></button>';
+  }).join('');
+  $('dockPickLabel').textContent = mine ? 'Your guess: '+NAMES[mine.color].toLowerCase()+' · wins '+mine.tickets+' 🎟'
+    : !open ? 'Guesses open while the balloon inflates'
+    : nextForced() ? 'Next balloon is set by the rules · 1 🎟 back'
+    : 'Guess the next balloon · '+fmtBig(SHOW.pickPrice)+' $CIRCO';
+  var badge = $('pickBadge');
+  if (mine){ var c = '#'+TYPES[mine.color].hex.toString(16).padStart(6, '0'); badge.style.display = 'block'; badge.style.background = c; } else badge.style.display = 'none';
+}
+function dockToggle(id, force){
+  var d = $(id), on = force === undefined ? !d.classList.contains('open') : force;
+  document.querySelectorAll('.dock').forEach(function(x){ if (x !== d) { x.classList.remove('open'); x.querySelector('.dockMain').setAttribute('aria-expanded', 'false'); } });
+  d.classList.toggle('open', on); d.querySelector('.dockMain').setAttribute('aria-expanded', on ? 'true' : 'false');
+  if (on) renderDock();
+}
+document.querySelectorAll('.dock .dockMain').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); dockToggle(b.parentNode.id); }); });
+$('dockFxItems').addEventListener('click', function(e){ var b = e.target.closest('[data-fx]'); if (!b) return; e.stopPropagation(); doFx(b.dataset.fx); dockToggle('dockFx', false); });
+$('dockPickItems').addEventListener('click', function(e){ var b = e.target.closest('[data-pick]'); if (!b || b.disabled) return; e.stopPropagation(); doPick(b.dataset.pick); dockToggle('dockPick', false); });
+document.addEventListener('click', function(e){ if (!e.target.closest('.dock')) document.querySelectorAll('.dock.open').forEach(function(d){ dockToggle(d.id, false); }); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') document.querySelectorAll('.dock.open').forEach(function(d){ dockToggle(d.id, false); }); });
+renderJackpot(); renderTeams(); renderFxList(); renderDock();
 setInterval(renderTeams, 30000);
 /* demo: the crowd plays too */
 if (!LIVE) setInterval(function(){
