@@ -100,7 +100,7 @@ nav.pages button{ height:40px; padding:0 14px; border-radius:10px; border:0; bac
 nav.pages button:hover{ color:var(--ink); }
 nav.pages button[aria-current="page"]{ background:var(--ink); color:#030716; font-weight:700; }
 .sheet{ position:absolute; top:88px; bottom:112px; left:50%; transform:translateX(-50%); width:min(920px, calc(100% - 48px)); display:none; flex-direction:column; gap:14px;
-  background:rgba(5,11,38,.9); border:1px solid var(--lineHi); border-radius:22px; padding:22px 24px; backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); z-index:2; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+  background:rgba(5,11,38,.58); border:1px solid var(--lineHi); border-radius:22px; padding:22px 24px; backdrop-filter:blur(7px) saturate(1.2); -webkit-backdrop-filter:blur(7px) saturate(1.2); z-index:2;   /* frosted glass: the show stays visible behind the pages */ box-shadow:0 30px 80px rgba(0,0,0,.5); }
 .sheet.on{ display:flex; }
 .sheet .sh-head{ display:flex; justify-content:space-between; align-items:center; gap:16px; }
 .sheet h2{ margin:0; font-family:'Unbounded',sans-serif; font-size:22px; font-weight:600; }
@@ -285,6 +285,9 @@ nav.pages .sm{ display:none; }
 }
 @media (min-width: 901px){ .teamStat{ min-width:200px; } .statset{ gap:18px !important; } footer.stats .demo #liveBtn{ display:none; } }
 #stageDock{ position:absolute; right:310px; top:17%; z-index:4; display:flex; flex-direction:column; align-items:flex-end; gap:10px; opacity:var(--ik, 1); }
+/* behind an open page only the 3D show remains visible, not the game interface */
+body.paging .overlay > .tabs, body.paging .overlay > .col, body.paging .overlay > .hud, body.paging .overlay > #mCta,
+body.paging footer.stats > *:not(nav.pages), body.paging .overlay > .note, body.paging #speech{ visibility:hidden; }
 body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.recording #stageDock, body.touring #stageDock{ display:none; }
 .dock{ display:flex; align-items:center; gap:8px; }
 .dockMain{ position:relative; width:48px; height:48px; border-radius:50%; border:1px solid var(--lineHi); background:rgba(8,16,52,.72); backdrop-filter:blur(10px); font-size:22px; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.35); transition:transform .2s; }
