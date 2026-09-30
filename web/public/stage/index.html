@@ -185,6 +185,8 @@ body.recording #recTitle{ display:block; }
 @media (max-width: 900px){ #bubble{ left:16px !important; top:auto !important; bottom:16px; } #bubble::before{ display:none; } }
 .spotlit{ box-shadow:0 0 0 4px #FFD34D, 0 0 30px 8px rgba(255,211,77,.7) !important; animation:spotp 1s ease-in-out infinite; }
 @keyframes spotp{ 50%{ box-shadow:0 0 0 7px #FFD34D, 0 0 40px 14px rgba(255,211,77,.5); } }
+.linkbtn{ display:inline-flex; align-items:center; text-decoration:none; }
+.actions .btn{ white-space:nowrap; }
 #toast{ position:absolute; top:88px; left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--lineHi); border-radius:12px; padding:10px 16px; font-size:14px; opacity:0; transition:opacity .3s; pointer-events:none; backdrop-filter:blur(10px); }
 #toast.on{ opacity:1; }
 #loading{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Unbounded',sans-serif; color:var(--muted); z-index:5; background:var(--night); transition:opacity .6s; }
@@ -201,6 +203,10 @@ body.recording #recTitle{ display:block; }
   header.top{ position:fixed; height:60px; padding:0 14px; z-index:3; grid-template-columns:1fr auto; }
   header.top .stepper{ display:none; }
   .actions .btn:not(.primary){ display:none; }
+  .actions #connectBtn{ display:inline-flex; align-items:center; }
+  .brand .chip{ display:none; }
+  .actions{ gap:8px; }
+  .actions .btn{ padding:0 12px; font-size:14px; }
   .hud{ position:absolute; top:calc(60vh - 140px); bottom:auto; width:calc(100% - 32px); min-width:0; }
   #hudBig{ font-size:30px; } #hudBig.timer{ font-size:42px; }
   .tabs{ display:flex; gap:8px; padding:12px 14px 0; }
@@ -230,7 +236,7 @@ body.recording #recTitle{ display:block; }
     </div>
     <div class="actions">
       <button class="btn" type="button" id="connectBtn">Connect wallet</button>
-      <a class="btn" href="#" id="buyCoin" style="display:inline-flex;align-items:center;text-decoration:none">Buy $CIRCO ↗</a>
+      <a class="btn linkbtn" href="#" id="buyCoin">Buy $CIRCO ↗</a>
       <button class="btn primary" type="button" id="buyBtn" aria-expanded="false" aria-controls="buyPop">Buy tickets</button>
     </div>
   </header>
@@ -368,7 +374,8 @@ body.recording #recTitle{ display:block; }
 (function(){
 'use strict';
 var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-var LITE = /[?&]lite=1/.test(location.search) || (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) && ((navigator.deviceMemory || 4) <= 4 || (navigator.hardwareConcurrency || 4) <= 6));
+var LITE = /[?&]lite=1/.test(location.search) || (/Android/i.test(navigator.userAgent) && (navigator.deviceMemory || 8) <= 3);
+var MAX_DPR = LITE ? 1 : 2;   // lowered automatically if the device cannot keep up
 if (LITE) reduced = true;
 function $(id){ return document.getElementById(id); }
 
@@ -397,7 +404,7 @@ var S = { round:1, phase:'scelta', t:0, type:'blu', fill:0, target:12, tickets:n
 /* ================= renderer, scene, post-processing ================= */
 var stage = $('stage');
 var renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, LITE ? 1 : 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, MAX_DPR));
 renderer.setClearColor(0x030716, 1);
 stage.appendChild(renderer.domElement);
 var scene = new THREE.Scene();
@@ -1738,9 +1745,22 @@ function update(dt){
     confetti.instanceMatrix.needsUpdate = true;
   }
 }
+var perf = { t:0, n:0, step:0, warm:2 };
+function adaptQuality(raw){
+  if (perf.step >= 2) return;
+  if (perf.warm > 0){ perf.warm -= raw; return; }
+  perf.t += raw; perf.n++;
+  if (perf.t < 3) return;
+  var fps = perf.n / perf.t; perf.t = 0; perf.n = 0;
+  if (fps >= 40) return;
+  perf.step++; perf.warm = 1.5;
+  if (perf.step === 1){ MAX_DPR = 1.4; }
+  if (perf.step === 2){ MAX_DPR = 1; bloom.enabled = false; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, MAX_DPR)); resize();
+}
 function frame(){
   requestAnimationFrame(frame);
-  var dt = Math.min(clock.getDelta(), 0.05); time += dt;
+  var raw = clock.getDelta(), dt = Math.min(raw, 0.05); time += dt; adaptQuality(raw);
   if (!S.paused){ S.t += dt; if (!LIVE) market(dt); else liveClock(); update(dt); }
   if (!S.paused) animDirector(dt);
   sheetTick += dt; if (sheetTick > 1.5 && (page === 'classifiche' || page === 'profilo')){ sheetTick = 0; refreshSheet(); }
