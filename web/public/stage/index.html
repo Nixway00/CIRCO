@@ -417,7 +417,9 @@ var shake = 0;
 var pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
 
-var composer = new THREE.EffectComposer(renderer);
+// Post-processing bypasses the canvas antialiasing, so the render target does its own MSAA (WebGL2)
+var msaa = (!LITE && renderer.capabilities.isWebGL2) ? 4 : 0;
+var composer = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { samples: msaa, type: THREE.HalfFloatType }));
 composer.addPass(new THREE.RenderPass(scene, camera));
 var bloom = new THREE.UnrealBloomPass(new THREE.Vector2(512, 512), 0.6, 0.5, 0.9);
 if (!LITE) composer.addPass(bloom);
@@ -1745,14 +1747,14 @@ function update(dt){
     confetti.instanceMatrix.needsUpdate = true;
   }
 }
-var perf = { t:0, n:0, step:0, warm:2 };
+var perf = { t:0, n:0, step:0, warm:4 };
 function adaptQuality(raw){
   if (perf.step >= 2) return;
   if (perf.warm > 0){ perf.warm -= raw; return; }
   perf.t += raw; perf.n++;
-  if (perf.t < 3) return;
+  if (perf.t < 4) return;
   var fps = perf.n / perf.t; perf.t = 0; perf.n = 0;
-  if (fps >= 40) return;
+  if (fps >= 32) return;
   perf.step++; perf.warm = 1.5;
   if (perf.step === 1){ MAX_DPR = 1.4; }
   if (perf.step === 2){ MAX_DPR = 1; bloom.enabled = false; }
