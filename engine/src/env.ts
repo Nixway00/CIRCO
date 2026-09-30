@@ -9,6 +9,8 @@ export const env = {
   ENGINE_API_SECRET: need('ENGINE_API_SECRET'),
   PRIZE_WALLET_ADDRESS: process.env.PRIZE_WALLET_ADDRESS ?? '',
   BUYBACK_WALLET_SECRET: process.env.BUYBACK_WALLET_SECRET ?? '',
+  TEAM_WALLET: process.env.TEAM_WALLET ?? '',
+  IGNORE_FEE_FROM: process.env.IGNORE_FEE_FROM ?? '',   // comma list: top-ups from these wallets are not prize fees (the reserve, tests)
   PORT: Number(process.env.PORT ?? 8787),
   X_CLIENT_ID: process.env.X_CLIENT_ID ?? '',
   X_CLIENT_SECRET: process.env.X_CLIENT_SECRET ?? '',

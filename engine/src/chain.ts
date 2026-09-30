@@ -17,9 +17,9 @@ export async function mintDecimals(): Promise<number> {
   return decimalsCache!;
 }
 
-export interface VerifiedBurn { wallet: string; tickets: number; roundId: number; tokens: bigint; blockTime: number }
+export interface VerifiedBurn { wallet: string; tickets: number; roundId: number; tokens: bigint; blockTime: number; slot: number }
 
-export interface Burn { wallet: string; memo: string | null; burned: bigint; decimals: number; blockTime: number }
+export interface Burn { wallet: string; memo: string | null; burned: bigint; decimals: number; blockTime: number; slot: number }
 
 /** Reads one confirmed transaction: who signed it, its memo, and how much $CIRCO the signer burned. */
 export async function readBurn(signature: string): Promise<Burn> {
@@ -38,7 +38,7 @@ export async function readBurn(signature: string): Promise<Burn> {
       burned += BigInt(info.amount ?? info.tokenAmount?.amount ?? 0);
     }
   }
-  return { wallet: signer, memo, burned, decimals: await mintDecimals(), blockTime: (tx.blockTime ?? 0) * 1000 };
+  return { wallet: signer, memo, burned, decimals: await mintDecimals(), blockTime: (tx.blockTime ?? 0) * 1000, slot: tx.slot };
 }
 
 /**
@@ -53,7 +53,7 @@ export async function verifyTicketBurn(signature: string, priceTokens: number): 
   if (tickets < 1 || tickets > 10) throw new Error('bad ticket count');
   const expected = BigInt(tickets) * BigInt(priceTokens) * 10n ** BigInt(b.decimals);
   if (b.burned !== expected) throw new Error(`burned ${b.burned}, expected ${expected}`);
-  return { wallet: b.wallet, tickets, roundId, tokens: b.burned / 10n ** BigInt(b.decimals), blockTime: b.blockTime };
+  return { wallet: b.wallet, tickets, roundId, tokens: b.burned / 10n ** BigInt(b.decimals), blockTime: b.blockTime, slot: b.slot };
 }
 
 export async function paySol(to: string, sol: number): Promise<string> {

@@ -7,13 +7,27 @@ import { supabase } from '@/lib/supabase';
 
 type Balloons = Record<'green' | 'blue' | 'red' | 'gold', { capacity_sol: number; weight: number; min_tickets: number; shape: string }>;
 
-/** Team panel: change the ticket price and the balloons. The engine reloads settings every minute. */
+const SETTINGS: { key: string; label: string; help: string; step?: number; min?: number; max?: number; bool?: boolean }[] = [
+  { key: 'jackpot_share', label: 'Mega Jackpot share', help: 'Part of each prize-wallet fee that feeds the jackpot (0 to 0.3, e.g. 0.05 = 5%).', step: 0.01, min: 0, max: 0.3 },
+  { key: 'jackpot_chance', label: 'Mega Pop chance', help: 'Chance that a draw is a Mega Pop (0 to 0.2, e.g. 0.02 = 2%).', step: 0.005, min: 0, max: 0.2 },
+  { key: 'pick_price_tokens', label: 'Guess price ($CIRCO)', help: 'Cost of one guess on the next balloon.', min: 1 },
+  { key: 'pick_return', label: 'Guess return', help: 'Average return of a guess as a share of its cost. Keep it under 1 (e.g. 0.9).', step: 0.05, min: 0.1, max: 0.99 },
+  { key: 'game_price_tokens', label: 'Shooting gallery price ($CIRCO)', help: 'Cost of one game.', min: 1 },
+  { key: 'game_shots', label: 'Shots per game', help: '1 to 10.', min: 1, max: 10 },
+  { key: 'game_hit_chance', label: 'Hit chance per shot', help: 'e.g. 0.3 = 30%. Shots x chance should stay under 1 ticket per ticket price.', step: 0.05, min: 0, max: 0.9 },
+  { key: 'game_daily_ticket_cap', label: 'Game tickets per day', help: 'Most tickets a wallet can win in games each day.', min: 0, max: 100 },
+  { key: 'team_reward_tickets', label: 'Team reward (tickets)', help: 'Bonus tickets for each active member of the weekly winning team.', min: 0, max: 20 },
+  { key: 'pumpfun_chat_relay', label: 'pump.fun chat in the site chat', help: 'Turn the pump.fun chat bridge on or off.', bool: true },
+];
+
+/** Team panel: every game setting. The engine reloads settings every minute. */
 export default function Admin() {
   const { publicKey, signMessage } = useWallet();
   const [price, setPrice] = useState(10000);
   const [chatMin, setChatMin] = useState(10000);
   const [balloons, setBalloons] = useState<Balloons | null>(null);
   const [msg, setMsg] = useState('');
+  const [cfg, setCfg] = useState<Record<string, any>>({});
 
   useEffect(() => {
     supabase.from('config').select('key,value').then(({ data }) => {
@@ -22,6 +36,7 @@ export default function Admin() {
         if (r.key === 'chat_min_tokens') setChatMin(Number(r.value));
         if (r.key === 'balloons') setBalloons(r.value as Balloons);
       }
+      setCfg(Object.fromEntries((data ?? []).map(r => [r.key, r.value])));
     });
   }, []);
 
@@ -62,6 +77,26 @@ export default function Admin() {
             </div>
           ))}
           <button type="button" className="primary" onClick={() => save('balloons', balloons)}>Save balloons</button>
+        </div>
+      )}
+      <h2>Show features</h2>
+      {SETTINGS.map(st => (
+        <div key={st.key} style={field}>
+          <label htmlFor={st.key}>{st.label}</label>
+          {st.bool
+            ? <select id={st.key} value={String(cfg[st.key] ?? true)} onChange={e => setCfg({ ...cfg, [st.key]: e.target.value === 'true' })} style={input}><option value="true">On</option><option value="false">Off</option></select>
+            : <input id={st.key} type="number" step={st.step ?? 1} min={st.min} max={st.max} value={cfg[st.key] ?? ''} onChange={e => setCfg({ ...cfg, [st.key]: Number(e.target.value) })} style={input} />}
+          <small style={{ opacity: .7 }}>{st.help}</small>
+          <button type="button" className="primary" onClick={() => save(st.key, cfg[st.key])}>Save</button>
+        </div>
+      ))}
+      {cfg.fx_prices && (
+        <div style={field}>
+          <h3>Effect prices ($CIRCO burned)</h3>
+          {Object.keys(cfg.fx_prices).map(k => (
+            <label key={k}>{k}<input type="number" min={1} value={cfg.fx_prices[k]} onChange={e => setCfg({ ...cfg, fx_prices: { ...cfg.fx_prices, [k]: Number(e.target.value) } })} style={input} /></label>
+          ))}
+          <button type="button" className="primary" onClick={() => save('fx_prices', cfg.fx_prices)}>Save effect prices</button>
         </div>
       )}
       {msg && <p role="status">{msg}</p>}

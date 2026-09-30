@@ -16,6 +16,14 @@ export async function wonToday(wallet: string): Promise<number> {
 
 /** Step 1: commit to a secret before the player burns anything. */
 export async function startGame(wallet: string, cfg: Config & GameConfig) {
+  // anti-spam: starting a game costs nothing, so unpaid games are capped per wallet and overall
+  const since = new Date(Date.now() - 10 * 60_000).toISOString();
+  const [{ count: mine }, { count: all }] = await Promise.all([
+    db.from('games').select('id', { count: 'exact', head: true }).eq('wallet', wallet).eq('status', 'waiting').gte('created_at', since),
+    db.from('games').select('id', { count: 'exact', head: true }).eq('status', 'waiting').gte('created_at', since),
+  ]);
+  if ((mine ?? 0) >= 3) throw new Error('Finish or wait for your last games before starting a new one.');
+  if ((all ?? 0) >= 500) throw new Error('The gallery is busy, try again in a minute.');
   const won = await wonToday(wallet);
   if (won >= cfg.game_daily_ticket_cap) throw new Error(`You already won ${won} tickets in games today. Come back tomorrow.`);
   const secret = randomBytes(32).toString('hex');
@@ -73,4 +81,15 @@ export async function settleGameFromBurn(signature: string, cfg: Config & GameCo
   const b = await readBurn(signature);
   const m = b.memo?.match(/^CIRCO-GAME:([0-9a-f-]{36})$/);
   if (m) await playGame(m[1], signature, cfg);
+}
+
+/** Games started but never paid are removed after an hour (their secret was never used). */
+export async function cleanupGames() {
+  const old = new Date(Date.now() - 3600_000).toISOString();
+  const { data } = await db.from('games').select('id').eq('status', 'waiting').lt('created_at', old).limit(500);
+  const ids = (data ?? []).map(g => g.id);
+  if (!ids.length) return 0;
+  await db.from('game_secrets').delete().in('game_id', ids);
+  await db.from('games').delete().in('id', ids).eq('status', 'waiting');
+  return ids.length;
 }

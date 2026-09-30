@@ -8,11 +8,12 @@ import { isGalaDue, step, commit, drawSeed, pickWinner, lastBuyer, payoutPlan, o
 import { processFx, processPick, settlePredictions, settleTeamWeek } from './show.ts';
 import { readBurn } from './chain.ts';
 import { PumpFunChat } from './pumpchat.ts';
+import { reconcileFees, reconcileBurns, notFeeSenders } from './reconcile.ts';
 import { closingBlock } from './chain.ts';
 import { planPayouts, settlePayouts } from './payouts.ts';
 import { processBurn, grantCredits } from './tickets.ts';
 import { refreshSnapshots } from './snapshots.ts';
-import { startGame, playGame, settleGameFromBurn, type GameConfig } from './games.ts';
+import { startGame, playGame, settleGameFromBurn, cleanupGames, type GameConfig } from './games.ts';
 import { distributeCreatorFees } from './fees.ts';
 import { runBuyback } from './buyback.ts';
 import { postPop } from './xpost.ts';
@@ -46,7 +47,8 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   const { count } = await db.from('rounds').select('id', { count: 'exact', head: true });
   const { data: lastGold, error: gErr } = await db.from('rounds').select('started_at').eq('balloon', 'gold').order('id', { ascending: false }).limit(1).maybeSingle();
   if (gErr) throw gErr;
-  const galaDue = isGalaDue(Date.now(), lastGold ? Date.parse(lastGold.started_at) : null, cfg.gala_check_utc_hour);
+  const { data: first } = await db.from('rounds').select('started_at').order('id', { ascending: true }).limit(1).maybeSingle();
+  const galaDue = isGalaDue(Date.now(), lastGold ? Date.parse(lastGold.started_at) : null, cfg.gala_check_utc_hour, first ? Date.parse(first.started_at) : null);
   // the previous round's revealed seed draws this balloon, so guesses on it can be checked by anyone
   const { data: prev } = await db.from('rounds').select('id,next_seed').in('phase', ['done', 'postponed']).order('id', { ascending: false }).limit(1).maybeSingle();
   const pick = nextBalloonFromSeed((count ?? 0) + 1, galaDue, cfg, prev?.next_seed ?? null);
@@ -75,7 +77,7 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   }
   await grantCredits(round.id, cfg);
   if (prev) await settlePredictions(prev.id, round.id, balloon, pick.forced, cfg);
-  await ringmaster(balloon === 'gold' ? 'GOLD TROPHY. Five SOL. Seatbelts on, degens, it is gala night.' : `Round ${round.id}. Fresh balloon, fresh hopium.`);
+  await ringmaster(balloon === 'gold' ? `GOLD TROPHY. ${cfg.balloons.gold.capacity_sol} SOL. Seatbelts on, degens, it is gala night.` : `Round ${round.id}. Fresh balloon, fresh hopium.`);
   console.log(`round ${round.id} started: ${balloon}, carried ${carried} SOL`);
 }
 
@@ -199,7 +201,7 @@ app.post('/helius', async (req, res) => {
     const feeRound = r && feeTargetsCurrentRound(r.phase) ? r.id : null;   // null = waits for the next round
     for (const ev of events) {
       for (const nt of ev.nativeTransfers ?? []) {
-        if (nt.toUserAccount === env.PRIZE_WALLET_ADDRESS && nt.amount > 0) {
+        if (nt.toUserAccount === env.PRIZE_WALLET_ADDRESS && nt.amount > 0 && !notFeeSenders.has(nt.fromUserAccount)) {
           const amount = nt.amount / LAMPORTS;
           await db.from('fees').upsert({ tx: ev.signature, wallet: 'prize', amount_sol: amount, jackpot_sol: jackpotPart(amount, cfg.jackpot_share ?? 0), round_id: feeRound }, { onConflict: 'tx', ignoreDuplicates: true });
         }
@@ -249,10 +251,15 @@ app.get('/health', (_req, res) => res.json({ ok: true, busy }));
 // ---------- boot ----------
 // the database may still be waking up: keep trying instead of crashing
 for (;;) { try { cfg = (await loadConfig()) as Config & GameConfig; break; } catch (e) { console.error('config not reachable yet, retrying in 5 s', (e as Error).message); await new Promise(r => setTimeout(r, 5000)); } }
-setInterval(async () => { try { // the database may still be waking up: keep trying instead of crashing
-for (;;) { try { cfg = (await loadConfig()) as Config & GameConfig; break; } catch (e) { console.error('config not reachable yet, retrying in 5 s', (e as Error).message); await new Promise(r => setTimeout(r, 5000)); } } } catch (e) { console.error('config reload failed', e); } }, 60_000);
+setInterval(async () => { try { cfg = (await loadConfig()) as Config & GameConfig; } catch (e) { console.error('config reload failed', e); } }, Number(process.env.CONFIG_RELOAD_MS ?? 60_000));
 setInterval(tick, 1000);
 setInterval(() => { refreshSnapshots().catch(e => console.error('snapshots failed', e)); }, 15_000);
+// safety net under the Helius webhook: re-read the chain every minute and count anything missed
+setInterval(() => {
+  reconcileFees(cfg).then(n => n && console.log(`reconcile: ${n} fee(s) recovered`)).catch(e => console.error('fee reconcile failed', e.message));
+  reconcileBurns(routeBurn).catch(e => console.error('burn reconcile failed', e.message));
+}, Number(process.env.RECONCILE_MS ?? 60_000));
+setInterval(() => { cleanupGames().catch(e => console.error('game cleanup failed', e)); }, 15 * 60_000);
 setInterval(() => { settleTeamWeek(cfg).then(r => r && console.log('team week settled', r)).catch(e => console.error('team week failed', e)); }, 10 * 60_000);
 setInterval(() => { distributeCreatorFees().then(r => r && console.log('fees distributed', r)).catch(e => console.error('fee distribution failed', e)); }, 30_000);
 setInterval(() => { runBuyback().catch(e => console.error('buyback failed', e)); }, 10 * 60_000);

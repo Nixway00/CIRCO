@@ -48,12 +48,14 @@ export default function StageBridge() {
       supabase.from('rounds').select('*').order('id', { ascending: false }).limit(2),
       supabase.from('trades').select('tx,wallet,side,amount_sol').order('id', { ascending: false }).limit(12),
       supabase.from('chat_messages').select('id,wallet,body,is_ringmaster,source,author').order('id', { ascending: false }).limit(40),
-      supabase.from('config').select('key,value').in('key', ['ticket_price_tokens', 'chat_min_tokens', 'game_price_tokens', 'game_shots', 'game_hit_chance', 'game_daily_ticket_cap', 'fx_prices', 'pick_price_tokens', 'pick_return', 'balloons']),
+      supabase.from('config').select('key,value').in('key', ['ticket_price_tokens', 'chat_min_tokens', 'game_price_tokens', 'game_shots', 'game_hit_chance', 'game_daily_ticket_cap', 'fx_prices', 'pick_price_tokens', 'pick_return', 'balloons', 'jackpot_share', 'jackpot_chance', 'team_reward_tickets']),
     ]);
     const raw = Object.fromEntries((cfgRows ?? []).map(c => [c.key, c.value as any]));
     const cfgMap = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Number(v)]));
     showCfg.current = {
       fxPrices: raw.fx_prices ?? undefined, pickPrice: cfgMap.pick_price_tokens || undefined, pickReturn: cfgMap.pick_return || undefined,
+      jackpotShare: raw.jackpot_share !== undefined ? cfgMap.jackpot_share : undefined, jackpotChance: raw.jackpot_chance !== undefined ? cfgMap.jackpot_chance : undefined,
+      teamReward: raw.team_reward_tickets !== undefined ? cfgMap.team_reward_tickets : undefined, gameCap: raw.game_daily_ticket_cap !== undefined ? cfgMap.game_daily_ticket_cap : undefined,
       weights: raw.balloons ? Object.fromEntries(Object.entries(raw.balloons).map(([k, v]: [string, any]) => [k, v.weight])) : undefined,
     };
     if (cfgMap.ticket_price_tokens) price.current = cfgMap.ticket_price_tokens;

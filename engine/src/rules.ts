@@ -45,7 +45,8 @@ export interface TicketTotal { wallet: string; tickets: number; last_at: number 
 export function pickBalloon(roundNumber: number, galaDue: boolean, cfg: Config, rand: () => number): BalloonKey {
   if (roundNumber <= cfg.first_blue_rounds) return 'blue';
   if (galaDue) return 'gold';
-  const keys = Object.keys(cfg.balloons) as BalloonKey[];
+  // fixed order, so anyone can recompute the balloon from the seed (the database may store keys in any order)
+  const keys = (['green', 'blue', 'red', 'gold'] as BalloonKey[]).filter(k => k in cfg.balloons);
   const total = keys.reduce((a, k) => a + cfg.balloons[k].weight, 0);
   let r = rand() * total;
   for (const k of keys) { r -= cfg.balloons[k].weight; if (r <= 0) return k; }
@@ -60,8 +61,13 @@ export function lastCheckpoint(now: number, hourUtc: number): number {
   return c;
 }
 /** Gold is due if no gold round started in the 24 h before the latest checkpoint (or since it). */
-export function isGalaDue(now: number, lastGoldStartedAt: number | null, hourUtc: number): boolean {
+/**
+ * The daily gold guarantee. `showStartedAt` is when the very first round started: the guarantee only
+ * applies once the show has lived through a checkpoint, so launch day does not open with a forced gold.
+ */
+export function isGalaDue(now: number, lastGoldStartedAt: number | null, hourUtc: number, showStartedAt: number | null = 0): boolean {
   const cp = lastCheckpoint(now, hourUtc);
+  if (showStartedAt === null || showStartedAt > cp) return false;
   return lastGoldStartedAt === null || lastGoldStartedAt < cp - 86_400_000;
 }
 

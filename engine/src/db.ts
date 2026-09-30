@@ -34,14 +34,15 @@ export const openRound = () => roundIn(['inflate', 'countdown']);
 export const drawingRound = () => roundIn(['drawing']);
 
 export async function ticketTotals(roundId: number, purchasesOnly = false): Promise<TicketTotal[]> {
-  let q = db.from('tickets').select('wallet,count,created_at,kind').eq('round_id', roundId);
+  let q = db.from('tickets').select('wallet,count,created_at,kind,burn_slot').eq('round_id', roundId);
   if (purchasesOnly) q = q.in('kind', ['burn', 'late']);       // free tickets never win the last-ticket bonus
   const { data, error } = await q;
   if (error) throw error;
   const m = new Map<string, TicketTotal>();
   for (const t of data!) {
     const cur = m.get(t.wallet) ?? { wallet: t.wallet, tickets: 0, last_at: 0 };
-    cur.tickets += t.count; cur.last_at = Math.max(cur.last_at, Date.parse(t.created_at));
+    // purchases are ordered by the slot they landed in on chain; other tickets by when they were added
+    cur.tickets += t.count; cur.last_at = Math.max(cur.last_at, t.burn_slot != null ? Number(t.burn_slot) : Date.parse(t.created_at) / 400);
     m.set(t.wallet, cur);
   }
   return [...m.values()];

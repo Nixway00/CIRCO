@@ -29,6 +29,10 @@ test('daily gold guarantee around the 01:00 UTC checkpoint', () => {
   assert.equal(isGalaDue(now, Date.UTC(2026, 9, 8, 22, 0), 1), true);   // last gold over 24 h before checkpoint
   assert.equal(isGalaDue(now, Date.UTC(2026, 9, 10, 1, 10), 1), false); // already served after checkpoint
   assert.equal(isGalaDue(now, null, 1), true);
+  // launch day: the show started after the last checkpoint, so no forced gold yet
+  assert.equal(isGalaDue(now, null, 1, Date.UTC(2026, 9, 10, 1, 30)), false);
+  assert.equal(isGalaDue(now, null, 1, null), false);
+  assert.equal(isGalaDue(now, null, 1, Date.UTC(2026, 9, 9, 20, 0)), true);   // ran through the checkpoint without a gold
 });
 
 test('full balloon starts the countdown', () => {
@@ -170,4 +174,9 @@ test('teams: week starts Monday UTC, ties have no winner', () => {
   assert.equal(new Date(weekStart(Date.UTC(2026, 9, 1, 15))).toISOString(), '2026-09-28T00:00:00.000Z');   // Thursday -> Monday
   assert.equal(new Date(weekStart(Date.UTC(2026, 9, 5, 0))).toISOString(), '2026-10-05T00:00:00.000Z');   // Monday itself
   assert.equal(teamWinner(5, 3), 'clowns'); assert.equal(teamWinner(1, 9), 'acrobats'); assert.equal(teamWinner(2, 2), null);
+});
+
+test('next balloon ignores the key order stored in the database', () => {
+  const shuffled = { ...cfg, balloons: { red: cfg.balloons.red, blue: cfg.balloons.blue, gold: cfg.balloons.gold, green: cfg.balloons.green } };
+  for (let i = 0; i < 200; i++) assert.deepEqual(nextBalloonFromSeed(10, false, shuffled as any, 's' + i), nextBalloonFromSeed(10, false, cfg, 's' + i));
 });

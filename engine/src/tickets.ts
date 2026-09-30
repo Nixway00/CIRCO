@@ -11,6 +11,8 @@ export async function processBurn(signature: string, cfg: Config): Promise<AddRe
   const open = await openRound();
   const place = placeBurn(burn.roundId, burn.blockTime, open ? { id: open.id, phase: open.phase, countdown_ends_at: open.countdown_ends_at } : null);
   const res = await addTickets(place.roundId, burn.wallet, burn.tickets, place.kind, signature, burn.tokens.toString(), cfg.max_tickets_per_wallet);
+  // the on-chain order decides the last-ticket bonus, not the order in which the engine happened to see the burns
+  if (res.given > 0) await db.from('tickets').update({ burn_slot: burn.slot }).eq('burn_tx', signature);
   return { ...res, roundId: place.roundId, wallet: burn.wallet };
 }
 
