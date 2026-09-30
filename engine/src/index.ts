@@ -258,6 +258,6 @@ setInterval(() => { distributeCreatorFees().then(r => r && console.log('fees dis
 setInterval(() => { runBuyback().catch(e => console.error('buyback failed', e)); }, 10 * 60_000);
 refreshSnapshots().catch(() => {});
 // the coin's pump.fun chat shows up in the site chat
-pumpChat = new PumpFunChat(env.CIRCO_MINT, env.PUMPFUN_CHAT_TOKEN || null, () => (cfg as any).pumpfun_chat_relay !== false);
+pumpChat = new PumpFunChat(env.CIRCO_MINT, env.PUMPFUN_CHAT_TOKEN || null, () => (cfg as any).pumpfun_chat_relay !== false, env.RINGMASTER_WALLET_SECRET);
 pumpChat.start();
 app.listen(env.PORT, () => console.log(`engine on :${env.PORT}`));

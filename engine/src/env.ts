@@ -13,5 +13,6 @@ export const env = {
   X_CLIENT_ID: process.env.X_CLIENT_ID ?? '',
   X_CLIENT_SECRET: process.env.X_CLIENT_SECRET ?? '',
   X_REFRESH_TOKEN: process.env.X_REFRESH_TOKEN ?? '',
-  PUMPFUN_CHAT_TOKEN: process.env.PUMPFUN_CHAT_TOKEN ?? '',   // optional: lets the Ringmaster post in the pump.fun chat
+  PUMPFUN_CHAT_TOKEN: process.env.PUMPFUN_CHAT_TOKEN ?? '',   // optional: a pump.fun session token (manual alternative)
+  RINGMASTER_WALLET_SECRET: process.env.RINGMASTER_WALLET_SECRET ?? '',   // optional: the launch wallet, so the Ringmaster speaks on pump.fun with the creator badge
 };

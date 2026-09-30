@@ -86,7 +86,7 @@ Show features (migration `0007_show_features.sql`):
 
 pump.fun chat (migration `0008_pumpfun_chat.sql`):
 - [x] The engine joins the coin's pump.fun live chat (unofficial socket.io protocol, tested live) and every message appears in the site chat with a green "pump.fun" tag
-- [x] Optional: with `PUMPFUN_CHAT_TOKEN` (auth token of a pump.fun account for the Ringmaster) winners and Mega Pops are announced in the pump.fun chat too
+- [x] The Ringmaster speaks on pump.fun as the launch wallet (`RINGMASTER_WALLET_SECRET`): the engine signs pump.fun's own login message, refreshes the session twice a day, and announces winners and Mega Pops in the coin's chat with the creator badge (tested live: login and chat authentication both accepted)
 - [x] Switch off any time with config `pumpfun_chat_relay = false`; if pump.fun changes its protocol only the relay stops, the game is unaffected
 
 Engine start-up (fixed): the pump.fun SDK's ESM build failed to load under Node; it is now loaded through its CommonJS build, and every engine module is verified to load with plain type stripping.

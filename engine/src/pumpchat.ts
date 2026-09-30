@@ -3,6 +3,9 @@
 // public; posting (our big moments) needs the auth token of a pump.fun account in PUMPFUN_CHAT_TOKEN.
 // If pump.fun changes the protocol, the bridge just stops relaying and the game carries on unaffected.
 import WebSocket from 'ws';
+import { createPrivateKey, sign } from 'node:crypto';
+import { Keypair } from '@solana/web3.js';
+import bs58 from 'bs58';
 import { db } from './db.ts';
 
 const URL = 'wss://livechat.pump.fun/socket.io/?EIO=4&transport=websocket';
@@ -22,18 +25,51 @@ export class PumpFunChat {
   private token: string | null;
   private enabled: () => boolean;
 
-  constructor(mint: string, token: string | null, enabled: () => boolean) {
+  private ringmaster: Keypair | null = null;
+  private tokenAt = 0;
+
+  /**
+   * `ringmasterSecret`: base58 key of the wallet that speaks as the Ringmaster on pump.fun (ideally the
+   * wallet the coin was launched from, so its lines carry pump.fun's creator badge). The engine signs
+   * pump.fun's own "Sign in to pump.fun" message with it and refreshes the session by itself.
+   */
+  constructor(mint: string, token: string | null, enabled: () => boolean, ringmasterSecret = '') {
     this.mint = mint; this.token = token; this.enabled = enabled;   // no parameter properties: the engine runs with plain type stripping
+    if (ringmasterSecret) { try { this.ringmaster = Keypair.fromSecretKey(bs58.decode(ringmasterSecret)); } catch { console.error('RINGMASTER_WALLET_SECRET is not a valid key'); } }
   }
 
-  start() { this.stopped = false; this.connect(); }
+  get ringmasterAddress() { return this.ringmaster?.publicKey.toBase58() ?? ''; }
+
+  /** pump.fun login with the Ringmaster wallet: same message and endpoint their website uses. */
+  private async login() {
+    if (!this.ringmaster) return;
+    if (this.token && Date.now() - this.tokenAt < 12 * 3600_000) return;
+    const ts = Date.now(), message = `Sign in to pump.fun: ${ts}`;
+    const key = createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.from(this.ringmaster.secretKey.slice(0, 32))]), format: 'der', type: 'pkcs8' });
+    const signature = bs58.encode(sign(null, Buffer.from(message), key));
+    try {
+      const res = await fetch('https://frontend-api-v3.pump.fun/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://pump.fun' },
+        body: JSON.stringify({ address: this.ringmasterAddress, signature, timestamp: ts }),
+      });
+      const token = (res.headers.get('set-cookie') ?? '').match(/auth_token=([^;]+)/)?.[1];
+      if (res.ok && token) { this.token = token; this.tokenAt = Date.now(); }
+      else console.error('pump.fun login failed', res.status);
+    } catch (e) { console.error('pump.fun login failed', (e as Error).message); }
+  }
+
+  start() {
+    this.stopped = false; this.connect();
+    if (this.ringmaster) setInterval(() => { this.tokenAt = 0; this.ws?.close(); }, 12 * 3600_000);   // fresh login twice a day
+  }
   stop() { this.stopped = true; this.ws?.close(); }
 
   private next(ev: string) { const id = this.ack; this.ack = (this.ack + 1) % 10; this.pending.set(id, ev); return id; }
   private send(s: string) { if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(s); }
 
-  private connect() {
+  private async connect() {
     if (this.stopped) return;
+    await this.login();
     const ws = new WebSocket(URL, { headers: HEADERS });
     this.ws = ws;
     ws.on('message', (raw) => this.onFrame(raw.toString()));
@@ -75,7 +111,7 @@ export class PumpFunChat {
   /** A pump.fun message becomes a site chat line (deduplicated by its pump.fun id). */
   private async store(m: PfMessage) {
     if (!m?.id || !m.message || !this.enabled()) return;
-    if (m.username === 'CIRCO Ringmaster') return;                       // our own relayed lines
+    if (m.username === 'CIRCO Ringmaster' || (this.ringmaster && m.userAddress === this.ringmasterAddress)) return;   // our own lines
     await db.from('chat_messages').upsert({
       ext_id: `pf:${m.id}`, source: 'pumpfun', author: String(m.username || 'anon').slice(0, 24),
       wallet: m.userAddress || 'pump.fun', body: String(m.message).slice(0, 200), is_ringmaster: false,
