@@ -74,7 +74,9 @@ Minigames (migration `0004_games.sql`):
 Personality (migration `0005_profiles.sql`):
 - [x] The Ringmaster comments the whole round in his speech balloon (new balloon, 50%, 90%, full, last 10 seconds, extensions, big buys, pop, postponement, gold night)
 - [x] Winner announced by name: "Congratulations, <nickname>!" on the stage, in the chat and on X
-- [x] Nicknames: set in Profile with a wallet signature, 3-16 letters/numbers/_, unique, reserved words blocked, change once a day; shown everywhere instead of the address
+- [x] Nicknames are required: the first time a wallet buys, chats, plays or claims the mission, a window asks for one (3-16 letters/numbers/_, unique, reserved words blocked, change once a day)
+- [x] Optional "Link X" in Profile (OAuth 2.0 with PKCE, read-only): the @handle is shown instead of the nickname; one X account per wallet; unlink any time (migration `0006_x_link.sql`)
+  - To switch it on: in the X developer portal enable OAuth 2.0 for the app (type Web App), add the callback `https://<site>/api/x/callback`, then set `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_REDIRECT_URI` in Vercel
 
 Still to do before launch:
 - [ ] **End-to-end test on a throwaway token** with tiny balloons (set `balloons` capacities to 0.05 SOL in `config`).

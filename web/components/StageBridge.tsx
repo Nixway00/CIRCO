@@ -1,4 +1,5 @@
 'use client';
+import { PublicKey } from '@solana/web3.js';
 import { useCallback, useEffect, useRef } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
@@ -35,9 +36,9 @@ export default function StageBridge() {
     if (Date.now() - nickAge.current > 60_000) { nicks.current.clear(); nickAge.current = Date.now(); }
     const need = [...new Set(wallets.filter((w): w is string => !!w && w.length > 30 && !nicks.current.has(w)))];
     if (!need.length) return;
-    const { data } = await supabase.from('profiles').select('wallet,nickname').in('wallet', need);
+    const { data } = await supabase.from('profiles').select('wallet,nickname,x_handle').in('wallet', need);
     for (const w of need) nicks.current.set(w, '');
-    for (const p of data ?? []) nicks.current.set(p.wallet, p.nickname);
+    for (const p of data ?? []) nicks.current.set(p.wallet, p.x_handle ? '@' + p.x_handle : p.nickname);
   }, []);
   const nm = (w: string | null | undefined) => (w && nicks.current.get(w)) || w;
 
@@ -104,6 +105,16 @@ export default function StageBridge() {
 
   const pushState = useCallback(async () => { await Promise.all([pushLive(), pushSnapshots()]); }, [pushLive, pushSnapshots]);
 
+  // who you are on the stage: display name (X handle or nickname), and whether you still need a nickname
+  const sendIdentity = useCallback(async (addr: string) => {
+    nicks.current.delete(addr);
+    const { data: prof } = await supabase.from('profiles').select('nickname,x_handle').eq('wallet', addr).maybeSingle();
+    const display = prof ? (prof.x_handle ? '@' + prof.x_handle : prof.nickname) : '';
+    nicks.current.set(addr, display);
+    const balance = await circoBalanceClient(connection, new PublicKey(addr)).catch(() => 0);
+    post({ me: display || addr, balance, nick: prof?.nickname ?? '', xHandle: prof?.x_handle ?? '', needNick: !prof });
+  }, [connection, post]);
+
   // live updates: game tables re-send the round, the snapshot table re-sends stats (both debounced)
   useEffect(() => {
     let tLive: ReturnType<typeof setTimeout> | null = null, tSnap: ReturnType<typeof setTimeout> | null = null;
@@ -126,11 +137,17 @@ export default function StageBridge() {
     pushState();
     if (!publicKey) { post({ me: null, balance: 0, nick: '' }); return; }
     const addr = publicKey.toBase58();
-    loadNicks([addr]).then(() => {
-      const nick = nicks.current.get(addr) || '';
-      circoBalanceClient(connection, publicKey).then(balance => post({ me: nick || addr, balance, nick })).catch(() => post({ me: nick || addr, balance: 0, nick }));
-    });
-  }, [publicKey, connection, post, pushState, loadNicks]);
+    sendIdentity(addr);
+  }, [publicKey, connection, post, pushState, loadNicks, sendIdentity]);
+
+  // coming back from X: tell the player how the link went
+  useEffect(() => {
+    const x = new URLSearchParams(window.location.search).get('x');
+    if (!x) return;
+    const msg = x.startsWith('linked:') ? `X account linked: @${x.slice(7)}` : x === 'taken' ? 'That X account is already linked to another wallet.' : x === 'cancelled' ? 'X linking cancelled.' : 'Could not link X. Try again.';
+    setTimeout(() => post({ toast: msg }), 1500);
+    window.history.replaceState(null, '', window.location.pathname);
+  }, [post]);
 
   // requests coming from the stage
   useEffect(() => {
@@ -147,6 +164,11 @@ export default function StageBridge() {
         if (m.type === 'circo-ready') { pushState(); return; }
         if (m.type === 'circo-connect') { setVisible(true); return; }
         if (!publicKey) { setVisible(true); post(m.type === 'circo-game' ? { gameError: 'Connect your wallet first.' } : m.type === 'circo-nick' ? { nickError: 'Connect your wallet first.' } : { toast: 'Connect your wallet first.' }); return; }
+        // playing needs a nickname: buying, chatting, games and the mission all ask for one first
+        if (['circo-buy', 'circo-chat', 'circo-game', 'circo-mission'].includes(m.type) && !nicks.current.get(publicKey.toBase58())) {
+          const { data: prof } = await supabase.from('profiles').select('wallet').eq('wallet', publicKey.toBase58()).maybeSingle();
+          if (!prof) { post({ needNick: true, ...(m.type === 'circo-game' ? { gameError: 'Choose a nickname first.' } : {}) }); return; }
+        }
         if (m.type === 'circo-buy' && m.round && m.n) {
           const tx = await buildTicketTx(connection, publicKey, m.round, m.n, price.current);
           const sig = await sendTransaction(tx, connection);
@@ -162,11 +184,29 @@ export default function StageBridge() {
             const res = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await signed('nickname', m.nick)) });
             const out = await res.json();
             if (!res.ok) { post({ nickError: out.error }); return; }
-            nicks.current.set(publicKey.toBase58(), out.nickname);
-            const balance = await circoBalanceClient(connection, publicKey).catch(() => 0);
-            post({ nickSaved: out.nickname, nick: out.nickname, me: out.nickname, balance });
+            post({ nickSaved: out.nickname });
+            await sendIdentity(publicKey.toBase58());
             pushState();
           } catch (err) { post({ nickError: (err as Error).message }); }
+          return;
+        }
+        if (m.type === 'circo-xlink') {
+          try {
+            const res = await fetch('/api/x/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await signed('xlink')) });
+            const out = await res.json();
+            if (!res.ok) { post({ toast: out.error }); return; }
+            window.location.href = out.url;           // X login, then back to /?x=...
+          } catch (err) { post({ toast: (err as Error).message }); }
+          return;
+        }
+        if (m.type === 'circo-xunlink') {
+          try {
+            const res = await fetch('/api/x/unlink', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await signed('xunlink')) });
+            const out = await res.json();
+            if (!res.ok) { post({ toast: out.error }); return; }
+            post({ toast: 'X account unlinked.' });
+            await sendIdentity(publicKey.toBase58()); pushState();
+          } catch (err) { post({ toast: (err as Error).message }); }
           return;
         }
         if (m.type === 'circo-game') {
@@ -198,7 +238,7 @@ export default function StageBridge() {
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [publicKey, connection, sendTransaction, signMessage, setVisible, post, pushState, pushLive]);
+  }, [publicKey, connection, sendTransaction, signMessage, setVisible, post, pushState, pushLive, sendIdentity]);
 
   return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}`} title="$CIRCO live stage" allow="autoplay" />;
 }

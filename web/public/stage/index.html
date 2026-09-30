@@ -231,6 +231,12 @@ nav.pages .sm{ display:none; }
 #gInfo{ margin:0; font-size:15px; line-height:1.5; text-align:center; }
 .gActs{ display:flex; gap:8px; } .gActs .btn{ flex:1; height:50px; font-size:16px; justify-content:center; }
 #gFair{ margin:0; word-break:break-all; }
+#nickModal{ position:fixed; inset:0; z-index:31; display:flex; align-items:center; justify-content:center; background:rgba(3,7,22,.8); backdrop-filter:blur(6px); padding:16px; }
+#nickModal[hidden]{ display:none; }
+#nickModal h2{ margin:0; font-family:'Unbounded',sans-serif; font-size:20px; }
+#nickModal p{ margin:0; line-height:1.5; }
+.xRow{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; padding-top:12px; border-top:1px solid var(--line); }
+.xRow .btn{ flex:none; height:44px; }
 #nickBox{ padding:4px 18px 12px; display:flex; flex-direction:column; gap:6px; }
 #nickBox[hidden]{ display:none; }
 #nickBox label{ font-weight:700; font-size:14px; }
@@ -429,6 +435,10 @@ nav.pages .sm{ display:none; }
       <label for="nickIn">Your nickname</label>
       <div class="nickRow"><input id="nickIn" maxlength="16" placeholder="3 to 16 letters, numbers or _" pattern="[A-Za-z0-9_]{3,16}"><button class="btn primary" type="submit" id="nickSave">Save</button></div>
       <p class="small" id="nickHelp">Shown in the chat, the ticket list, the leaderboards, and when the Ringmaster announces the winner.</p>
+      <div class="xRow" id="xRow">
+        <div><b>X account</b><div class="small" id="xState">Not linked. Link it and your @handle is shown instead of your nickname.</div></div>
+        <button class="btn" type="button" id="xBtn">Link X</button>
+      </div>
     </form>
     <div class="body" id="sheetBody"></div>
   </section>
@@ -450,6 +460,15 @@ nav.pages .sm{ display:none; }
   </div>
   <div id="recTitle" aria-hidden="true"><b>$CIRCO</b><span>The 24/7 memecoin circus</span></div>
   <div id="speech" aria-live="polite"><p id="speechText"></p></div>
+  <section id="nickModal" role="dialog" aria-modal="true" aria-labelledby="nmTitle" hidden>
+    <form class="gBox" id="nickForm" autocomplete="off">
+      <h2 id="nmTitle">Welcome to the circus!</h2>
+      <p>Choose your nickname. It is how the Ringmaster will call you when you win.</p>
+      <div class="nickRow"><input id="nickIn2" maxlength="16" placeholder="3 to 16 letters, numbers or _" aria-label="Nickname"><button class="btn primary" type="submit" id="nickSave2">Join</button></div>
+      <p class="small">You can also link your X account later in Profile, and your @handle will be shown instead.</p>
+      <button type="button" class="linkish" id="nickLater">Not now</button>
+    </form>
+  </section>
   <section id="gameModal" role="dialog" aria-modal="true" aria-labelledby="gTitle" hidden>
     <div class="gBox">
       <div class="gHead"><h2 id="gTitle">🎯 Shooting gallery</h2><button type="button" class="btn iconbtn2" id="gClose" aria-label="Close">✕</button></div>
@@ -1300,6 +1319,7 @@ function setStepper(ph){
   document.querySelectorAll('.stepper .s, #mSteps span').forEach(function(el){ el.classList.toggle('on', el.dataset.p === map[ph]); });
 }
 function buy(wallet, n, bonus){
+  if (!LIVE && wallet === ME && !bonus && !MYNICK){ nickAsk(); return 0; }
   var have = S.tickets.get(wallet) || 0, add = Math.min(n, 10-have);
   if (!bonus && wallet === ME) add = Math.min(add, Math.floor(S.bal/PRICE));
   if (add <= 0) return 0;
@@ -1335,6 +1355,7 @@ $('bpCancel').addEventListener('click', function(){ bpOpen(false); });
 $('bpGo').addEventListener('click', function(){
   if (S.phase !== 'gonfiaggio' && S.phase !== 'countdown'){ bpOpen(false); toast('Sales just closed.'); return; }
   if (LIVE){ bpOpen(false); parent.postMessage({ type:'circo-buy', round:S.liveRoundId, n:bpN }, '*'); toast('Confirm the burn in your wallet…'); return; }
+  if (!MYNICK){ bpOpen(false); nickAsk(); return; }
   var got = buy(ME, bpN); bpOpen(false); sfx('coin');
   toast(got ? 'You bought '+got+(got === 1 ? ' ticket: ' : ' tickets: ')+fmt(got*PRICE,0)+' $CIRCO burned.' : 'You already hold the maximum of 10 tickets this round.');
 });
@@ -1513,16 +1534,29 @@ function openPage(pg){
   sh.classList.add('on'); refreshSheet(); $('sheetClose').focus();
 }
 document.querySelectorAll('nav.pages button').forEach(function(b){ b.addEventListener('click', function(){ openPage(b.dataset.page); }); });
-$('nickBox').addEventListener('submit', function(e){
-  e.preventDefault();
-  var v = $('nickIn').value.trim();
-  if (!/^[A-Za-z0-9_]{3,16}$/.test(v)){ toast('3 to 16 characters: letters, numbers or _.'); return; }
-  if (LIVE){ $('nickSave').disabled = true; parent.postMessage({ type:'circo-nick', nick:v }, '*'); return; }
+var MYX = '';
+function renderX(){
+  $('xState').textContent = MYX ? 'Linked: @'+MYX+'. Your @handle is shown instead of your nickname.' : 'Not linked. Link it and your @handle is shown instead of your nickname.';
+  $('xBtn').textContent = MYX ? 'Unlink' : 'Link X';
+}
+$('xBtn').addEventListener('click', function(){
+  if (!LIVE){ toast(MYX ? 'In the live site this unlinks your X account.' : 'In the live site this opens X to log in and links your account.'); return; }
+  if (!MYNICK){ nickAsk(); return; }
+  parent.postMessage({ type: MYX ? 'circo-xunlink' : 'circo-xlink' }, '*');
+});
+function nickAsk(){ $('nickModal').hidden = false; $('nickIn2').value = ''; setTimeout(function(){ $('nickIn2').focus(); }, 50); }
+function nickSubmit(v, btn){
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(v)){ toast('3 to 16 characters: letters, numbers or _.'); return false; }
+  if (LIVE){ btn.disabled = true; parent.postMessage({ type:'circo-nick', nick:v }, '*'); return true; }
   var old = ME; MYNICK = v; ME = v;                        // demo: rename yourself locally
   if (S.tickets.has(old)){ S.tickets.set(v, S.tickets.get(old)); S.tickets.delete(old); }
   if (P.has(old)){ P.set(v, P.get(old)); P.delete(old); }
-  $('connectBtn').textContent = v; renderTickets(false); toast('Nickname saved: '+v);
-});
+  $('connectBtn').textContent = v; renderTickets(false); toast('Welcome, '+v+'!'); $('nickModal').hidden = true;
+  return true;
+}
+$('nickForm').addEventListener('submit', function(e){ e.preventDefault(); nickSubmit($('nickIn2').value.trim(), $('nickSave2')); });
+$('nickLater').addEventListener('click', function(){ $('nickModal').hidden = true; });
+$('nickBox').addEventListener('submit', function(e){ e.preventDefault(); nickSubmit($('nickIn').value.trim(), $('nickSave')); });
 $('sheetClose').addEventListener('click', function(){ openPage('gioca'); });
 $('sheetBody').addEventListener('click', function(e){ var t = e.target.closest('[data-board]'); if (t){ board = t.dataset.board; refreshSheet(); } });
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && page !== 'gioca') openPage('gioca'); });
@@ -1604,6 +1638,7 @@ function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
 /** The Ringmaster comments on the game. Important lines (winner) always play; chatter is spaced out. */
 function say(text, important, dur){
   if (INTRO.on || (typeof TOUR !== 'undefined' && TOUR.on) || /[?&]tour=auto/.test(location.search)) return false;
+  if (page !== 'gioca' || !$('gameModal').hidden || !$('nickModal').hidden) return false;   // never over pages or windows
   if (!important && (time - lastSay < 9 || time < hintUntil)) return false;
   lastSay = time; speechX = null; introBubble(text); hintUntil = time + (dur || 4.5); return true;
 }
@@ -1760,8 +1795,10 @@ window.addEventListener('message', function(e){
   } else applyLiveRound(r);
   }
   if (m.nick !== undefined){ MYNICK = m.nick || ''; if (page === 'profilo') $('nickIn').value = MYNICK; }
-  if (m.nickSaved){ toast('Nickname saved: '+m.nickSaved); $('nickSave').disabled = false; }
-  if (m.nickError){ toast(m.nickError); $('nickSave').disabled = false; }
+  if (m.nickSaved){ toast('Nickname saved: '+m.nickSaved); $('nickSave').disabled = false; $('nickSave2').disabled = false; $('nickModal').hidden = true; }
+  if (m.nickError){ toast(m.nickError); $('nickSave').disabled = false; $('nickSave2').disabled = false; }
+  if (m.xHandle !== undefined){ MYX = m.xHandle || ''; renderX(); }
+  if (m.needNick){ nickAsk(); }
   if (m.me !== undefined){ ME = m.me ? sh(m.me) : 'Not connected'; $('connectBtn').textContent = m.me ? sh(m.me) : 'Connect wallet'; S.bal = m.balance || 0; renderChatGate(); }
   if (m.stats){ S.stats.burned = m.stats.burned; S.stats.buyback = m.stats.buyback; S.stats.prizes = m.stats.prizes; S.stats.rounds = m.stats.rounds; renderStats(); }
   if (m.tickets){
@@ -1988,6 +2025,7 @@ $('gPlay').addEventListener('click', function(){
   if (G.remaining <= 0) return;
   G.state = 'paying'; G.shot = 0; G.won = 0; G.outcomes = []; G.stuck = []; gResetBalloons(); $('gFair').textContent = ''; gInfo('Confirm the burn in your wallet…'); $('gPlay').hidden = true;
   if (LIVE){ parent.postMessage({ type:'circo-game' }, '*'); return; }
+  if (!MYNICK){ G.state = 'idle'; gInfo(); gClose(); nickAsk(); return; }
   // demo: local randomness, nothing is burned
   setTimeout(function(){
     var o = []; for (var i = 0; i < G.shots; i++) o.push(Math.random() < G.chance);
@@ -2285,7 +2323,7 @@ function frame(){
   lookNow.lerp(tourOn ? (PORTRAIT ? new THREE.Vector3(-1.9, 1.05, 2.1) : new THREE.Vector3(-1.4, 1.25, 1.6)) : camTarget, Math.min(1, dt*(camSpeed + 0.4)));
   if (shake > 0){ camera.position.x += (Math.random()-0.5)*shake; camera.position.y += (Math.random()-0.5)*shake; shake = Math.max(0, shake - dt*0.9); }
   camera.lookAt(lookNow);
-  if (hintUntil){ if (time < hintUntil) placeSpeech(dt); else { hintUntil = 0; $('speech').classList.remove('on'); } }
+  if (hintUntil){ if (time < hintUntil && page === 'gioca' && $('gameModal').hidden && $('nickModal').hidden) placeSpeech(dt); else { hintUntil = 0; $('speech').classList.remove('on'); } }
   flash.intensity = Math.max(0, flash.intensity - dt*9);
   composer.render();
 }

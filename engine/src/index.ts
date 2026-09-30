@@ -18,11 +18,11 @@ let cfg: Config & GameConfig;
 let busy = false;
 const MEMO_PROGRAMS = new Set(['MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', 'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVuDwQkkHtCv']);
 const short = (w: string) => `${w.slice(0, 4)}…${w.slice(-4)}`;
-/** Nickname if the wallet set one, otherwise the short address. */
+/** @handle if X is linked, otherwise the nickname, otherwise the short address. */
 async function nameOf(w: string | null): Promise<string> {
   if (!w) return '';
-  const { data } = await db.from('profiles').select('nickname').eq('wallet', w).maybeSingle();
-  return data?.nickname ?? short(w);
+  const { data } = await db.from('profiles').select('nickname,x_handle').eq('wallet', w).maybeSingle();
+  return data?.x_handle ? '@' + data.x_handle : data?.nickname ?? short(w);
 }
 const sol = (lamports: number) => String(Number((lamports / LAMPORTS).toFixed(4)));
 
