@@ -1659,6 +1659,7 @@ function enter(phase){
   var c = CAMS[phase]; camPos.set(c.p[0], c.p[1], c.p[2]); camTarget.set(c.l[0], c.l[1], c.l[2]);
   var ty = TYPES[S.type];
   if (phase === 'scelta' && typeof ringmaster === 'function' && S.round > 1) ringmaster('Round '+S.round+'. Fresh balloon, fresh hopium.');
+  if (phase === 'scelta') setTimeout(replayIntro, 60);
   if (phase === 'scelta'){
     S.type = pickType(); S.carryIn = S.carry || 0; S.carry = 0; S.cap = TYPES[S.type].cap + S.carryIn; S.fill = S.carryIn / S.cap; if (!S.keepTickets) S.tickets = new Map(); S.keepTickets = false; S.entries = []; S.lastBuyer = null; S.ext = 0; $('lastB').textContent = 'none yet';
     $('roundChip').textContent = 'Round '+S.round;
@@ -2263,8 +2264,20 @@ function startFly(){
   document.body.classList.remove('intro');                  // UI fades back in while the camera flies out
   flyFrom.copy(camera.position); flyLookFrom.copy(lookNow); flyFov0 = INTRO_FOV;
 }
+/** Every new round replays the full opening: back to the Ringmaster, he presents it, 3-2-1, fly out. */
+var introShown = false;
+function replayIntro(){
+  if (reduced || /[?&]tour=auto/.test(location.search) || INTRO.on || !introShown) return;
+  if (page !== 'gioca' || !$('gameModal').hidden || !$('nickModal').hidden || document.hidden || $('buyPop').classList.contains('on')) return;
+  if (typeof TOUR !== 'undefined' && TOUR.on) return;
+  INTRO_LINES[0][1] = S.type === 'oro' ? 'GOLD NIGHT! Round '+S.round+' has five SOL in the balloon.' : pick(['Round '+S.round+'! A fresh balloon is on its way.', 'Round '+S.round+'. New balloon, new hopium. Take your seats!', 'Ladies and degens, round '+S.round+' is about to begin!']);
+  for (var i = 1; i <= 3; i++) INTRO_LINES[i][1] = 'Next balloon in '+(4 - i)+'…';
+  INTRO.on = true; INTRO.t = 0; INTRO.stage = 'hold'; INTRO.ft = 0; INTRO.msg = -1; INTRO.snapped = false; INTRO.afterTut = false;
+  hintUntil = 0; speechX = null;
+  document.body.classList.add('intro');
+}
 function endIntro(){
-  INTRO.on = false; INTRO.stage = 'done'; setIK(1);
+  INTRO.on = false; INTRO.stage = 'done'; setIK(1); introShown = true;
   resize();                                                  // restores the normal field of view
   carousel.scale.setScalar(1); if (S.phase === 'scelta') carousel.visible = true;
   if (INTRO.afterTut) setTimeout(tutOpen, 400);
