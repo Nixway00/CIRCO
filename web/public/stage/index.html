@@ -245,6 +245,44 @@ nav.pages .sm{ display:none; }
   .statset .stat span{ font-size:10.5px; line-height:1.25; display:block; }
   .statset .stat:last-child{ grid-column:1 / -1; border-left:0 !important; border-top:1px solid var(--line); margin-top:8px; padding-top:8px !important; display:flex; justify-content:center !important; align-items:baseline; gap:8px; }
 }
+.jackpot{ font-size:12px; font-weight:700; letter-spacing:.04em; color:#1a1030; background:linear-gradient(90deg,#FFD34D,#FFB347,#FFD34D); background-size:200% 100%; animation:jpShine 3s linear infinite; padding:5px 12px; border-radius:999px; box-shadow:0 0 18px rgba(255,211,77,.45); }
+.jackpot b{ font-family:'Unbounded',sans-serif; }
+@keyframes jpShine{ to{ background-position:-200% 0; } }
+.showRow{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+#mCta .showRow{ grid-column:1 / -1; margin-top:0; }
+.showBtn{ justify-content:center; font-weight:600; height:46px; }
+.xmodal{ position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; background:rgba(3,7,22,.78); backdrop-filter:blur(6px); padding:16px; }
+.xmodal[hidden]{ display:none; }
+.optList{ display:flex; flex-direction:column; gap:8px; }
+.opt{ display:flex; align-items:center; gap:12px; width:100%; min-height:58px; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background:rgba(8,16,52,.7); color:var(--ink); font:inherit; text-align:left; cursor:pointer; }
+.opt:hover{ border-color:var(--lineHi); } .opt:disabled{ opacity:.45; cursor:default; }
+.opt .ico{ font-size:26px; width:34px; text-align:center; flex:none; }
+.opt .sw{ width:26px; height:26px; border-radius:50%; flex:none; box-shadow:0 0 12px currentColor; }
+.opt .txt{ flex:1; display:flex; flex-direction:column; gap:2px; } .opt .txt small{ color:var(--muted); font-size:12px; }
+.opt .pr{ font-family:'Unbounded',sans-serif; font-size:13px; white-space:nowrap; }
+.opt.mine{ border-color:var(--gold); box-shadow:0 0 16px rgba(255,211,77,.25); }
+#pickInfo{ margin:0; line-height:1.5; }
+#fxBanner{ position:fixed; top:74px; left:50%; transform:translate(-50%, -20px); z-index:12; padding:10px 18px; border-radius:999px; background:linear-gradient(90deg,#FF3D6E,#FFB347); color:#fff; font-weight:800; font-size:15px; opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; white-space:nowrap; max-width:92vw; overflow:hidden; text-overflow:ellipsis; box-shadow:0 8px 30px rgba(255,61,110,.4); }
+#fxBanner.on{ opacity:1; transform:translate(-50%, 0); }
+.teamPick{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.teamPick button{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px; min-height:80px; border-radius:14px; border:1px solid var(--line); background:rgba(8,16,52,.7); color:var(--ink); font-size:28px; cursor:pointer; }
+.teamPick button b{ font-size:14px; }
+.teamPick button[aria-checked="true"]{ border-color:var(--gold); background:rgba(255,211,77,.12); box-shadow:0 0 16px rgba(255,211,77,.25); }
+.teamBox{ margin:0 0 16px; padding:14px; border-radius:16px; border:1px solid var(--line); background:rgba(8,16,52,.6); }
+.teamBox h3{ margin:0 0 10px; font-family:'Unbounded',sans-serif; font-size:15px; }
+.teamBox .tbar{ display:flex; align-items:center; gap:10px; font-size:13px; }
+.teamBox .tbar i{ flex:1; height:12px; border-radius:99px; background:#B18CFF; overflow:hidden; display:block; }
+.teamBox .tbar em{ display:block; height:100%; background:#FF3D6E; }
+.teamStat .tbar{ display:flex; align-items:center; gap:8px; font-size:13px; }
+.teamStat .tbar b{ font-family:'Unbounded',sans-serif; font-size:13px; }
+.teamStat .tbar span{ white-space:nowrap; }
+.teamStat .tbar i{ flex:1; min-width:60px; height:8px; border-radius:99px; background:#B18CFF; overflow:hidden; display:block; }
+.teamStat .tbar em{ display:block; height:100%; background:#FF3D6E; border-radius:99px; transition:width .6s; }
+@media (max-width: 900px){
+  .statset .stat.teamStat{ grid-column:1 / -1; border-left:0 !important; border-top:1px solid var(--line); margin-top:8px; padding-top:8px !important; display:flex; flex-direction:column; gap:4px; }
+  .jackpot{ font-size:11px; }
+}
+@media (min-width: 901px){ .teamStat{ min-width:190px; } }
 #bpOdds{ font-size:13px; color:var(--cyan); text-align:center; min-height:18px; }
 .gameBtn{ width:100%; margin-top:10px; justify-content:center; font-weight:700; background:linear-gradient(90deg, rgba(255,61,110,.22), rgba(255,211,77,.22)); border-color:rgba(255,211,77,.45); }
 #mCta .gameBtn{ grid-column:1 / -1; margin-top:0; }
@@ -409,6 +447,7 @@ nav.pages .sm{ display:none; }
         <div class="small">The last ticket before the pop wins 5% of the prize.</div>
       </div>
       <button class="btn gameBtn" type="button" id="gameBtn">🎯 Shooting gallery</button>
+      <div class="showRow"><button class="btn showBtn" type="button" id="guessBtn">🔮 Guess next</button><button class="btn showBtn" type="button" id="fxBtn">🎆 Effects</button></div>
     </section>
     <section class="panel" id="chatPanel" style="flex:1; min-height:0">
       <div class="head"><h2>Live chat</h2><span class="small" id="chatCount">holders only</span></div>
@@ -422,6 +461,7 @@ nav.pages .sm{ display:none; }
     </section>
   </div>
   <div class="hud" aria-live="polite">
+    <div id="jackpotPill" class="jackpot" aria-live="polite">💰 MEGA JACKPOT <b id="jpAmt">0.00 SOL</b></div>
     <div id="hudTitle">Round 1</div>
     <div class="mSteps" id="mSteps" aria-hidden="true"><span data-p="scelta">Pick</span><span data-p="gonfiaggio">Inflate</span><span data-p="countdown">Countdown</span><span data-p="estrazione">Draw</span></div>
     <div id="hudBig">Picking the balloon</div>
@@ -432,6 +472,7 @@ nav.pages .sm{ display:none; }
     <button class="btn primary" type="button" id="mBuy">Buy tickets</button>
     <a class="btn linkbtn" href="#" id="mCoin" target="_blank" rel="noopener">Buy $CIRCO ↗</a>
     <button class="btn gameBtn" type="button" id="mGame">🎯 Shooting gallery · win tickets</button>
+    <div class="showRow"><button class="btn showBtn" type="button" id="mGuess">🔮 Guess next</button><button class="btn showBtn" type="button" id="mFx">🎆 Effects</button></div>
     <div id="mMe" aria-live="polite"><span>Your tickets <b id="mMeT">0 / 10</b></span><span>Odds <b id="mMeP">0%</b></span><span>If you win <b id="mMeW">0.95 SOL</b></span></div>
   </div>
   <footer class="stats">
@@ -440,6 +481,7 @@ nav.pages .sm{ display:none; }
       <div class="stat"><b id="sBuy">0.00 SOL</b><span>bought back</span></div>
       <div class="stat"><b id="sPrize">0.00 SOL</b><span>prizes paid</span></div>
       <div class="stat"><b id="sRounds">0</b><span>rounds played</span></div>
+      <div class="stat teamStat" id="teamStat"><div class="tbar"><span>🤡 <b id="tcP">50%</b></span><i><em id="tcBar" style="width:50%"></em></i><span><b id="taP">50%</b> 🤸</span></div><span id="teamL">Team battle · week ends in --</span></div>
       <div class="stat"><b id="sGala" style="color:var(--gold)">--:--:--</b><span id="sGalaL">gold guaranteed in</span></div>
     </div>
     <nav class="pages" aria-label="Site sections">
@@ -464,6 +506,10 @@ nav.pages .sm{ display:none; }
       <label for="nickIn">Your nickname</label>
       <div class="nickRow"><input id="nickIn" maxlength="16" placeholder="3 to 16 letters, numbers or _" pattern="[A-Za-z0-9_]{3,16}"><button class="btn primary" type="submit" id="nickSave">Save</button></div>
       <p class="small" id="nickHelp">Shown in the chat, the ticket list, the leaderboards, and when the Ringmaster announces the winner.</p>
+      <div class="xRow">
+        <div><b>Team</b><div class="small" id="teamState">No team yet.</div></div>
+        <button class="btn" type="button" id="teamBtn">Switch</button>
+      </div>
       <div class="xRow" id="xRow">
         <div><b>X account</b><div class="small" id="xState">Not linked. Link it and your @handle is shown instead of your nickname.</div></div>
         <button class="btn" type="button" id="xBtn">Link X</button>
@@ -493,11 +539,30 @@ nav.pages .sm{ display:none; }
     <form class="gBox" id="nickForm" autocomplete="off">
       <h2 id="nmTitle">Welcome to the circus!</h2>
       <p>Choose your nickname. It is how the Ringmaster will call you when you win.</p>
-      <div class="nickRow"><input id="nickIn2" maxlength="16" placeholder="3 to 16 letters, numbers or _" aria-label="Nickname"><button class="btn primary" type="submit" id="nickSave2">Join</button></div>
+      <div class="nickRow"><input id="nickIn2" maxlength="16" placeholder="3 to 16 letters, numbers or _" aria-label="Nickname"></div>
+      <p><b>Pick your team.</b> Every week the team that burns more wins bonus tickets.</p>
+      <div class="teamPick" role="radiogroup" aria-label="Team"><button type="button" data-team="clowns" role="radio" aria-checked="false">🤡<b>Clowns</b></button><button type="button" data-team="acrobats" role="radio" aria-checked="false">🤸<b>Acrobats</b></button></div>
+      <button class="btn primary" type="submit" id="nickSave2" style="height:50px">Join the circus</button>
       <p class="small">You can also link your X account later in Profile, and your @handle will be shown instead.</p>
       <button type="button" class="linkish" id="nickLater">Not now</button>
     </form>
   </section>
+  <section id="fxModal" class="xmodal" role="dialog" aria-modal="true" aria-labelledby="fxTitle" hidden>
+    <div class="gBox">
+      <div class="gHead"><h2 id="fxTitle">🎆 Effects</h2><button type="button" class="btn iconbtn2" data-close aria-label="Close">✕</button></div>
+      <p class="small">Burn a little $CIRCO and light up the stage for everyone watching, with your name on it.</p>
+      <div id="fxList" class="optList"></div>
+    </div>
+  </section>
+  <section id="pickModal" class="xmodal" role="dialog" aria-modal="true" aria-labelledby="pickTitle" hidden>
+    <div class="gBox">
+      <div class="gHead"><h2 id="pickTitle">🔮 Guess the next balloon</h2><button type="button" class="btn iconbtn2" data-close aria-label="Close">✕</button></div>
+      <p id="pickInfo"></p>
+      <div id="pickList" class="optList"></div>
+      <p class="small" id="pickNote"></p>
+    </div>
+  </section>
+  <div id="fxBanner" aria-live="polite"></div>
   <section id="gameModal" role="dialog" aria-modal="true" aria-labelledby="gTitle" hidden>
     <div class="gBox">
       <div class="gHead"><h2 id="gTitle">🎯 Shooting gallery</h2><button type="button" class="btn iconbtn2" id="gClose" aria-label="Close">✕</button></div>
@@ -1468,7 +1533,8 @@ function pageStorico(){
   });
   return h + '</tbody></table>';
 }
-function pageClassifiche(){
+function pageClassifiche(){ return teamSection() + pageClassificheInner(); }
+function pageClassificheInner(){
   var defs = { won:['SOL won', function(p){ return p.won; }, function(v){ return fmt(v)+' SOL'; }],
                burn:['Tokens burned', function(p){ return p.b; }, function(v){ return fmtBig(v); }],
                tickets:['Tickets bought', function(p){ return p.t; }, function(v){ return fmt(v,0); }],
@@ -1576,16 +1642,17 @@ $('xBtn').addEventListener('click', function(){
   parent.postMessage({ type: MYX ? 'circo-xunlink' : 'circo-xlink' }, '*');
 });
 function nickAsk(){ $('nickModal').hidden = false; $('nickIn2').value = ''; setTimeout(function(){ $('nickIn2').focus(); }, 50); }
-function nickSubmit(v, btn){
+function nickSubmit(v, btn, team){
   if (!/^[A-Za-z0-9_]{3,16}$/.test(v)){ toast('3 to 16 characters: letters, numbers or _.'); return false; }
-  if (LIVE){ btn.disabled = true; parent.postMessage({ type:'circo-nick', nick:v }, '*'); return true; }
+  if (LIVE){ btn.disabled = true; parent.postMessage({ type:'circo-nick', nick:v, team: team || '' }, '*'); return true; }
+  if (team){ SHOW.myTeam = team; SHOW.teamSetAt = Date.now(); renderTeams(); }
   var old = ME; MYNICK = v; ME = v;                        // demo: rename yourself locally
   if (S.tickets.has(old)){ S.tickets.set(v, S.tickets.get(old)); S.tickets.delete(old); }
   if (P.has(old)){ P.set(v, P.get(old)); P.delete(old); }
   $('connectBtn').textContent = v; renderTickets(false); toast('Welcome, '+v+'!'); $('nickModal').hidden = true;
   return true;
 }
-$('nickForm').addEventListener('submit', function(e){ e.preventDefault(); nickSubmit($('nickIn2').value.trim(), $('nickSave2')); });
+$('nickForm').addEventListener('submit', function(e){ e.preventDefault(); if (!pickedTeam && !SHOW.myTeam){ toast('Pick a team: Clowns or Acrobats.'); return; } nickSubmit($('nickIn2').value.trim(), $('nickSave2'), pickedTeam || SHOW.myTeam); });
 $('nickLater').addEventListener('click', function(){ $('nickModal').hidden = true; });
 $('nickBox').addEventListener('submit', function(e){ e.preventDefault(); nickSubmit($('nickIn').value.trim(), $('nickSave')); });
 $('sheetClose').addEventListener('click', function(){ openPage('gioca'); });
@@ -1694,8 +1761,8 @@ function enter(phase){
   var ty = TYPES[S.type];
   if (phase === 'scelta' && typeof ringmaster === 'function' && S.round > 1) ringmaster('Round '+S.round+'. Fresh balloon, fresh hopium.');
   if (phase === 'scelta') setTimeout(replayIntro, 60);
-  if (phase === 'scelta'){
-    S.type = pickType(); S.carryIn = S.carry || 0; S.carry = 0; S.cap = TYPES[S.type].cap + S.carryIn; S.fill = S.carryIn / S.cap; if (!S.keepTickets) S.tickets = new Map(); S.keepTickets = false; S.entries = []; S.lastBuyer = null; S.ext = 0; $('lastB').textContent = 'none yet';
+  if (phase === 'scelta'){ S.mega = false; S.megaWon = 0;
+    S.type = pickType(); settleDemoPick(); S.carryIn = S.carry || 0; S.carry = 0; S.cap = TYPES[S.type].cap + S.carryIn; S.fill = S.carryIn / S.cap; if (!S.keepTickets) S.tickets = new Map(); S.keepTickets = false; S.entries = []; S.lastBuyer = null; S.ext = 0; $('lastB').textContent = 'none yet';
     $('roundChip').textContent = 'Round '+S.round;
     $('popped').classList.remove('on'); $('tTitle').textContent = 'Round tickets';
     renderTickets(false);
@@ -1761,8 +1828,10 @@ function enter(phase){
     var main$ = S.cap*(1-BONUS), bonus$ = S.cap*BONUS;
     S.stats.prizes += S.cap; S.stats.rounds += 1;
     S.winnersList.unshift({ round:S.round, wallet:S.winner.wallet, prize:main$ });
+    if (!LIVE){ S.mega = Math.random() < 0.08 && SHOW.jackpot > 0.01; S.megaWon = S.mega ? SHOW.jackpot : 0; }
+    if (S.mega){ S.stats.prizes += S.megaWon; if (!LIVE){ SHOW.jackpot = 0; renderJackpot(); } setTimeout(function(){ playFx('fireworks'); playFx('goldrain'); }, 300); }
     renderWinners(); renderStats(); launchConfetti(); sfx('fanfare'); flash.color.setHex(0xffd34d); flash.intensity = 4;
-    say(S.winner.wallet === ME ? 'Congratulations, YOU! '+fmt(main$)+' SOL is yours!' : 'Congratulations, '+S.winner.wallet+'! '+fmt(main$)+' SOL is yours!', true, 6.5);
+    say(S.mega ? 'MEGA POP!!! '+(S.winner.wallet === ME ? 'YOU' : S.winner.wallet)+' takes '+fmt(main$ + S.megaWon)+' SOL with the Mega Jackpot!' : (S.winner.wallet === ME ? 'Congratulations, YOU! '+fmt(main$)+' SOL is yours!' : 'Congratulations, '+S.winner.wallet+'! '+fmt(main$)+' SOL is yours!'), true, 6.5);
     DIR.talk = 4;
     ringmaster(S.winner.wallet+' just took '+fmt(main$)+' SOL. Screenshot it, frame it, tell your mom.'+(S.lastBuyer ? ' '+S.lastBuyer+' sniped the last ticket for '+fmt(bonus$)+' SOL. Respect.' : ''));
     addFeed('Prize paid', '#5CE1FF', S.winner.wallet, fmt(main$)+' SOL', 'tx');
@@ -1808,7 +1877,7 @@ function applyLiveRound(r){
   if (r.phase === 'inflate'){ if (S.phase === 'gonfiaggio' || S.phase === 'scelta') S.fill = Math.min(0.999, (+r.collected_sol || 0) / S.cap); }
   if (r.phase === 'countdown'){ var newEnd = Date.parse(r.countdown_ends_at); if (S.cdEnds && newEnd > S.cdEnds + 20000 && S.phase === 'countdown'){ say(pick(LINES.extend), true); S.said10 = false; } S.cdEnds = newEnd; if (S.phase === 'gonfiaggio'){ S.fill = 1; enter('countdown'); } }
   if (r.phase === 'drawing' && (S.phase === 'gonfiaggio' || S.phase === 'countdown')) enter('esplosione');
-  if (r.phase === 'done'){ S.liveWinner = sh(r.winner_wallet); S.lastBuyer = sh(r.last_buyer) || S.lastBuyer; if (S.phase === 'gonfiaggio' || S.phase === 'countdown') enter('esplosione'); }
+  if (r.phase === 'done'){ S.mega = !!r.mega; S.megaWon = +r.jackpot_won || 0; S.liveWinner = sh(r.winner_wallet); S.lastBuyer = sh(r.last_buyer) || S.lastBuyer; if (S.phase === 'gonfiaggio' || S.phase === 'countdown') enter('esplosione'); }
   if (r.phase === 'postponed' && (S.phase === 'gonfiaggio' || S.phase === 'countdown')) enter('rinvio');
 }
 function liveClock(){
@@ -1860,6 +1929,14 @@ window.addEventListener('message', function(e){
   if (m.gameInfo){ G.price = m.gameInfo.price; G.shots = m.gameInfo.shots; G.chance = m.gameInfo.chance; if (G.state !== 'shooting') G.remaining = m.gameInfo.remaining; if (!$('gameModal').hidden && G.state === 'idle') gInfo(); }
   if (m.game){ gStartShooting(m.game); }
   if (m.gameError){ G.state = 'idle'; gInfo(); $('gInfo').innerHTML = m.gameError + '<br>' + $('gInfo').innerHTML; }
+  if (m.showCfg){ var sc = m.showCfg; if (sc.fxPrices) SHOW.fxPrices = sc.fxPrices; if (sc.pickPrice) SHOW.pickPrice = sc.pickPrice; if (sc.pickReturn) SHOW.pickReturn = sc.pickReturn; if (sc.weights){ KEYS.forEach(function(k){ if (sc.weights[T2B[k]] !== undefined) TYPES[k].w = sc.weights[T2B[k]]; }); } }
+  if (m.jackpot !== undefined){ SHOW.jackpot = +m.jackpot || 0; renderJackpot(); }
+  if (m.teams){ SHOW.teams.clowns = +m.teams.clowns || 0; SHOW.teams.acrobats = +m.teams.acrobats || 0; if (m.teams.ends_at) SHOW.teams.ends = Date.parse(m.teams.ends_at); SHOW.teams.last = m.teams.last_winner || null; renderTeams(); }
+  if (m.team !== undefined){ SHOW.myTeam = m.team || ''; SHOW.teamSetAt = m.teamSetAt ? Date.parse(m.teamSetAt) : 0; renderTeams(); }
+  if (m.myPick !== undefined){ SHOW.myPick = m.myPick ? { round: m.myPick.round_id, color: B2T[m.myPick.color], tickets: m.myPick.tickets_if_win } : null; if (!$('pickModal').hidden) renderPick(); }
+  if (m.pickResult && m.pickResult.id !== SHOW.lastPickResult){ SHOW.lastPickResult = m.pickResult.id; var pr = m.pickResult;
+    toast(pr.status === 'won' ? 'You guessed right! +'+pr.tickets_if_win+' tickets this round.' : pr.status === 'refunded' ? 'Forced balloon: your guess came back as 1 ticket.' : 'Wrong guess this time.'); if (pr.status === 'won') sfx('fanfare'); }
+  if (m.fx){ queueFx(m.fx.effect, m.fx.who); }
   if (m.pumpUrl){ PUMP_URL = m.pumpUrl; $('buyCoin').href = PUMP_URL; $('mCoin').href = PUMP_URL; $('buyCoin').target = '_blank'; }
   if (m.toast) toast(m.toast);
 });
@@ -2069,6 +2146,186 @@ $('gPlay').addEventListener('click', function(){
   }, 700);
 });
 
+/* ---------- show features: Mega Jackpot, effects, guesses, teams ---------- */
+var T2B = { verde:'green', blu:'blue', rosso:'red', oro:'gold' };
+var SHOW = { jackpot: 0, mega: false, megaWon: 0,
+  fxPrices: { fireworks:2000, confetti:2000, horn:3000, tomato:5000, goldrain:10000 },
+  pickPrice: 10000, pickReturn: 0.9, myPick: null, myTeam: '', teamSetAt: 0,
+  teams: { clowns: 0, acrobats: 0, ends: 0, last: null }, fxQ: [], fxNext: 0, lastPickResult: null };
+var FXDEF = [
+  ['fireworks', '🎆', 'Fireworks', 'A burst of fireworks over the stage'],
+  ['confetti',  '🎊', 'Confetti storm', 'Confetti rains on everyone'],
+  ['horn',      '📯', 'Air horn', 'HONK. The whole stage shakes'],
+  ['tomato',    '🍅', 'Tomato', 'Throw a tomato at the Ringmaster'],
+  ['goldrain',  '💰', 'Gold rain', 'Golden coins pour from the sky']
+];
+function renderJackpot(){ $('jpAmt').textContent = fmt(SHOW.jackpot)+' SOL'; }
+
+/* ----- stage effects ----- */
+var FW = [], TOM = null, SPLATS = [], GOLD = null;
+var fwMat = new THREE.PointsMaterial({ size: 0.14, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+function firework(x, y, z, hex){
+  var n = 110, pos = new Float32Array(n*3), col = new Float32Array(n*3), vel = [], c = new THREE.Color(hex);
+  for (var i = 0; i < n; i++){
+    pos[i*3] = x; pos[i*3+1] = y; pos[i*3+2] = z;
+    var a = Math.random()*Math.PI*2, b = Math.acos(2*Math.random() - 1), sp = 2.2 + Math.random()*1.6;
+    vel.push(new THREE.Vector3(Math.sin(b)*Math.cos(a)*sp, Math.cos(b)*sp, Math.sin(b)*Math.sin(a)*sp));
+    var k = 0.75 + Math.random()*0.25; col[i*3] = c.r*k; col[i*3+1] = c.g*k; col[i*3+2] = c.b*k;
+  }
+  var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  var m = new THREE.Points(g, fwMat.clone()); scene.add(m); FW.push({ m: m, v: vel, t: 0 });
+  sfx('pop');
+}
+function updateShow(dt){
+  FW = FW.filter(function(f){
+    f.t += dt; var a = f.m.geometry.attributes.position;
+    for (var i = 0; i < f.v.length; i++){ f.v[i].y -= 2.4*dt; f.v[i].multiplyScalar(1 - dt*0.9); a.array[i*3] += f.v[i].x*dt; a.array[i*3+1] += f.v[i].y*dt; a.array[i*3+2] += f.v[i].z*dt; }
+    a.needsUpdate = true; f.m.material.opacity = Math.max(0, 1 - f.t/1.8);
+    if (f.t > 1.8){ scene.remove(f.m); f.m.geometry.dispose(); f.m.material.dispose(); return false; }
+    return true;
+  });
+  if (TOM){
+    TOM.t += dt; var k = Math.min(1, TOM.t/0.75);
+    DIR.head.getWorldPosition(tmpV);
+    TOM.m.position.lerpVectors(TOM.from, tmpV, k); TOM.m.position.y += Math.sin(k*Math.PI)*1.2; TOM.m.rotation.x += dt*10;
+    if (k >= 1){
+      scene.remove(TOM.m);
+      var sp = new THREE.Mesh(new THREE.CircleGeometry(0.16, 16), new THREE.MeshBasicMaterial({ color: 0xd11a2a, transparent: true, depthWrite: false }));
+      sp.position.set((Math.random() - 0.5)*0.12, 0.05 + Math.random()*0.08, 0.36); sp.scale.set(1 + Math.random()*0.4, 0.8 + Math.random()*0.4, 1); sp.rotation.z = Math.random()*3;
+      DIR.head.add(sp); SPLATS.push({ m: sp, t: 0 });
+      sfx('pop'); shake = Math.max(shake, 0.12); DIR.talk = 3;
+      say(pick(['Hey! Who threw that?!', 'A tomato? In MY circus?!', TOM.who+', I saw that!']), true, 3);
+      TOM = null;
+    }
+  }
+  SPLATS = SPLATS.filter(function(s){ s.t += dt; if (s.t > 6){ s.m.material.opacity = Math.max(0, 1 - (s.t - 6)); } if (s.t > 7){ DIR.head.remove(s.m); s.m.geometry.dispose(); s.m.material.dispose(); return false; } return true; });
+  if (GOLD){
+    GOLD.t += dt;
+    for (var i = 0; i < GOLD.d.length; i++){ var c = GOLD.d[i]; c.p.addScaledVector(c.v, dt); c.v.y -= 3*dt; c.r.x += c.w*dt; c.r.y += c.w*0.7*dt;
+      if (c.p.y < 0.05){ c.p.y = 0.05; c.v.set(0, 0, 0); }
+      tmpQ.setFromEuler(c.r); tmpS.setScalar(1); tmpM.compose(c.p, tmpQ, tmpS); GOLD.mesh.setMatrixAt(i, tmpM); }
+    GOLD.mesh.instanceMatrix.needsUpdate = true;
+    if (GOLD.t > 4.5){ scene.remove(GOLD.mesh); GOLD = null; }
+  }
+  if (SHOW.fxQ.length && time >= SHOW.fxNext){ var e = SHOW.fxQ.shift(); SHOW.fxNext = time + 1.6; playFx(e.effect, e.who); }
+}
+function goldRain(){
+  if (GOLD) scene.remove(GOLD.mesh);
+  var n = 90, mesh = new THREE.InstancedMesh(coinGeo, coinMat, n); mesh.frustumCulled = false; scene.add(mesh);
+  var d = [];
+  for (var i = 0; i < n; i++) d.push({ p: new THREE.Vector3((Math.random() - 0.5)*9, 6 + Math.random()*4, (Math.random() - 0.5)*4), v: new THREE.Vector3(0, -Math.random()*2, 0), r: new THREE.Euler(Math.random()*3, Math.random()*3, 0), w: 4 + Math.random()*8 });
+  GOLD = { mesh: mesh, d: d, t: 0 }; sfx('coin'); setTimeout(function(){ sfx('coin'); }, 200); setTimeout(function(){ sfx('coin'); }, 450);
+}
+function fxBanner(text){ var b = $('fxBanner'); b.textContent = text; b.classList.add('on'); clearTimeout(fxBanner.t); fxBanner.t = setTimeout(function(){ b.classList.remove('on'); }, 2600); }
+function playFx(effect, who){
+  var d = FXDEF.find(function(x){ return x[0] === effect; }); if (!d) return;
+  if (who) fxBanner(d[1]+' '+who+' '+({ fireworks:'launched fireworks!', confetti:'started a confetti storm!', horn:'blew the air horn!', tomato:'threw a tomato at the Ringmaster!', goldrain:'made it rain gold!' })[effect]);
+  if (reduced && effect !== 'tomato') return;
+  if (effect === 'fireworks'){ var cols = [0xFF3D6E, 0xFFD34D, 0x5CE1FF, 0x2EF2A6, 0xB18CFF]; for (var i = 0; i < 5; i++) (function(i){ setTimeout(function(){ firework((Math.random() - 0.5)*6, 4.8 + Math.random()*1.8, -1 + Math.random()*1.5, cols[i % cols.length]); }, i*280); })(i); }
+  if (effect === 'confetti'){ launchConfetti(); sfx('fanfare'); }
+  if (effect === 'horn'){ if (audioOn && AC){ var t0 = AC.currentTime; tone(233, t0, 0.5, 'sawtooth', 0.2); tone(311, t0, 0.5, 'sawtooth', 0.12); tone(233, t0 + 0.55, 0.9, 'sawtooth', 0.2); } shake = Math.max(shake, 0.3); kick(0.7); }
+  if (effect === 'tomato'){
+    if (TOM) scene.remove(TOM.m);
+    var tm = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 14), new THREE.MeshStandardMaterial({ color: 0xd11a2a, roughness: 0.35 }));
+    var from = camera.position.clone().add(new THREE.Vector3(2.5, -1.2, -1)); tm.position.copy(from); scene.add(tm);
+    TOM = { m: tm, from: from, t: 0, who: who || 'someone' }; sfx('swoosh');
+  }
+  if (effect === 'goldrain') goldRain();
+}
+function queueFx(effect, who){ if (SHOW.fxQ.length < 12) SHOW.fxQ.push({ effect: effect, who: who }); }
+
+/* ----- effects window ----- */
+function openModal(id){ $(id).hidden = false; var b = $(id).querySelector('button:not([disabled])'); if (b) b.focus(); }
+document.querySelectorAll('.xmodal [data-close]').forEach(function(b){ b.addEventListener('click', function(){ b.closest('.xmodal').hidden = true; }); });
+document.querySelectorAll('.xmodal').forEach(function(m){ m.addEventListener('click', function(e){ if (e.target === m) m.hidden = true; }); });
+function renderFxList(){
+  $('fxList').innerHTML = FXDEF.map(function(d){ return '<button type="button" class="opt" data-fx="'+d[0]+'"><span class="ico">'+d[1]+'</span><span class="txt"><b>'+d[2]+'</b><small>'+d[3]+'</small></span><span class="pr">'+fmtBig(SHOW.fxPrices[d[0]] || 0)+'</span></button>'; }).join('');
+}
+function openFx(){ renderFxList(); openModal('fxModal'); }
+$('fxList').addEventListener('click', function(e){
+  var b = e.target.closest('[data-fx]'); if (!b) return;
+  var fx = b.dataset.fx; $('fxModal').hidden = true;
+  if (LIVE){ parent.postMessage({ type:'circo-fx', effect: fx }, '*'); toast('Confirm the burn in your wallet…'); return; }
+  if (!MYNICK){ nickAsk(); return; }
+  if (S.bal < (SHOW.fxPrices[fx] || 0)){ toast('Not enough $CIRCO.'); return; }
+  S.bal -= SHOW.fxPrices[fx] || 0; S.stats.burned += SHOW.fxPrices[fx] || 0; renderChatGate(); queueFx(fx, ME);
+});
+$('fxBtn').addEventListener('click', openFx); $('mFx').addEventListener('click', openFx);
+
+/* ----- guess the next balloon ----- */
+function pickOdds(){ var tot = KEYS.reduce(function(a, k){ return a + TYPES[k].w; }, 0), o = {}; KEYS.forEach(function(k){ o[k] = TYPES[k].w/tot; }); return o; }
+function pickPay(k){ return Math.max(1, Math.floor((SHOW.pickPrice/PRICE)*SHOW.pickReturn/pickOdds()[k])); }
+function pickOpen(){ return S.phase === 'gonfiaggio' || S.phase === 'countdown'; }
+function nextForced(){ return S.round + 1 <= 3 || S.galaDue; }
+function renderPick(){
+  var odds = pickOdds(), open = pickOpen(), mine = SHOW.myPick && SHOW.myPick.round === S.round ? SHOW.myPick : null;
+  $('pickInfo').innerHTML = 'Pick the colour of the <b>next</b> balloon. One guess per round, it burns <b>'+fmt(SHOW.pickPrice,0)+' $CIRCO</b>. Right guess = tickets for the next round.';
+  $('pickList').innerHTML = KEYS.map(function(k){
+    var col = '#'+TYPES[k].hex.toString(16).padStart(6, '0');
+    return '<button type="button" class="opt'+(mine && mine.color === k ? ' mine' : '')+'" data-pick="'+k+'" '+(!open || mine ? 'disabled' : '')+'><span class="sw" style="background:'+col+';color:'+col+'"></span><span class="txt"><b>'+NAMES[k]+'</b><small>'+Math.round(odds[k]*100)+'% chance</small></span><span class="pr">wins '+pickPay(k)+' 🎟</span></button>';
+  }).join('');
+  $('pickNote').textContent = mine ? 'Your guess: '+NAMES[mine.color]+'. It pays '+mine.tickets+' tickets if it comes up.'
+    : !open ? 'Guesses open while the balloon is inflating and during the countdown.'
+    : nextForced() ? 'Heads up: the next balloon is already decided by the rules (first rounds or the gold guarantee), so every guess just gets 1 ticket back.'
+    : 'The next balloon is drawn from this round\'s revealed seed, so anyone can check it.';
+}
+function openPick(){ renderPick(); openModal('pickModal'); }
+$('pickList').addEventListener('click', function(e){
+  var b = e.target.closest('[data-pick]'); if (!b || b.disabled) return;
+  var k = b.dataset.pick; $('pickModal').hidden = true;
+  if (LIVE){ parent.postMessage({ type:'circo-pick', round: S.liveRoundId, color: T2B[k] }, '*'); toast('Confirm the burn in your wallet…'); return; }
+  if (!MYNICK){ nickAsk(); return; }
+  if (S.bal < SHOW.pickPrice){ toast('Not enough $CIRCO.'); return; }
+  S.bal -= SHOW.pickPrice; S.stats.burned += SHOW.pickPrice; renderChatGate();
+  SHOW.myPick = { round: S.round, color: k, tickets: pickPay(k), forced: nextForced() };
+  toast('Guess saved: '+NAMES[k]+'. Good luck!');
+});
+$('guessBtn').addEventListener('click', openPick); $('mGuess').addEventListener('click', openPick);
+/** demo: settle my guess when the next balloon is picked */
+function settleDemoPick(){
+  var p = SHOW.myPick; if (!p || p.round !== S.round - 1) return;
+  SHOW.myPick = null;
+  var n = p.forced ? 1 : (p.color === S.type ? p.tickets : 0);
+  setTimeout(function(){
+    if (n){ buy(ME, n, true); toast(p.forced ? 'Forced balloon: your guess came back as 1 ticket.' : 'You guessed right! +'+n+' tickets this round.'); if (!p.forced) sfx('fanfare'); }
+    else toast('Wrong guess: it was the '+NAMES[S.type].toLowerCase()+'.');
+  }, 5200);
+}
+
+/* ----- teams ----- */
+var TEAMN = { clowns: '🤡 Clowns', acrobats: '🤸 Acrobats' };
+function renderTeams(){
+  var c = SHOW.teams.clowns, a = SHOW.teams.acrobats, tot = c + a, pc = tot ? Math.round(c/tot*100) : 50;
+  $('tcP').textContent = pc+'%'; $('taP').textContent = (100 - pc)+'%'; $('tcBar').style.width = pc+'%';
+  var left = Math.max(0, (SHOW.teams.ends || 0) - Date.now()), dd = Math.floor(left/86400000), hh = Math.floor(left%86400000/3600000);
+  $('teamL').textContent = (SHOW.myTeam ? 'You: '+TEAMN[SHOW.myTeam]+' · ' : 'Team battle · ')+'week ends in '+(dd ? dd+'d ' : '')+hh+'h';
+  $('teamState').textContent = SHOW.myTeam ? TEAMN[SHOW.myTeam]+'. You can switch once a week.' : 'No team yet.';
+  $('teamBtn').textContent = SHOW.myTeam ? 'Switch' : 'Choose';
+}
+function weekEnd(){ var d = new Date(), day = (d.getUTCDay() + 6) % 7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day + 7); }
+SHOW.teams.ends = weekEnd();
+var pickedTeam = '';
+document.querySelectorAll('.teamPick button').forEach(function(b){ b.addEventListener('click', function(){ pickedTeam = b.dataset.team; document.querySelectorAll('.teamPick button').forEach(function(x){ x.setAttribute('aria-checked', x === b ? 'true' : 'false'); }); }); });
+$('teamBtn').addEventListener('click', function(){
+  var next = SHOW.myTeam === 'clowns' ? 'acrobats' : 'clowns';
+  if (SHOW.myTeam && Date.now() - SHOW.teamSetAt < 7*86400000){ toast('You can switch team once a week.'); return; }
+  if (LIVE){ parent.postMessage({ type:'circo-team', team: next }, '*'); return; }
+  SHOW.myTeam = next; SHOW.teamSetAt = Date.now(); renderTeams(); toast('Welcome to the '+TEAMN[next]+'!');
+});
+function teamSection(){
+  var c = SHOW.teams.clowns, a = SHOW.teams.acrobats, tot = c + a, pc = tot ? Math.round(c/tot*100) : 50;
+  return '<section class="teamBox"><h3>Team battle this week</h3><div class="tbar big"><span>🤡 Clowns <b>'+fmtBig(c)+'</b></span><i><em style="width:'+pc+'%"></em></i><span><b>'+fmtBig(a)+'</b> Acrobats 🤸</span></div>'+
+    '<p class="small">Tokens burned by each team since Monday (UTC). Every member of the winning team who burned something this week gets bonus tickets for the next rounds.'+(SHOW.teams.last ? ' Last week: '+TEAMN[SHOW.teams.last]+' won.' : '')+'</p></section>';
+}
+renderJackpot(); renderTeams(); renderFxList();
+setInterval(renderTeams, 30000);
+/* demo: the crowd plays too */
+if (!LIVE) setInterval(function(){
+  if (S.phase === 'gonfiaggio'){ SHOW.jackpot += 0.004; renderJackpot(); }
+  SHOW.teams.clowns += Math.random()*40000; SHOW.teams.acrobats += Math.random()*38000;
+  if (Math.random() < 0.06 && page === 'gioca' && !INTRO.on) queueFx(FXDEF[Math.floor(Math.random()*FXDEF.length)][0], POOL[Math.floor(Math.random()*POOL.length)]);
+}, 1000);
+
 /* ---------- live chat (simulated in demo mode) ---------- */
 var CROWD = {
   scelta:['what are we getting', 'gold pls', 'rocket rocket rocket', 'dog round incoming', 'new balloon lfg'],
@@ -2125,6 +2382,7 @@ function market(dt){
 var clock = new THREE.Clock(), time = 0, lastStats = 0;
 function renderStatsThrottled(){ if (time - lastStats > 0.25){ lastStats = time; renderStats(); } }
 function update(dt){
+  updateShow(dt);
   if (S.phase === 'gonfiaggio'){
     if (!S.saidHalf && S.fill >= 0.5 && S.fill < 0.85 && say(pick(LINES.half))) S.saidHalf = true;
     if (!S.saidAlmost && S.fill >= 0.9 && say(pick(LINES.almost), true)) S.saidAlmost = true;
@@ -2195,7 +2453,7 @@ function update(dt){
     if (t >= DUR.estrazione) enter('vincitore');
   }
   else if (S.phase === 'vincitore'){
-    hud('Round '+S.round+' winner', S.winner.wallet, null, 'Wins '+fmt(S.cap*(1-BONUS))+' SOL with '+(S.tickets.get(S.winner.wallet)||0)+' of '+fmt(totalTickets(),0)+' tickets.'+(S.lastBuyer ? ' '+fmt(S.cap*BONUS)+' SOL last-ticket bonus to '+S.lastBuyer+'.' : ''));
+    hud((S.mega ? '💰 MEGA POP · ' : '')+'Round '+S.round+' winner', S.winner.wallet, null, 'Wins '+fmt(S.cap*(1-BONUS) + (S.mega ? S.megaWon : 0))+' SOL'+(S.mega ? ' with the Mega Jackpot' : '')+'. Tickets: '+(S.tickets.get(S.winner.wallet)||0)+' of '+fmt(totalTickets(),0)+' tickets.'+(S.lastBuyer ? ' '+fmt(S.cap*BONUS)+' SOL last-ticket bonus to '+S.lastBuyer+'.' : ''));
     if (t > DUR.vincitore - 0.7){ var f2 = Math.min(1,(t-(DUR.vincitore-0.7))/0.7); wheel.scale.setScalar(Math.max(0.001, 0.82*(1-ease(f2)))); }
     if (t >= DUR.vincitore){ wheel.visible = false; confetti.visible = false; if (!LIVE){ S.round++; enter('scelta'); } else if (S.pendingRound) startLiveRound(S.pendingRound); }
   }

@@ -1,4 +1,5 @@
 import { db } from './db.ts';
+import { teamWeekLive } from './show.ts';
 
 /**
  * Viewers never aggregate the whole database: the engine writes three small public rows
@@ -11,10 +12,12 @@ export async function refreshSnapshots() {
     db.from('round_summary').select('*').order('id', { ascending: false }).limit(30),
   ]);
   const now = new Date().toISOString();
+  const teams = await teamWeekLive().catch(() => null);
   const { error } = await db.from('snapshots').upsert([
     { key: 'stats', data: stats ?? {}, updated_at: now },
     { key: 'leaderboard', data: board ?? [], updated_at: now },
     { key: 'history', data: history ?? [], updated_at: now },
+    { key: 'teams', data: teams ?? {}, updated_at: now },
   ], { onConflict: 'key' });
   if (error) throw error;
 }

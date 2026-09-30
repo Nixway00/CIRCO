@@ -78,6 +78,12 @@ Personality (migration `0005_profiles.sql`):
 - [x] Optional "Link X" in Profile (OAuth 2.0 with PKCE, read-only): the @handle is shown instead of the nickname; one X account per wallet; unlink any time (migration `0006_x_link.sql`)
   - To switch it on: in the X developer portal enable OAuth 2.0 for the app (type Web App), add the callback `https://<site>/api/x/callback`, then set `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_REDIRECT_URI` in Vercel
 
+Show features (migration `0007_show_features.sql`):
+- [x] Mega Jackpot: 5% of every prize-wallet fee (`jackpot_share`) builds a jackpot shown on the stage; each draw has a 2% chance (`jackpot_chance`), decided by the same verifiable seed, to be a Mega Pop that also pays the whole jackpot to the winner
+- [x] Paid stage effects for everyone to see, with the buyer's name: fireworks, confetti storm, air horn, tomato at the Ringmaster, gold rain (`fx_prices`, pure burn)
+- [x] Teams: Clowns vs Acrobats, chosen with the nickname; weekly score = tokens burned by members; every active member of the winning team gets `team_reward_tickets` credits
+- [x] Guess the next balloon: one guess per round (`pick_price_tokens`), payout fixed at guess time with expected value `pick_return` of the stake; the next balloon is now drawn from the previous round's revealed seed, so anyone can check it; forced balloons (first rounds, gold guarantee) refund every guess as 1 ticket
+
 Still to do before launch:
 - [ ] **End-to-end test on a throwaway token** with tiny balloons (set `balloons` capacities to 0.05 SOL in `config`).
 - [ ] **Deploy:** engine on a VPS (for example with `pm2`), site on Vercel, Helius webhook pointed at the engine.

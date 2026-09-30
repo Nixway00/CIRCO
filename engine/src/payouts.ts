@@ -8,7 +8,7 @@ import { payoutNextStep } from './rules.ts';
 export const RESERVE_LAMPORTS = 10_000_000;   // 0.01 SOL
 const MIN_PAYOUT_LAMPORTS = 5_000;
 
-export interface PlannedPayout { kind: 'winner' | 'bonus'; wallet: string; lamports: number }
+export interface PlannedPayout { kind: 'winner' | 'bonus' | 'jackpot'; wallet: string; lamports: number }
 
 /** Written once per round; the unique (round, kind) key makes a second call a no-op. */
 export async function planPayouts(roundId: number, plan: PlannedPayout[]) {

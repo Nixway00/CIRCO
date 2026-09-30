@@ -12,7 +12,7 @@ export async function loadConfig(): Promise<Config> {
   return o as unknown as Config;
 }
 
-export type Round = RoundState & { carried_sol: number; winner_wallet: string | null; last_buyer: string | null; prize_sol: number | null; draw_total_tickets: number | null; forced_gala: boolean };
+export type Round = RoundState & { next_seed: string | null; mega: boolean; jackpot_won: number; carried_sol: number; winner_wallet: string | null; last_buyer: string | null; prize_sol: number | null; draw_total_tickets: number | null; forced_gala: boolean };
 
 function toRound(d: any): Round {
   return {
@@ -48,9 +48,16 @@ export async function ticketTotals(roundId: number, purchasesOnly = false): Prom
 }
 
 export async function prizeCollected(roundId: number, carried: number): Promise<number> {
-  const { data, error } = await db.from('fees').select('amount_sol').eq('round_id', roundId).eq('wallet', 'prize');
+  const { data, error } = await db.from('fees').select('amount_sol,jackpot_sol').eq('round_id', roundId).eq('wallet', 'prize');
   if (error) throw error;
-  return carried + data!.reduce((a, f) => a + Number(f.amount_sol), 0);
+  return carried + data!.reduce((a, f) => a + Number(f.amount_sol) - Number(f.jackpot_sol ?? 0), 0);   // the jackpot part feeds the Mega Jackpot
+}
+
+/** SOL waiting in the Mega Jackpot: every jackpot part ever received, minus what Mega Pops paid out. */
+export async function jackpotBalance(): Promise<number> {
+  const { data, error } = await db.from('public_stats').select('jackpot_sol').single();
+  if (error) throw error;
+  return Math.max(0, Number(data?.jackpot_sol ?? 0));
 }
 
 export interface AddResult { given: number; credited: number; duplicate: boolean }

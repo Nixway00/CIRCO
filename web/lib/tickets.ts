@@ -35,3 +35,13 @@ export async function buildGameTx(connection: Connection, owner: PublicKey, game
     .add(createBurnCheckedInstruction(ata, MINT, owner, amount, info.decimals))
     .add(new TransactionInstruction({ programId: MEMO_PROGRAM, keys: [], data: Buffer.from(`CIRCO-GAME:${gameId}`) }));
 }
+
+/** Any show burn: exactly `tokens` $CIRCO with a memo (effects "CIRCO-FX:…", guesses "CIRCO-PICK:…"). */
+export async function buildMemoBurnTx(connection: Connection, owner: PublicKey, tokens: number, memo: string) {
+  const MINT = mint();
+  const info = await getMint(connection, MINT);
+  const ata = getAssociatedTokenAddressSync(MINT, owner);
+  return new Transaction()
+    .add(createBurnCheckedInstruction(ata, MINT, owner, BigInt(tokens) * 10n ** BigInt(info.decimals), info.decimals))
+    .add(new TransactionInstruction({ programId: MEMO_PROGRAM, keys: [], data: Buffer.from(memo) }));
+}

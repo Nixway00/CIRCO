@@ -134,3 +134,40 @@ test('shooting gallery: deterministic, about 30% of shots hit, capped per day', 
   assert.equal(gameTicketsAllowed(3, 4, 5), 1);
   assert.equal(gameTicketsAllowed(2, 5, 5), 0);
 });
+
+import { seedFloat, jackpotPart, isMegaPop, balloonOdds, pickPayout, nextBalloonFromSeed, weekStart, teamWinner } from '../src/rules.ts';
+
+test('mega jackpot: fee split is exact, trigger follows the seed and needs a jackpot', () => {
+  assert.equal(jackpotPart(1, 0.05), 0.05);
+  assert.equal(jackpotPart(0.123456789, 0.05), 0.006172839);
+  let megas = 0;
+  for (let i = 0; i < 20000; i++) if (isMegaPop('seed' + i, 0.02, 3)) megas++;
+  assert.ok(megas > 300 && megas < 500, `megas ${megas}`);
+  assert.equal(isMegaPop('x', 1, 0), false);
+});
+
+test('predictions: payouts keep the expected value under the stake', () => {
+  const odds = balloonOdds(cfg);
+  for (const k of Object.keys(odds) as (keyof typeof odds)[]) {
+    const pay = pickPayout(odds[k], 1, 0.9);
+    assert.ok(pay * odds[k] <= 0.9 + 1e-9 || pay === 1, `${k}: ${pay} x ${odds[k]}`);
+  }
+  assert.equal(pickPayout(0.05, 1, 0.9), 18);
+});
+
+test('next balloon: forced by the first rounds and the gold guarantee, otherwise from the seed', () => {
+  assert.deepEqual(nextBalloonFromSeed(1, false, cfg, 's'), { balloon: 'blue', forced: true });
+  assert.deepEqual(nextBalloonFromSeed(10, true, cfg, 's'), { balloon: 'gold', forced: true });
+  const a = nextBalloonFromSeed(10, false, cfg, 'same-seed'), b = nextBalloonFromSeed(10, false, cfg, 'same-seed');
+  assert.deepEqual(a, b); assert.equal(a.forced, false);
+  const seen = new Set<string>();
+  for (let i = 0; i < 500; i++) seen.add(nextBalloonFromSeed(10, false, cfg, 'seed' + i).balloon);
+  assert.equal(seen.size, 4);
+  assert.ok(seedFloat('a', 'x') !== seedFloat('a', 'y'));
+});
+
+test('teams: week starts Monday UTC, ties have no winner', () => {
+  assert.equal(new Date(weekStart(Date.UTC(2026, 9, 1, 15))).toISOString(), '2026-09-28T00:00:00.000Z');   // Thursday -> Monday
+  assert.equal(new Date(weekStart(Date.UTC(2026, 9, 5, 0))).toISOString(), '2026-10-05T00:00:00.000Z');   // Monday itself
+  assert.equal(teamWinner(5, 3), 'clowns'); assert.equal(teamWinner(1, 9), 'acrobats'); assert.equal(teamWinner(2, 2), null);
+});

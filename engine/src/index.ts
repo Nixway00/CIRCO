@@ -3,8 +3,10 @@
 import express from 'express';
 import { randomBytes } from 'node:crypto';
 import { env } from './env.ts';
-import { db, loadConfig, openRound, drawingRound, ticketTotals, prizeCollected, type Round } from './db.ts';
-import { pickBalloon, isGalaDue, step, commit, drawSeed, pickWinner, lastBuyer, payoutPlan, overflowOnFull, feeTargetsCurrentRound, LAMPORTS, type Config, type BalloonKey } from './rules.ts';
+import { db, loadConfig, openRound, drawingRound, ticketTotals, prizeCollected, jackpotBalance, type Round } from './db.ts';
+import { isGalaDue, step, commit, drawSeed, pickWinner, lastBuyer, payoutPlan, overflowOnFull, feeTargetsCurrentRound, jackpotPart, isMegaPop, nextBalloonFromSeed, LAMPORTS, type Config, type BalloonKey } from './rules.ts';
+import { processFx, processPick, settlePredictions, settleTeamWeek } from './show.ts';
+import { readBurn } from './chain.ts';
 import { closingBlock } from './chain.ts';
 import { planPayouts, settlePayouts } from './payouts.ts';
 import { processBurn, grantCredits } from './tickets.ts';
@@ -43,7 +45,10 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   const { data: lastGold, error: gErr } = await db.from('rounds').select('started_at').eq('balloon', 'gold').order('id', { ascending: false }).limit(1).maybeSingle();
   if (gErr) throw gErr;
   const galaDue = isGalaDue(Date.now(), lastGold ? Date.parse(lastGold.started_at) : null, cfg.gala_check_utc_hour);
-  const balloon: BalloonKey = pickBalloon((count ?? 0) + 1, galaDue, cfg, Math.random);
+  // the previous round's revealed seed draws this balloon, so guesses on it can be checked by anyone
+  const { data: prev } = await db.from('rounds').select('id,next_seed').in('phase', ['done', 'postponed']).order('id', { ascending: false }).limit(1).maybeSingle();
+  const pick = nextBalloonFromSeed((count ?? 0) + 1, galaDue, cfg, prev?.next_seed ?? null);
+  const balloon: BalloonKey = pick.balloon;
 
   // SOL that overflowed full balloons is added to what this balloon starts with
   const pending = await must(db.from('rounds').select('id,overflow_sol').eq('overflow_pending', true));
@@ -67,6 +72,7 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
     for (const t of totals) await db.rpc('add_tickets', { p_round: round.id, p_wallet: t.wallet, p_count: t.tickets, p_kind: 'carried', p_burn_tx: null, p_tokens: '0', p_cap: 1_000_000 });
   }
   await grantCredits(round.id, cfg);
+  if (prev) await settlePredictions(prev.id, round.id, balloon, pick.forced, cfg);
   await ringmaster(balloon === 'gold' ? 'GOLD TROPHY. Five SOL. Seatbelts on, degens, it is gala night.' : `Round ${round.id}. Fresh balloon, fresh hopium.`);
   console.log(`round ${round.id} started: ${balloon}, carried ${carried} SOL`);
 }
@@ -105,7 +111,9 @@ async function tick() {
       await ringmaster(`Not enough tickets yet. One more minute (${action.extensions} of ${cfg.max_extensions}).`);
     }
     if (action.type === 'postpone') {
-      await ok(db.from('rounds').update({ phase: 'postponed', ended_at: new Date().toISOString() }).eq('id', r.id));
+      const pb = await closingBlock();
+      const psec = await must(db.from('round_secrets').select('secret').eq('round_id', r.id).single());
+      await ok(db.from('rounds').update({ phase: 'postponed', ended_at: new Date().toISOString(), close_slot: pb.slot, close_blockhash: pb.blockhash, seed_secret: psec.secret, next_seed: drawSeed(psec.secret, pb.blockhash, r.id) }).eq('id', r.id));
       await ringmaster('Not enough tickets. The balloon flies to the next round, and so does your hopium.');
       await startRound({ carried_sol: r.capacity_sol, carryTicketsFrom: r.id, postpone_streak: r.postpone_streak + 1 });
     }
@@ -126,12 +134,16 @@ async function continueDraw(r: Round, forced = false) {
     const { slot, blockhash } = await closingBlock();
     const sec = await must(db.from('round_secrets').select('secret').eq('round_id', r.id).single());
     const totals = await ticketTotals(r.id);
-    const win = pickWinner(totals, drawSeed(sec.secret, blockhash, r.id));
+    const seed = drawSeed(sec.secret, blockhash, r.id);
+    const win = pickWinner(totals, seed);
+    const jackpot = await jackpotBalance();
+    const mega = isMegaPop(seed, cfg.jackpot_chance ?? 0, jackpot);
     const last = lastBuyer(await ticketTotals(r.id, true));
     await ok(db.from('rounds').update({
       close_slot: slot, close_blockhash: blockhash, seed_secret: sec.secret, winner_wallet: win.wallet,
       winner_tickets: totals.find(t => t.wallet === win.wallet)?.tickets ?? 0, last_buyer: last,
       prize_sol: r.capacity_sol, draw_total_tickets: win.total,
+      next_seed: seed, mega, jackpot_won: mega ? jackpot : 0,
     }).eq('id', r.id).is('winner_wallet', null));
     const stored = await drawingRound();
     if (!stored || !stored.winner_wallet) return;
@@ -140,18 +152,20 @@ async function continueDraw(r: Round, forced = false) {
     await planPayouts(r.id, [
       { kind: 'winner', wallet: r.winner_wallet!, lamports: plan.winner },
       ...(r.last_buyer ? [{ kind: 'bonus' as const, wallet: r.last_buyer, lamports: plan.bonus }] : []),
+      ...(r.mega && r.jackpot_won > 0 ? [{ kind: 'jackpot' as const, wallet: r.winner_wallet!, lamports: Math.floor(Number(r.jackpot_won) * LAMPORTS) }] : []),
     ]);
+    if (r.mega) await ringmaster(`MEGA POP!!! The Mega Jackpot of ${Number(r.jackpot_won).toFixed(2)} SOL goes to the winner too!`);
     await ringmaster(`${forced ? 'Three postponements in a row, so we draw anyway. ' : ''}The wheel has spoken. Paying out now…`);
   }
 
   if (!(await settlePayouts(r.id))) return;   // try again next tick
 
   const payouts = await must(db.from('payouts').select('kind,signature,lamports').eq('round_id', r.id));
-  const w = payouts.find(p => p.kind === 'winner'), b = payouts.find(p => p.kind === 'bonus');
+  const w = payouts.find(p => p.kind === 'winner'), b = payouts.find(p => p.kind === 'bonus'), jp = payouts.find(p => p.kind === 'jackpot');
   await ok(db.from('rounds').update({
     phase: 'done', ended_at: new Date().toISOString(), winner_payout_tx: w?.signature ?? null, bonus_payout_tx: b?.signature ?? null,
   }).eq('id', r.id).eq('phase', 'drawing'));
-  const won = sol(Number(w?.lamports ?? 0));
+  const won = sol(Number(w?.lamports ?? 0) + Number(jp?.lamports ?? 0));
   const winnerName = await nameOf(r.winner_wallet), lastName = await nameOf(r.last_buyer);
   await ringmaster(`Congratulations, ${winnerName}! ${won} SOL is yours. Screenshot it, frame it, tell your mom.`);
   postPop(`POP. Round ${r.id}: congratulations ${winnerName}, ${won} SOL with ${r.draw_total_tickets ?? 0} tickets in play.${r.last_buyer ? ` Last-ticket bonus to ${lastName}.` : ''} $CIRCO, the 24/7 memecoin circus.`)
@@ -183,7 +197,8 @@ app.post('/helius', async (req, res) => {
     for (const ev of events) {
       for (const nt of ev.nativeTransfers ?? []) {
         if (nt.toUserAccount === env.PRIZE_WALLET_ADDRESS && nt.amount > 0) {
-          await db.from('fees').upsert({ tx: ev.signature, wallet: 'prize', amount_sol: nt.amount / LAMPORTS, round_id: feeRound }, { onConflict: 'tx', ignoreDuplicates: true });
+          const amount = nt.amount / LAMPORTS;
+          await db.from('fees').upsert({ tx: ev.signature, wallet: 'prize', amount_sol: amount, jackpot_sol: jackpotPart(amount, cfg.jackpot_share ?? 0), round_id: feeRound }, { onConflict: 'tx', ignoreDuplicates: true });
         }
       }
       if (ev.type === 'SWAP' && ev.feePayer) {
@@ -192,8 +207,7 @@ app.post('/helius', async (req, res) => {
         await db.from('trades').upsert({ tx: ev.signature, wallet: ev.feePayer, side, amount_sol: amt }, { onConflict: 'tx', ignoreDuplicates: true });
       }
       if ((ev.instructions ?? []).some((i: any) => MEMO_PROGRAMS.has(i.programId))) {
-        processBurn(ev.signature, cfg).catch(() => {});         // not a ticket burn, or already counted: ignore
-        settleGameFromBurn(ev.signature, cfg).catch(() => {});  // not a game burn, or already played: ignore
+        routeBurn(ev.signature).catch(() => {});   // not one of ours, or already counted: ignore
       }
     }
   } catch (e) { console.error('webhook failed', e); return res.status(500).end(); }   // Helius retries
@@ -210,6 +224,23 @@ app.post('/games/play', async (req, res) => {
   try { res.json(await playGame(String(req.body.id), String(req.body.signature), cfg)); } catch (e) { res.status(400).json({ error: (e as Error).message }); }
 });
 
+/** Every memo burn goes to the right handler by its prefix; each handler is idempotent. */
+async function routeBurn(signature: string) {
+  const memo = (await readBurn(signature)).memo ?? '';
+  if (memo.startsWith('CIRCO-GAME:')) return settleGameFromBurn(signature, cfg);
+  if (memo.startsWith('CIRCO-FX:')) return processFx(signature, cfg);
+  if (memo.startsWith('CIRCO-PICK:')) return processPick(signature, cfg);
+  if (memo.startsWith('CIRCO:')) return processBurn(signature, cfg);
+}
+app.post('/fx/confirm', async (req, res) => {
+  if (req.get('x-engine-secret') !== env.ENGINE_API_SECRET) return res.status(401).end();
+  try { res.json(await processFx(String(req.body.signature), cfg)); } catch (e) { res.status(400).json({ error: (e as Error).message }); }
+});
+app.post('/picks/confirm', async (req, res) => {
+  if (req.get('x-engine-secret') !== env.ENGINE_API_SECRET) return res.status(401).end();
+  try { res.json(await processPick(String(req.body.signature), cfg)); } catch (e) { res.status(400).json({ error: (e as Error).message }); }
+});
+
 app.get('/health', (_req, res) => res.json({ ok: true, busy }));
 
 // ---------- boot ----------
@@ -217,6 +248,7 @@ cfg = (await loadConfig()) as Config & GameConfig;
 setInterval(async () => { try { cfg = (await loadConfig()) as Config & GameConfig; } catch (e) { console.error('config reload failed', e); } }, 60_000);
 setInterval(tick, 1000);
 setInterval(() => { refreshSnapshots().catch(e => console.error('snapshots failed', e)); }, 15_000);
+setInterval(() => { settleTeamWeek(cfg).then(r => r && console.log('team week settled', r)).catch(e => console.error('team week failed', e)); }, 10 * 60_000);
 setInterval(() => { distributeCreatorFees().then(r => r && console.log('fees distributed', r)).catch(e => console.error('fee distribution failed', e)); }, 30_000);
 setInterval(() => { runBuyback().catch(e => console.error('buyback failed', e)); }, 10 * 60_000);
 refreshSnapshots().catch(() => {});

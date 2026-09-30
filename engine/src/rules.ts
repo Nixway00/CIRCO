@@ -17,6 +17,12 @@ export interface Config {
   mission_bonus_tickets: number;
   chat_min_tokens: number;
   balloons: Record<BalloonKey, BalloonDef>;
+  jackpot_share?: number;
+  jackpot_chance?: number;
+  fx_prices?: Record<string, number>;
+  team_reward_tickets?: number;
+  pick_price_tokens?: number;
+  pick_return?: number;
 }
 
 export type Phase = 'inflate' | 'countdown' | 'drawing' | 'done' | 'postponed';
@@ -188,4 +194,54 @@ export function gameOutcome(secret: string, burnSignature: string, shots: number
 /** Tickets a wallet can still win in games today; wins above it are simply not paid. */
 export function gameTicketsAllowed(hits: number, wonToday: number, dailyCap: number): number {
   return Math.max(0, Math.min(hits, dailyCap - wonToday));
+}
+
+// ---------- seeds reused for extra fair draws ----------
+/** A number in [0,1) derived from a round seed and a label, so one seed can drive several independent draws. */
+export function seedFloat(seed: string, label: string): number {
+  return createHash('sha256').update(`${seed}:${label}`).digest().readUInt32BE(0) / 0x1_0000_0000;
+}
+
+// ---------- Mega Jackpot ----------
+/** Part of every prize-wallet fee that feeds the jackpot instead of the balloon. */
+export function jackpotPart(feeSol: number, share: number): number {
+  return Math.floor(feeSol * share * LAMPORTS) / LAMPORTS;
+}
+/** A draw is a Mega Pop when its seed says so and there is something in the jackpot. */
+export function isMegaPop(seed: string, chance: number, jackpotSol: number): boolean {
+  return jackpotSol >= 0.001 && seedFloat(seed, 'mega') < chance;
+}
+
+// ---------- next-balloon predictions ----------
+/** Chance of each colour coming up, from the configured weights. */
+export function balloonOdds(cfg: Config): Record<BalloonKey, number> {
+  const keys = Object.keys(cfg.balloons) as BalloonKey[];
+  const total = keys.reduce((a, k) => a + cfg.balloons[k].weight, 0);
+  return Object.fromEntries(keys.map(k => [k, cfg.balloons[k].weight / total])) as Record<BalloonKey, number>;
+}
+/**
+ * Tickets paid for a right guess, for a stake worth `stakeTickets` tickets. Expected value stays at
+ * `returnRate` of the stake (under 1), so guessing never beats simply buying tickets.
+ */
+export function pickPayout(chance: number, stakeTickets: number, returnRate: number): number {
+  return Math.max(1, Math.floor((stakeTickets * returnRate) / chance));
+}
+/** The next balloon, drawn from the previous round's revealed seed (or forced by the first rounds / gold guarantee). */
+export function nextBalloonFromSeed(roundNumber: number, galaDue: boolean, cfg: Config, seed: string | null): { balloon: BalloonKey; forced: boolean } {
+  if (roundNumber <= cfg.first_blue_rounds) return { balloon: 'blue', forced: true };
+  if (galaDue) return { balloon: 'gold', forced: true };
+  const r = seed ? seedFloat(seed, 'balloon') : Math.random();
+  return { balloon: pickBalloon(roundNumber, false, cfg, () => r), forced: false };
+}
+
+// ---------- teams ----------
+export type Team = 'clowns' | 'acrobats';
+/** Monday 00:00 UTC of the week containing `ms`. */
+export function weekStart(ms: number): number {
+  const d = new Date(ms); const day = (d.getUTCDay() + 6) % 7;
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day);
+}
+export function teamWinner(clowns: number, acrobats: number): Team | null {
+  if (clowns === acrobats) return null;
+  return clowns > acrobats ? 'clowns' : 'acrobats';
 }
