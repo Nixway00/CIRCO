@@ -166,7 +166,8 @@ body.livemode #liveBar{ display:flex; }
 #speech{ position:fixed; left:0; top:0; z-index:9; display:none; width:min(250px, 56vw); padding:14px 16px; border-radius:22px; background:#FFFFFF; color:#0a1033;
   box-shadow:0 10px 30px rgba(0,0,0,.35); transform-origin:0% 100%; pointer-events:none; will-change:transform; }
 #speech.on{ display:block; }
-#speech::before{ content:""; position:absolute; left:-14px; bottom:18px; width:26px; height:22px; background:#FFFFFF; clip-path:polygon(100% 0, 0 100%, 100% 70%); }
+#speech.above::before{ left:22px; bottom:-30px; width:34px; height:34px; clip-path:polygon(0 0, 100% 0, 18% 100%); }
+#speech::before{ content:""; position:absolute; left:-26px; bottom:-22px; width:48px; height:40px; background:#FFFFFF; clip-path:polygon(60% 0, 0 100%, 100% 30%); }
 #speech p{ margin:0; font-family:'Unbounded',sans-serif; font-weight:600; font-size:clamp(15px, 4.2vw, 19px); line-height:1.35; }
 #speech.pop p{ animation:speechPop .35s cubic-bezier(.3,1.6,.5,1); }
 @keyframes speechPop{ 0%{ transform:scale(.6); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
@@ -962,8 +963,10 @@ var DIR = (function(){
   [-1, 1].forEach(function(sd){
     var ls = new THREE.Shape(); ls.moveTo(0, 0); ls.lineTo(sd*0.1, 0.02); ls.lineTo(sd*0.05, 0.3); ls.lineTo(0, 0.32); ls.lineTo(0, 0);
     var lap = ext(ls, 0.015, gold, torso); lap.position.set(sd*0.1, 0.26, 0.262); lap.rotation.set(-0.3, sd*0.35, 0);
-    var sh = M(new THREE.SphereGeometry(0.11, 20, 14), coat, sd*0.27, 0.54, 0, torso); sh.scale.set(1, 0.8, 1);
-    var ep = M(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 20), gold, sd*0.28, 0.61, 0, torso); ep.rotation.z = sd*0.25;
+    var sh = M(new THREE.SphereGeometry(0.12, 22, 16), coat, sd*0.3, 0.52, 0, torso); sh.scale.set(1, 0.85, 1);
+    var epg = new THREE.Group(); epg.position.set(sd*0.33, 0.6, 0); epg.rotation.z = sd*-0.35; torso.add(epg);
+    var ep = M(new THREE.CylinderGeometry(0.115, 0.12, 0.035, 24), gold, 0, 0, 0, epg);
+    for (var fr = 0; fr < 9; fr++){ var fa = (fr/8 - 0.5)*2.4; M(new THREE.CylinderGeometry(0.012, 0.012, 0.075, 6), gold, Math.sin(fa)*0.115*sd*-1 + sd*0.0, -0.04, Math.cos(fa)*0.115, epg); }
   });
   var belt = M(new THREE.TorusGeometry(0.3, 0.018, 10, 60), neon, 0, 0.1, 0, torso); belt.rotation.x = Math.PI/2;
   /* tailcoat tails */
@@ -1020,28 +1023,31 @@ var DIR = (function(){
   var star = ext(st, 0.01, gold, hat); star.position.set(0, 0.09, 0.196);
   /* arms */
   function arm(sd){
-    // shoulder pivot sits just outside the barrel coat so the arm never sinks into the body
-    var sh = new THREE.Group(); sh.position.set(sd*0.345, 0.5, 0.01); torso.add(sh);
-    M(new THREE.SphereGeometry(0.095, 20, 16), coat, 0, 0, 0, sh);                                   // puffed shoulder
-    var up = lathe([[0,0.02],[0.088,0],[0.084,-0.12],[0.078,-0.26],[0.072,-0.33],[0,-0.33]], coat, 24); sh.add(up);
-    var el = new THREE.Group(); el.position.y = -0.33; sh.add(el);
-    M(new THREE.SphereGeometry(0.074, 18, 14), coat, 0, 0, 0, el);                                   // elbow
-    var fo = lathe([[0,0],[0.072,0],[0.07,-0.12],[0.066,-0.24],[0,-0.24]], coat, 24); el.add(fo);
-    var cuff = M(new THREE.TorusGeometry(0.068, 0.022, 10, 28), gold, 0, -0.25, 0, el); cuff.rotation.x = Math.PI/2;
-    var hand = new THREE.Group(); hand.position.set(0, -0.33, 0.005); el.add(hand);
-    var palm = M(new THREE.SphereGeometry(0.068, 20, 16), cream, 0, 0, 0, hand); palm.scale.set(1, 1.05, 0.72);
-    for (var f = 0; f < 4; f++){                                                                     // glove fingers
-      var fx = (f - 1.5)*0.03;
-      var fg = M(new THREE.CylinderGeometry(0.017, 0.016, 0.06, 10), cream, fx, -0.07, 0.012, hand);
-      M(new THREE.SphereGeometry(0.017, 10, 8), cream, fx, -0.1, 0.012, hand);
+    var sh = new THREE.Group(); sh.position.set(sd*0.36, 0.5, 0.01); torso.add(sh);
+    var up = lathe([[0,0.04],[0.1,0.02],[0.098,-0.1],[0.09,-0.22],[0.085,-0.3],[0,-0.3]], coat, 28); sh.add(up);
+    var el = new THREE.Group(); el.position.y = -0.3; sh.add(el);
+    M(new THREE.SphereGeometry(0.088, 20, 16), coat, 0, 0, 0, el);
+    var fo = lathe([[0,0],[0.085,0],[0.088,-0.1],[0.1,-0.19],[0.108,-0.23],[0,-0.23]], coat, 28); el.add(fo);     // bell sleeve
+    var trim = M(new THREE.TorusGeometry(0.104, 0.018, 10, 30), gold, 0, -0.225, 0, el); trim.rotation.x = Math.PI/2;
+    var ruff = M(new THREE.CylinderGeometry(0.075, 0.09, 0.05, 20), cream, 0, -0.255, 0, el);                        // shirt cuff
+    var hand = new THREE.Group(); hand.position.set(0, -0.35, 0.01); el.add(hand);
+    var palm = M(new THREE.SphereGeometry(0.095, 22, 18), cream, 0, 0, 0, hand); palm.scale.set(1, 1.05, 0.75);
+    for (var f = 0; f < 4; f++){
+      var fx = (f - 1.5)*0.042;
+      M(new THREE.CylinderGeometry(0.024, 0.023, 0.07, 12), cream, fx, -0.09, 0.015, hand);
+      M(new THREE.SphereGeometry(0.024, 12, 10), cream, fx, -0.125, 0.015, hand);
     }
-    var th = M(new THREE.CylinderGeometry(0.018, 0.017, 0.055, 10), cream, sd*-0.07, -0.02, 0.03, hand); th.rotation.z = sd*0.9;
+    var th = M(new THREE.CylinderGeometry(0.026, 0.024, 0.07, 12), cream, sd*-0.095, -0.015, 0.04, hand); th.rotation.z = sd*0.9;
+    M(new THREE.SphereGeometry(0.026, 12, 10), cream, sd*-0.125, 0.005, 0.04, hand);
     return { sh:sh, el:el, hand:hand };
   }
   var L = arm(-1), Rt = arm(1);
-  var pin = new THREE.Group(); pin.position.set(0, -0.36, 0.05); Rt.el.add(pin);
-  M(new THREE.CylinderGeometry(0.012, 0.003, 0.78, 12), new THREE.MeshStandardMaterial({ color:0xdfe8ff, metalness:1, roughness:0.12 }), 0, 0.33, 0, pin);
-  M(new THREE.SphereGeometry(0.065, 20, 16), PM({ color:0xff3d6e, emissive:0xff3d6e, emissiveIntensity:0.3 }), 0, 0.73, 0, pin);
+  var pin = new THREE.Group(); pin.position.set(0, -0.35, 0.06); Rt.el.add(pin);
+  var steel = new THREE.MeshStandardMaterial({ color:0xeef3ff, metalness:1, roughness:0.08, envMapIntensity:1.6 });
+  M(new THREE.CylinderGeometry(0.03, 0.03, 0.72, 16), steel, 0, 0.3, 0, pin);
+  M(new THREE.ConeGeometry(0.03, 0.16, 16), steel, 0, -0.14, 0, pin).rotation.x = Math.PI;
+  M(new THREE.SphereGeometry(0.11, 24, 18), PM({ color:0xff3d6e, emissive:0xff3d6e, emissiveIntensity:0.35 }), 0, 0.72, 0, pin);
+  M(new THREE.TorusGeometry(0.035, 0.012, 8, 20), gold, 0, 0.62, 0, pin).rotation.x = Math.PI/2;
   pin.rotation.z = -0.3;
   /* pedestal */
   M(new THREE.CylinderGeometry(0.55, 0.62, 0.06, 48), new THREE.MeshStandardMaterial({ color:0x0a1540, metalness:0.9, roughness:0.3 }), 0, 0.03, 0);
@@ -1184,7 +1190,7 @@ function resize(){
   if (typeof INTRO === 'undefined' || !INTRO.on) applyView(BASE_FOV, VIEW_SHIFT); else camera.updateProjectionMatrix();
   PORTRAIT = MOBILE_LAYOUT || camera.aspect < 0.95;
   if (typeof DIR !== 'undefined'){   // on phones the Ringmaster steps closer to the stage so both read bigger
-    if (PORTRAIT){ DIR.g.position.set(-1.25, 0, 1.9); DIR.g.scale.setScalar(0.72); DIR.g.rotation.y = 0.5; }
+    if (PORTRAIT){ DIR.g.position.set(-2.25, 0, 2.3); DIR.g.scale.setScalar(0.85); DIR.g.rotation.y = 0.75; }
     else { DIR.g.position.set(-2.25, 0, 2.3); DIR.g.scale.setScalar(0.85); DIR.g.rotation.y = 0.75; }
   }
 }
@@ -1848,11 +1854,11 @@ var INTRO_LINES = [[0.25, 'Welcome to $CIRCO, anon. Grab a seat, the show never 
 if (INTRO.on){ document.body.classList.add('intro'); document.documentElement.style.setProperty('--ik', '0'); }
 function normalCam(out){
   var o = reduced ? 0 : Math.sin(time*0.15)*0.5;
-  if (PORTRAIT) return out.set(camTarget.x + (camPos.x + o - camTarget.x)*0.74, camTarget.y + (camPos.y - camTarget.y)*0.8 - 0.1, camTarget.z + (camPos.z - camTarget.z)*0.74);
+  if (PORTRAIT) return out.set(camTarget.x - 0.55 + (camPos.x + o - camTarget.x)*1.12, camTarget.y + (camPos.y - camTarget.y)*1.05, camTarget.z + (camPos.z - camTarget.z)*1.12);
   return out.set(camPos.x + o, camPos.y, camPos.z);
 }
 function easeInOutCubic(k){ return k < 0.5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3)/2; }
-var mouthV = new THREE.Vector3(), speechX = null, speechY = null;
+var mouthV = new THREE.Vector3(), headTopV = new THREE.Vector3(), speechX = null, speechY = null;
 function introBubble(text){
   var sp = $('speech'); sp.classList.add('on'); $('speechText').textContent = text;
   sp.classList.remove('pop'); void sp.offsetWidth; sp.classList.add('pop');
@@ -1860,10 +1866,15 @@ function introBubble(text){
 }
 function placeSpeech(dt){
   // the tail tip sits just right of his mouth; the balloon grows up and to the right from there
-  DIR.mouth.getWorldPosition(mouthV); mouthV.project(camera);
+  // measure his head on screen, then park the balloon beside it (never on it), tail pointing at the mouth
   var r = renderer.domElement.getBoundingClientRect(), sp = $('speech');
+  DIR.mouth.getWorldPosition(mouthV); mouthV.project(camera);
   var mx = r.left + (mouthV.x*0.5 + 0.5)*r.width, my = r.top + (-mouthV.y*0.5 + 0.5)*r.height;
-  var x = Math.min(window.innerWidth - sp.offsetWidth - 10, mx + 26), y = Math.max(10, my - sp.offsetHeight + 12);
+  DIR.head.getWorldPosition(headTopV); headTopV.y += 0.3*DIR.g.scale.x; headTopV.project(camera);
+  var headPx = Math.abs(my - (r.top + (-headTopV.y*0.5 + 0.5)*r.height));
+  var x, y;
+  if (MOBILE_LAYOUT){ x = Math.max(10, Math.min(window.innerWidth - sp.offsetWidth - 10, mx - 30)); y = Math.max(10, my - headPx*2.9 - sp.offsetHeight); sp.classList.add('above'); }
+  else { x = Math.min(window.innerWidth - sp.offsetWidth - 10, mx + headPx*0.9 + 14); y = Math.max(10, my - sp.offsetHeight - headPx*0.35); sp.classList.remove('above'); }
   if (speechX === null){ speechX = x; speechY = y; }
   var k = Math.min(1, dt*10); speechX += (x - speechX)*k; speechY += (y - speechY)*k;
   sp.style.transform = 'translate(' + speechX.toFixed(1) + 'px,' + speechY.toFixed(1) + 'px)';
@@ -1930,7 +1941,7 @@ function frame(){
   if (tourOn) tourFrame(dt);
   if (INTRO.on && !tourOn){ introFrame(dt); camera.lookAt(lookNow); composer.render(); return; }
   var camSpeed = 1.6;
-  camera.position.lerp(tourOn ? (PORTRAIT ? new THREE.Vector3(-1.3, 1.6, 6.2) : new THREE.Vector3(-0.2, 1.9, 6.6)) : (PORTRAIT ? new THREE.Vector3(camTarget.x + (camPos.x + orbit - camTarget.x)*0.74, camTarget.y + (camPos.y - camTarget.y)*0.8 - 0.1, camTarget.z + (camPos.z - camTarget.z)*0.74) : new THREE.Vector3(camPos.x + orbit, camPos.y, camPos.z)), Math.min(1, dt*camSpeed));
+  camera.position.lerp(tourOn ? (PORTRAIT ? new THREE.Vector3(-1.3, 1.6, 6.2) : new THREE.Vector3(-0.2, 1.9, 6.6)) : (PORTRAIT ? new THREE.Vector3(camTarget.x - 0.55 + (camPos.x + orbit - camTarget.x)*1.12, camTarget.y + (camPos.y - camTarget.y)*1.05, camTarget.z + (camPos.z - camTarget.z)*1.12) : new THREE.Vector3(camPos.x + orbit, camPos.y, camPos.z)), Math.min(1, dt*camSpeed));
   lookNow.lerp(tourOn ? (PORTRAIT ? new THREE.Vector3(-1.9, 1.05, 2.1) : new THREE.Vector3(-1.4, 1.25, 1.6)) : camTarget, Math.min(1, dt*(camSpeed + 0.4)));
   if (shake > 0){ camera.position.x += (Math.random()-0.5)*shake; camera.position.y += (Math.random()-0.5)*shake; shake = Math.max(0, shake - dt*0.9); }
   camera.lookAt(lookNow);
