@@ -52,3 +52,11 @@ Found earlier, before the rehearsal, by starting the full engine once: the pump.
 ## Not covered here
 
 pump.fun's fee distribution and Jupiter buybacks exist only on mainnet. They are verified with a throwaway token on mainnet, running two clean rounds before launch (see [launch checklist](launch-checklist.md)).
+
+## Added after the rehearsal
+
+| Feature | Check | Result |
+| --- | --- | --- |
+| Lucky meter | Settled on the rehearsal's finished rounds, then settled again | Winners excluded, losing tickets counted, free tickets granted as credits, second run changed nothing ✓ |
+| Graduation gala | The one-time "graduated" claim run twice | Claimed once, the second attempt did nothing ✓ |
+| Smart buyback | Strategy unit tests (dip, deep dip, quiet support, drip, dust, chunks) | ✓ Live buys are checked in the mainnet rehearsal |

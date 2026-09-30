@@ -14,7 +14,7 @@ import { planPayouts, settlePayouts } from './payouts.ts';
 import { processBurn, grantCredits } from './tickets.ts';
 import { refreshSnapshots } from './snapshots.ts';
 import { startGame, playGame, settleGameFromBurn, cleanupGames, type GameConfig } from './games.ts';
-import { distributeCreatorFees } from './fees.ts';
+import { distributeCreatorFees, hasGraduated } from './fees.ts';
 import { runBuyback, samplePrice } from './buyback.ts';
 import { postPop } from './xpost.ts';
 
@@ -48,7 +48,8 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   const { data: lastGold, error: gErr } = await db.from('rounds').select('started_at').eq('balloon', 'gold').order('id', { ascending: false }).limit(1).maybeSingle();
   if (gErr) throw gErr;
   const { data: first } = await db.from('rounds').select('started_at').order('id', { ascending: true }).limit(1).maybeSingle();
-  const galaDue = isGalaDue(Date.now(), lastGold ? Date.parse(lastGold.started_at) : null, cfg.gala_check_utc_hour, first ? Date.parse(first.started_at) : null);
+  const gradGala = !!(cfg as any).graduated_at && !(await db.from('rounds').select('id').eq('grand_opening', true).limit(1).maybeSingle()).data;
+  const galaDue = gradGala || isGalaDue(Date.now(), lastGold ? Date.parse(lastGold.started_at) : null, cfg.gala_check_utc_hour, first ? Date.parse(first.started_at) : null);
   // the previous round's revealed seed draws this balloon, so guesses on it can be checked by anyone
   const { data: prev } = await db.from('rounds').select('id,next_seed').in('phase', ['done', 'postponed']).order('id', { ascending: false }).limit(1).maybeSingle();
   const pick = nextBalloonFromSeed((count ?? 0) + 1, galaDue, cfg, prev?.next_seed ?? null);
@@ -64,7 +65,7 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   const round = await must(db.from('rounds').insert({
     balloon, capacity_sol: cfg.balloons[balloon].capacity_sol + postponed, carried_sol: carried,
     collected_sol: carried, postpone_streak: opts.postpone_streak ?? 0, forced_gala: galaDue && balloon === 'gold',
-    seed_commit: commit(secret),
+    seed_commit: commit(secret), grand_opening: gradGala && balloon === 'gold',
   }).select().single());
   await ok(db.from('round_secrets').insert({ round_id: round.id, secret }));
   if (pending?.length) await ok(db.from('rounds').update({ overflow_pending: false }).in('id', pending.map(p => p.id)));
@@ -77,7 +78,8 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   }
   await grantCredits(round.id, cfg);
   if (prev) await settlePredictions(prev.id, round.id, balloon, pick.forced, cfg);
-  await ringmaster(balloon === 'gold' ? `GOLD TROPHY. ${cfg.balloons.gold.capacity_sol} SOL. Seatbelts on, degens, it is gala night.` : `Round ${round.id}. Fresh balloon, fresh hopium.`);
+  if (gradGala && balloon === 'gold') await ringmaster(`GRAND OPENING GALA! $CIRCO graduated, so tonight's balloon is a ${cfg.balloons.gold.capacity_sol} SOL gold trophy. Everybody in!`);
+  else await ringmaster(balloon === 'gold' ? `GOLD TROPHY. ${cfg.balloons.gold.capacity_sol} SOL. Seatbelts on, degens, it is gala night.` : `Round ${round.id}. Fresh balloon, fresh hopium.`);
   console.log(`round ${round.id} started: ${balloon}, carried ${carried} SOL`);
 }
 
@@ -172,6 +174,8 @@ async function continueDraw(r: Round, forced = false) {
   const won = sol(Number(w?.lamports ?? 0) + Number(jp?.lamports ?? 0));
   const winnerName = await nameOf(r.winner_wallet), lastName = await nameOf(r.last_buyer);
   await ringmaster(`Congratulations, ${winnerName}! ${won} SOL is yours. Screenshot it, frame it, tell your mom.`);
+  // the lucky meter: purchased tickets that did not win move every wallet toward a free ticket
+  await db.rpc('lucky_settle', { p_round: r.id, p_every: Number((cfg as any).lucky_every ?? 20) }).then(({ error }) => error && console.error('lucky meter failed', error.message));
   pumpChat?.say(`${r.mega ? 'MEGA POP! ' : ''}Round ${r.id}: congratulations ${winnerName}, ${won} SOL won on the $CIRCO balloon 🎈`);
   postPop(`POP. Round ${r.id}: congratulations ${winnerName}, ${won} SOL with ${r.draw_total_tickets ?? 0} tickets in play.${r.last_buyer ? ` Last-ticket bonus to ${lastName}.` : ''} $CIRCO, the 24/7 memecoin circus.`)
     .catch(e => console.error('X post failed', e));
@@ -265,6 +269,18 @@ setInterval(() => {
 }, 15 * 60_000);
 setInterval(() => { settleTeamWeek(cfg).then(r => r && console.log('team week settled', r)).catch(e => console.error('team week failed', e)); }, 10 * 60_000);
 setInterval(() => { distributeCreatorFees().then(r => r && console.log('fees distributed', r)).catch(e => console.error('fee distribution failed', e)); }, 30_000);
+// graduation: the moment $CIRCO leaves the bonding curve, the circus throws a party
+setInterval(async () => {
+  if ((cfg as any).graduated_at) return;
+  if (!(await hasGraduated())) return;
+  const now = new Date().toISOString();
+  const { data: done } = await db.from('config').update({ value: now as any, updated_at: now }).eq('key', 'graduated_at').eq('value', 'null' as any).select('key');
+  if (!done?.length) return;                                     // someone (a restart) already did it
+  (cfg as any).graduated_at = now;
+  await ringmaster('WE GRADUATED! $CIRCO just left the bonding curve for PumpSwap. The next balloon is a Grand Opening gold trophy!');
+  for (const [i, effect] of ['gala', 'fireworks', 'goldrain'].entries()) await db.from('effects').insert({ wallet: 'ringmaster', effect, burn_tx: `gala-${now}-${i}`, tokens: 0 });
+  postPop('$CIRCO just graduated to PumpSwap. The circus celebrates with a Grand Opening gold trophy balloon, live now. 🎪');
+}, 60_000);
 // buyback: price sampled every minute; buys land on dips, on quiet drifting charts, or as a slow drip
 setInterval(() => { samplePrice().catch(e => console.error('price sample failed', e.message)); }, 60_000);
 setInterval(() => {

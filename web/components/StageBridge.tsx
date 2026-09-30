@@ -48,7 +48,7 @@ export default function StageBridge() {
       supabase.from('rounds').select('*').order('id', { ascending: false }).limit(2),
       supabase.from('trades').select('tx,wallet,side,amount_sol').order('id', { ascending: false }).limit(12),
       supabase.from('chat_messages').select('id,wallet,body,is_ringmaster,source,author').order('id', { ascending: false }).limit(40),
-      supabase.from('config').select('key,value').in('key', ['ticket_price_tokens', 'chat_min_tokens', 'game_price_tokens', 'game_shots', 'game_hit_chance', 'game_daily_ticket_cap', 'fx_prices', 'pick_price_tokens', 'pick_return', 'balloons', 'jackpot_share', 'jackpot_chance', 'team_reward_tickets']),
+      supabase.from('config').select('key,value').in('key', ['ticket_price_tokens', 'chat_min_tokens', 'game_price_tokens', 'game_shots', 'game_hit_chance', 'game_daily_ticket_cap', 'fx_prices', 'pick_price_tokens', 'pick_return', 'balloons', 'jackpot_share', 'jackpot_chance', 'team_reward_tickets', 'lucky_every']),
     ]);
     const raw = Object.fromEntries((cfgRows ?? []).map(c => [c.key, c.value as any]));
     const cfgMap = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Number(v)]));
@@ -75,20 +75,22 @@ export default function StageBridge() {
       for (const x of t ?? []) { m.set(x.wallet, (m.get(x.wallet) ?? 0) + x.count); if (x.kind === 'burn' || x.kind === 'late') lastBuyer = x.wallet; }
       tickets = [...m].map(([wallet, n]) => ({ wallet, tickets: n }));
     }
-    let myPick: any = null, pickResult: any = null;
+    let myPick: any = null, pickResult: any = null, lucky: any = null;
     if (meRef.current && round) {
       const [{ data: cur }, { data: last }] = await Promise.all([
         supabase.from('predictions').select('round_id,color,tickets_if_win').eq('wallet', meRef.current).eq('round_id', round.id).maybeSingle(),
         supabase.from('predictions').select('id,status,tickets_if_win').eq('wallet', meRef.current).neq('status', 'open').order('id', { ascending: false }).limit(1).maybeSingle(),
       ]);
       myPick = cur ?? null; pickResult = last ?? null;
+      const { data: lm } = await supabase.from('lucky_meter').select('losing_tickets,free_given').eq('wallet', meRef.current).maybeSingle();
+      lucky = { losing: lm?.losing_tickets ?? 0, given: lm?.free_given ?? 0, every: Number(cfgMap.lucky_every || 20) };
     }
     await loadNicks([...tickets.map(t => t.wallet), lastBuyer, ...(trades ?? []).map(t => t.wallet), ...(chat ?? []).map(c => c.wallet), round?.winner_wallet, round?.last_buyer, prev?.winner_wallet, prev?.last_buyer, meRef.current]);
     tickets = tickets.map(t => ({ ...t, wallet: nm(t.wallet)! }));
     lastBuyer = nm(lastBuyer) ?? null;
     const named = (r: any) => r && { ...r, winner_wallet: nm(r.winner_wallet), last_buyer: nm(r.last_buyer) };
     const pumpUrl = (process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').startsWith('https://pump.fun/coin/') && !(process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').includes('YOUR_MINT') ? process.env.NEXT_PUBLIC_PUMPFUN_URL : undefined;
-    post({ round: named(round), prev: named(prev), tickets, lastBuyer, trades: (trades ?? []).map(t => ({ ...t, wallet: nm(t.wallet) })).reverse(), chat: (chat ?? []).map(c => ({ ...c, wallet: c.is_ringmaster ? c.wallet : c.source === 'pumpfun' ? (c.author || 'pump.fun') : nm(c.wallet) })).reverse(), price: price.current, chatMin: chatMin.current, pumpUrl, gameInfo, showCfg: showCfg.current, myPick, pickResult });
+    post({ round: named(round), prev: named(prev), tickets, lastBuyer, trades: (trades ?? []).map(t => ({ ...t, wallet: nm(t.wallet) })).reverse(), chat: (chat ?? []).map(c => ({ ...c, wallet: c.is_ringmaster ? c.wallet : c.source === 'pumpfun' ? (c.author || 'pump.fun') : nm(c.wallet) })).reverse(), price: price.current, chatMin: chatMin.current, pumpUrl, gameInfo, showCfg: showCfg.current, myPick, pickResult, lucky });
   }, [post, loadNicks]);
 
   // Stats, leaderboard and history: one precomputed snapshot written by the engine, never aggregated here.
@@ -145,7 +147,7 @@ export default function StageBridge() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'effects' }, async (p: any) => {
         const e = p.new; if (!e) return;
         await loadNicks([e.wallet]);
-        post({ fx: { effect: e.effect, who: nm(e.wallet) } });
+        post({ fx: { effect: e.effect, who: e.wallet === 'ringmaster' ? 'The Ringmaster' : nm(e.wallet) } });
       })
       .subscribe();
     const safety = setInterval(pushState, 30_000);

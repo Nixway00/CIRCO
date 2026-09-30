@@ -319,6 +319,12 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
 .howLinks a{ text-decoration:none; }
 .rulesTop{ margin:0 0 12px; line-height:1.7; }
 .rulesTop a, .rules a{ color:var(--cyan); text-underline-offset:3px; }
+.lucky{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); margin:8px 0 4px; }
+.lucky span{ white-space:nowrap; } .lucky b{ color:#86efac; font-family:'Unbounded',sans-serif; font-size:11px; white-space:nowrap; }
+.lucky i{ flex:1; height:6px; border-radius:99px; background:rgba(134,239,172,.15); overflow:hidden; display:block; }
+.lucky em{ display:block; height:100%; background:linear-gradient(90deg,#34d399,#86efac); border-radius:99px; transition:width .6s; }
+.mLucky{ grid-column:1 / -1; margin:6px 2px 0; }
+@media (min-width: 901px){ .mLucky{ display:none !important; } }
 #bpOdds{ font-size:13px; color:var(--cyan); text-align:center; min-height:18px; }
 .gameBtn{ width:100%; margin-top:10px; justify-content:center; font-weight:700; background:linear-gradient(90deg, rgba(255,61,110,.22), rgba(255,211,77,.22)); border-color:rgba(255,211,77,.45); }
 #mCta .gameBtn{ grid-column:1 / -1; margin-top:0; }
@@ -482,6 +488,7 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
         <div><span>Last ticket</span><b id="lastB" style="font-size:13px">none yet</b></div>
         <div class="small">The last ticket before the pop wins 5% of the prize.</div>
       </div>
+      <div class="lucky" title="Every losing ticket fills the lucky meter; when it is full you get a free ticket."><span>🍀 Lucky meter</span><i><em class="luckyFill" style="width:0%"></em></i><b class="luckyTxt">0/20</b></div>
       <button class="btn gameBtn" type="button" id="gameBtn">🎯 Shooting gallery</button>
     </section>
     <section class="panel" id="chatPanel" style="flex:1; min-height:0">
@@ -519,6 +526,7 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
     <a class="btn linkbtn" href="#" id="mCoin" target="_blank" rel="noopener">Buy $CIRCO ↗</a>
     <button class="btn gameBtn" type="button" id="mGame">🎯 Shooting gallery · win tickets</button>
     <div id="mMe" aria-live="polite"><span>Your tickets <b id="mMeT">0 / 10</b></span><span>Odds <b id="mMeP">0%</b></span><span>If you win <b id="mMeW">0.95 SOL</b></span></div>
+    <div class="lucky mLucky" title="Every losing ticket fills the lucky meter; when it is full you get a free ticket."><span>🍀 Lucky meter</span><i><em class="luckyFill" style="width:0%"></em></i><b class="luckyTxt">0/20</b></div>
   </div>
   <footer class="stats">
     <div class="statset">
@@ -1656,6 +1664,8 @@ function pageRegolamento(){
     d('Mega Jackpot', '<ul><li>'+Math.round(SHOW.jackpotShare*100)+'% of the fees reaching the prize wallet build the Mega Jackpot, shown live on stage.</li><li>Every draw has a '+(SHOW.jackpotChance*100).toFixed(0)+'% chance to be a Mega Pop: the winner takes the balloon prize and the whole jackpot.</li><li>The Mega Pop is decided by the same provably fair seed as the wheel.</li></ul>')+
     d('Shooting gallery', '<ul><li>Burn '+fmt(G.price,0)+' $CIRCO for '+G.shots+' shots. Each shot has a '+Math.round(G.chance*100)+'% chance to pop a balloon; every pop is 1 ticket for the current round.</li><li>You can win up to '+(SHOW.gameCap || 5)+' tickets a day in games.</li><li>The result is decided by the server with a secret committed before you burn, mixed with your burn signature; the secret is revealed after the game.</li></ul>')+
     d('Guess the next balloon', '<ul><li>One guess per round, it burns '+fmt(SHOW.pickPrice,0)+' $CIRCO. Guesses close with ticket sales.</li><li>A right guess pays tickets for the next round: '+KEYS.map(function(k){ return NAMES[k].toLowerCase()+' '+pickPay(k); }).join(', ')+'.</li><li>On average a guess returns less than buying tickets directly.</li><li>If the next balloon is fixed by the rules (first rounds or the gold guarantee), every guess comes back as 1 ticket.</li></ul>')+
+    d('Lucky meter', '<ul><li>Every ticket you buy in a round you do not win fills your lucky meter.</li><li>Every '+(SHOW.luckyEvery || 20)+' losing tickets you get 1 free ticket, added automatically to the next round.</li></ul>')+
+    d('Graduation gala', '<p>When $CIRCO completes its pump.fun bonding curve and moves to PumpSwap, the circus throws a party: fireworks and gold rain for everyone, and the next balloon is a Grand Opening gold trophy.</p>')+
     d('Stage effects', '<ul><li>Burn a little $CIRCO to launch an effect everyone watching sees, with your name: fireworks, confetti, air horn, a tomato at the Ringmaster, gold rain.</li><li>Effects are pure burn: they give no tickets.</li></ul>')+
     d('Teams', '<ul><li>Pick the Clowns or the Acrobats when you join. You can switch once a week.</li><li>Every week (Monday 00:00 UTC) the team whose members burned more $CIRCO wins: each member who burned something that week gets '+(SHOW.teamReward || 2)+' bonus tickets for the next rounds.</li></ul>')+
     d('Nickname and X', '<ul><li>A nickname is required to play. It is shown instead of your wallet address.</li><li>You can link your X account in Profile: your @handle is then shown instead. One X account per wallet.</li></ul>')+
@@ -1814,7 +1824,7 @@ function enter(phase){
   if (phase === 'scelta' && typeof ringmaster === 'function' && S.round > 1) ringmaster('Round '+S.round+'. Fresh balloon, fresh hopium.');
   if (phase === 'scelta') setTimeout(replayIntro, 60);
   if (phase === 'scelta'){ S.mega = false; S.megaWon = 0;
-    S.type = pickType(); settleDemoPick(); S.carryIn = S.carry || 0; S.carry = 0; S.cap = TYPES[S.type].cap + S.carryIn; S.fill = S.carryIn / S.cap; if (!S.keepTickets) S.tickets = new Map(); S.keepTickets = false; S.entries = []; S.lastBuyer = null; S.ext = 0; $('lastB').textContent = 'none yet';
+    S.type = pickType(); settleDemoPick(); if (!LIVE && SHOW.luckyPending){ var lp = SHOW.luckyPending; SHOW.luckyPending = 0; setTimeout(function(){ buy(ME, lp, true); }, 5500); } S.carryIn = S.carry || 0; S.carry = 0; S.cap = TYPES[S.type].cap + S.carryIn; S.fill = S.carryIn / S.cap; if (!S.keepTickets) S.tickets = new Map(); S.keepTickets = false; S.entries = []; S.lastBuyer = null; S.ext = 0; $('lastB').textContent = 'none yet';
     $('roundChip').textContent = 'Round '+S.round;
     $('popped').classList.remove('on'); $('tTitle').textContent = 'Round tickets';
     renderTickets(false);
@@ -1880,6 +1890,7 @@ function enter(phase){
     var main$ = S.cap*(1-BONUS), bonus$ = S.cap*BONUS;
     S.stats.prizes += S.cap; S.stats.rounds += 1;
     S.winnersList.unshift({ round:S.round, wallet:S.winner.wallet, prize:main$ });
+    demoLucky();
     if (!LIVE){ S.mega = Math.random() < 0.08 && SHOW.jackpot > 0.01; S.megaWon = S.mega ? SHOW.jackpot : 0; }
     if (S.mega){ S.stats.prizes += S.megaWon; if (!LIVE){ SHOW.jackpot = 0; renderJackpot(); } setTimeout(function(){ playFx('fireworks'); playFx('goldrain'); }, 300); }
     renderWinners(); renderStats(); launchConfetti(); sfx('fanfare'); flash.color.setHex(0xffd34d); flash.intensity = 4;
@@ -1983,6 +1994,8 @@ window.addEventListener('message', function(e){
   if (m.gameError){ G.state = 'idle'; gInfo(); $('gInfo').innerHTML = m.gameError + '<br>' + $('gInfo').innerHTML; }
   if (m.showCfg){ var sc = m.showCfg; if (sc.fxPrices) SHOW.fxPrices = sc.fxPrices; if (sc.jackpotShare !== undefined) SHOW.jackpotShare = sc.jackpotShare; if (sc.jackpotChance !== undefined) SHOW.jackpotChance = sc.jackpotChance; if (sc.teamReward !== undefined) SHOW.teamReward = sc.teamReward; if (sc.gameCap !== undefined) SHOW.gameCap = sc.gameCap; if (sc.pickPrice) SHOW.pickPrice = sc.pickPrice; if (sc.pickReturn) SHOW.pickReturn = sc.pickReturn; if (sc.weights){ KEYS.forEach(function(k){ if (sc.weights[T2B[k]] !== undefined) TYPES[k].w = sc.weights[T2B[k]]; }); } }
   if (m.jackpot !== undefined){ SHOW.jackpot = +m.jackpot || 0; renderJackpot(); }
+  if (m.lucky){ var before = SHOW.luckyGiven; SHOW.luckyN = +m.lucky.losing || 0; SHOW.luckyGiven = +m.lucky.given || 0; if (m.lucky.every) SHOW.luckyEvery = +m.lucky.every; renderLucky();
+    if (before !== undefined && SHOW.luckyGiven > before){ toast('🍀 Lucky meter full: a free ticket is waiting for you in the next round!'); sfx('fanfare'); } }
   if (m.queue !== undefined){ SHOW.queue = +m.queue || 0; renderJackpot(); }
   if (m.teams){ SHOW.teams.clowns = +m.teams.clowns || 0; SHOW.teams.acrobats = +m.teams.acrobats || 0; if (m.teams.ends_at) SHOW.teams.ends = Date.parse(m.teams.ends_at); SHOW.teams.last = m.teams.last_winner || null; renderTeams(); }
   if (m.team !== undefined){ SHOW.myTeam = m.team || ''; SHOW.teamSetAt = m.teamSetAt ? Date.parse(m.teamSetAt) : 0; renderTeams(); }
@@ -2212,6 +2225,11 @@ var FXDEF = [
   ['tomato',    '🍅', 'Tomato', 'Throw a tomato at the Ringmaster'],
   ['goldrain',  '💰', 'Gold rain', 'Golden coins pour from the sky']
 ];
+function renderLucky(){
+  var e = SHOW.luckyEvery || 20, n = (SHOW.luckyN || 0) % e;
+  document.querySelectorAll('.luckyFill').forEach(function(x){ x.style.width = (n / e * 100)+'%'; });
+  document.querySelectorAll('.luckyTxt').forEach(function(x){ x.textContent = n+'/'+e; });
+}
 function renderJackpot(){ $('jpAmt').textContent = fmt(SHOW.jackpot)+' SOL'; var q = SHOW.queue || 0; $('queuePill').hidden = q < 0.01; $('qAmt').textContent = '+'+fmt(q)+' SOL'; }
 
 /* ----- stage effects ----- */
@@ -2270,7 +2288,12 @@ function goldRain(){
   GOLD = { mesh: mesh, d: d, t: 0 }; sfx('coin'); setTimeout(function(){ sfx('coin'); }, 200); setTimeout(function(){ sfx('coin'); }, 450);
 }
 function fxBanner(text){ var b = $('fxBanner'); b.textContent = text; b.classList.add('on'); clearTimeout(fxBanner.t); fxBanner.t = setTimeout(function(){ b.classList.remove('on'); }, 2600); }
+function playGala(){
+  fxBanner('🎓 $CIRCO GRADUATED! Grand Opening gala');
+  playFx('fireworks'); setTimeout(function(){ launchConfetti(); sfx('fanfare'); }, 900); setTimeout(function(){ goldRain(); }, 1800);
+}
 function playFx(effect, who){
+  if (effect === 'gala'){ playGala(); return; }
   var d = FXDEF.find(function(x){ return x[0] === effect; }); if (!d) return;
   if (who) fxBanner(d[1]+' '+who+' '+({ fireworks:'launched fireworks!', confetti:'started a confetti storm!', horn:'blew the air horn!', tomato:'threw a tomato at the Ringmaster!', goldrain:'made it rain gold!' })[effect]);
   if (reduced && effect !== 'tomato') return;
@@ -2339,6 +2362,15 @@ function doPick(k){
 }
 
 /** demo: settle my guess when the next balloon is picked */
+function demoLucky(){
+  if (LIVE || !S.winner) return;
+  var mine = S.tickets.get(ME) || 0;
+  if (!mine || S.winner.wallet === ME) return;
+  var e = SHOW.luckyEvery || 20, before = Math.floor((SHOW.luckyN || 0) / e);
+  SHOW.luckyN = (SHOW.luckyN || 0) + mine; renderLucky();
+  var free = Math.floor(SHOW.luckyN / e) - before;
+  if (free > 0){ SHOW.luckyPending = (SHOW.luckyPending || 0) + free; setTimeout(function(){ toast('🍀 Lucky meter full: a free ticket is waiting for you in the next round!'); sfx('fanfare'); }, 3000); }
+}
 function settleDemoPick(){
   var p = SHOW.myPick; if (!p || p.round !== S.round - 1) return;
   SHOW.myPick = null;

@@ -18,6 +18,12 @@ const SETTINGS: { key: string; label: string; help: string; step?: number; min?:
   { key: 'game_daily_ticket_cap', label: 'Game tickets per day', help: 'Most tickets a wallet can win in games each day.', min: 0, max: 100 },
   { key: 'team_reward_tickets', label: 'Team reward (tickets)', help: 'Bonus tickets for each active member of the weekly winning team.', min: 0, max: 20 },
   { key: 'pumpfun_chat_relay', label: 'pump.fun chat in the site chat', help: 'Turn the pump.fun chat bridge on or off.', bool: true },
+  { key: 'lucky_every', label: 'Lucky meter', help: 'Losing tickets needed for 1 free ticket (0 = off).', min: 0, max: 1000 },
+  { key: 'buyback_dip_pct', label: 'Buyback: dip size', help: 'Drop from the 30-minute high that triggers a dip buy (0.12 = 12%).', step: 0.01, min: 0.02, max: 0.8 },
+  { key: 'buyback_quiet_volume_sol', label: 'Buyback: quiet market (SOL in 30 min)', help: 'Under this volume a drifting chart gets gentle support.', step: 0.5, min: 0 },
+  { key: 'buyback_max_hold_sol', label: 'Buyback: most SOL to hold', help: 'Above this the buyback drips its SOL out even without a dip.', step: 0.5, min: 0.1 },
+  { key: 'buyback_max_hold_hours', label: 'Buyback: longest wait (hours)', help: 'Nothing waits longer than this.', min: 1, max: 720 },
+  { key: 'buyback_max_impact', label: 'Buyback: max price impact per chunk', help: 'e.g. 0.02 = 2%.', step: 0.005, min: 0.001, max: 0.1 },
 ];
 
 /** Team panel: every game setting. The engine reloads settings every minute. */

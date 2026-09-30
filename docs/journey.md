@@ -25,7 +25,8 @@ If players cannot check the draw, the game is worthless. We used commit and reve
 
 - **The engine** runs the rounds, reads every burn on-chain, draws, pays and buys back. It was written to fail safely: payouts recorded before they are sent, draws that resume after a crash, burns that are never lost.
 - **The stage** is a full 3D scene in the browser: a jelly balloon full of coins, a wheel, confetti and **the Ringmaster**, who opens every round, comments the tension and calls the winner by name.
-- **The extras** make the waiting fun: a shooting gallery, guesses on the next balloon, a Mega Jackpot, stage effects everyone sees, and a weekly battle between the Clowns and the Acrobats.
+- **The extras** make the waiting fun: a shooting gallery, guesses on the next balloon, a Mega Jackpot, stage effects everyone sees, a lucky meter that turns bad luck into free tickets, and a weekly battle between the Clowns and the Acrobats.
+- **The buyback got smarter**: instead of buying on a clock that bots could front-run, it waits for dips and buys hard into them, supports the chart when trading is quiet, and burns everything.
 - **The chat** joins the site with the coin's pump.fun chat, so livestream viewers and players talk in one place.
 
 ## Rehearsal before launch

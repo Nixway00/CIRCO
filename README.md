@@ -68,7 +68,7 @@ Tickets are paid by **burning** $CIRCO (10,000 per ticket at launch). Buybacks b
 | Red rocket | 2 SOL | 20% | 150 |
 | Gold trophy | 5 SOL | 5% | 300 |
 
-95% of the prize goes to the winner, 5% to whoever bought the last ticket before sales closed. At least one gold trophy every day.
+95% of the prize goes to the winner, 5% to whoever bought the last ticket before sales closed. The first three rounds are the green balloon dog, so the show starts fast. At least one gold trophy every day.
 
 ## Around the balloon
 
@@ -77,6 +77,8 @@ Tickets are paid by **burning** $CIRCO (10,000 per ticket at launch). Buybacks b
 - **Guess the next balloon**: a right guess pays tickets for the next round.
 - **Stage effects**: fireworks, confetti, an air horn, a tomato for the Ringmaster, seen live by everyone.
 - **Clowns vs Acrobats**: pick a team; the team that burns more each week earns bonus tickets.
+- **Lucky meter**: every 20 tickets that do not win give you a free one.
+- **Graduation gala**: when $CIRCO leaves the bonding curve, a party and a Grand Opening gold trophy.
 - **Live chat** shared with the coin's pump.fun chat.
 
 Full rules: [docs/how-it-works.md](docs/how-it-works.md).

@@ -39,7 +39,7 @@ When the balloon is full a three-minute countdown begins. Sales close, the ballo
 
 Payment is automatic, in SOL, straight to the winner's wallet. Then a new balloon appears, and it all starts again.
 
-There are four balloons: a green balloon dog (0.5 SOL), a blue balloon (1 SOL), a red rocket (2 SOL) and a gold trophy (5 SOL). At least one gold trophy comes out every day.
+There are four balloons: a green balloon dog (0.5 SOL), a blue balloon (1 SOL), a red rocket (2 SOL) and a gold trophy (5 SOL). The show opens with three green balloons so the first winners arrive fast, and at least one gold trophy comes out every day.
 
 If a round does not sell enough tickets, the countdown extends; if it still falls short, the round is postponed and its prize carries over. Nothing is ever lost, including your burns: tickets above the cap, or bought a moment too late, become credits for the next rounds.
 
@@ -62,6 +62,8 @@ Waiting for a balloon to fill should be fun too:
 - **The Mega Jackpot**: a small share of every fee builds a jackpot. Any draw can become a Mega Pop, and the winner takes it all.
 - **Stage effects**: fireworks, a confetti storm, an air horn, gold rain, or a tomato straight at the Ringmaster's face. Everyone watching sees it, with your name on it.
 - **Clowns vs Acrobats**: pick a team. Every week the team that burns more wins bonus tickets.
+- **The lucky meter**: every ticket that does not win fills it, and every 20 you get a free one. Bad luck still counts for something.
+- **The graduation gala**: the day $CIRCO leaves the bonding curve, the circus throws a party with a Grand Opening gold trophy.
 
 ## The Ringmaster
 

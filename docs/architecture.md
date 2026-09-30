@@ -71,3 +71,5 @@ Migrations in [`supabase/migrations`](../supabase/migrations), applied in order:
 | `0007_show_features` | Mega Jackpot, stage effects, teams, next-balloon guesses |
 | `0008_pumpfun_chat` | Messages relayed from the pump.fun chat |
 | `0009_burn_order` | On-chain slot of each burn |
+| `0010_smart_buyback` | Price samples, buyback reasons, green opening rounds |
+| `0011_lucky_meter_and_gala` | Lucky meter, graduation gala |

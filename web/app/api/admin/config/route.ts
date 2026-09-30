@@ -23,6 +23,13 @@ const EDITABLE: Record<string, (v: unknown) => boolean> = {
   game_daily_ticket_cap: int(0, 100),
   team_reward_tickets: int(0, 20),
   pumpfun_chat_relay: (v) => typeof v === 'boolean',
+  lucky_every: int(0, 1000),                 // 0 switches the lucky meter off
+  buyback_mode: (v) => v === 'smart' || v === 'off',
+  buyback_dip_pct: num(0.02, 0.8),
+  buyback_quiet_volume_sol: num(0, 10000),
+  buyback_max_hold_sol: num(0.1, 10000),
+  buyback_max_hold_hours: num(1, 720),
+  buyback_max_impact: num(0.001, 0.1),
 };
 
 /** Team-only settings. The wallet must be listed in ADMIN_WALLETS and sign the request. */

@@ -24,3 +24,8 @@ export async function distributeCreatorFees(): Promise<{ sig: string; lamports: 
   const sig = await sendAndConfirmTransaction(connection, tx, [prizeKeypair], { commitment: 'confirmed' });
   return { sig, lamports: info.distributableFees.toString() };
 }
+
+/** True once $CIRCO has completed its bonding curve and moved to PumpSwap. */
+export async function hasGraduated(): Promise<boolean> {
+  try { return (await pump.fetchBondingCurve(MINT)).complete; } catch { return false; }
+}

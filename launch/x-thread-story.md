@@ -21,7 +21,7 @@ Where does the prize come from? Not from our pocket.
 
 Every $CIRCO trade generates creator fees, split automatically on pump.fun:
 🎈 45% prize balloon
-🔥 45% buyback + burn
+🔥 45% buyback + burn, bought on the dips
 🛠 10% team
 
 **4/**
@@ -61,6 +61,7 @@ While the balloon fills there's plenty to do:
 🔮 guess the next balloon
 💰 Mega Jackpot on random pops
 🍅 throw a tomato at the Ringmaster
+🍀 a lucky meter: bad luck = free tickets
 🤡 Clowns vs 🤸 Acrobats, every week
 
 **9/**
