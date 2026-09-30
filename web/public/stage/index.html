@@ -231,6 +231,11 @@ nav.pages .sm{ display:none; }
 #gInfo{ margin:0; font-size:15px; line-height:1.5; text-align:center; }
 .gActs{ display:flex; gap:8px; } .gActs .btn{ flex:1; height:50px; font-size:16px; justify-content:center; }
 #gFair{ margin:0; word-break:break-all; }
+#nickBox{ padding:4px 18px 12px; display:flex; flex-direction:column; gap:6px; }
+#nickBox[hidden]{ display:none; }
+#nickBox label{ font-weight:700; font-size:14px; }
+.nickRow{ display:flex; gap:8px; } .nickRow input{ flex:1; min-width:0; height:46px; border-radius:12px; border:1px solid var(--line); background:rgba(8,16,52,.8); color:var(--ink); padding:0 12px; font:inherit; font-size:16px; }
+.nickRow .btn{ height:46px; }
 #toast{ position:absolute; top:88px; left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--lineHi); border-radius:12px; padding:10px 16px; font-size:14px; opacity:0; transition:opacity .3s; pointer-events:none; backdrop-filter:blur(10px); }
 #toast.on{ opacity:1; }
 #loading{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Unbounded',sans-serif; color:var(--muted); z-index:5; background:var(--night); transition:opacity .6s; }
@@ -420,6 +425,11 @@ nav.pages .sm{ display:none; }
   <div class="note">Demo: simulated data, sped-up timings.</div>
   <section class="sheet" id="sheet" role="dialog" aria-modal="false" aria-labelledby="sheetTitle">
     <div class="sh-head"><h2 id="sheetTitle">History</h2><button class="btn" type="button" id="sheetClose">Back to the show</button></div>
+    <form id="nickBox" autocomplete="off" hidden>
+      <label for="nickIn">Your nickname</label>
+      <div class="nickRow"><input id="nickIn" maxlength="16" placeholder="3 to 16 letters, numbers or _" pattern="[A-Za-z0-9_]{3,16}"><button class="btn primary" type="submit" id="nickSave">Save</button></div>
+      <p class="small" id="nickHelp">Shown in the chat, the ticket list, the leaderboards, and when the Ringmaster announces the winner.</p>
+    </form>
     <div class="body" id="sheetBody"></div>
   </section>
   <div class="modal" id="tutorial" role="dialog" aria-modal="true" aria-labelledby="tutTitle">
@@ -1298,6 +1308,7 @@ function buy(wallet, n, bonus){
   if (wallet === ME){ S.bal -= add*PRICE; renderChatGate(); }
   S.tickets.set(wallet, have+add); S.stats.burned += add*PRICE; S.lastBuyer = wallet; var pp = pl(wallet); pp.t += add; pp.b += add*PRICE; if (!have) pp.rounds++; $('lastB').textContent = wallet; renderLive();
   addFeed('Tickets ×'+add, '#FFD34D', wallet, fmt(add*PRICE,0)+' burned', 'burn');
+  if (add >= 5 && wallet !== ME) say(pick(LINES.bigbuy).replace('{w}', wallet).replace('{n}', add));
   renderTickets(false); renderStats(); kick(0.35);
   return add;
 }
@@ -1497,10 +1508,21 @@ function openPage(pg){
   var sh = $('sheet');
   if (pg === 'gioca'){ sh.classList.remove('on'); return; }
   $('sheetTitle').textContent = TITLES[pg];
+  $('nickBox').hidden = pg !== 'profilo'; if (pg === 'profilo') $('nickIn').value = MYNICK || '';
   $('sheetBody').innerHTML = pg === 'regolamento' ? pageRegolamento() : pg === 'missioni' ? pageMissione() : '';
   sh.classList.add('on'); refreshSheet(); $('sheetClose').focus();
 }
 document.querySelectorAll('nav.pages button').forEach(function(b){ b.addEventListener('click', function(){ openPage(b.dataset.page); }); });
+$('nickBox').addEventListener('submit', function(e){
+  e.preventDefault();
+  var v = $('nickIn').value.trim();
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(v)){ toast('3 to 16 characters: letters, numbers or _.'); return; }
+  if (LIVE){ $('nickSave').disabled = true; parent.postMessage({ type:'circo-nick', nick:v }, '*'); return; }
+  var old = ME; MYNICK = v; ME = v;                        // demo: rename yourself locally
+  if (S.tickets.has(old)){ S.tickets.set(v, S.tickets.get(old)); S.tickets.delete(old); }
+  if (P.has(old)){ P.set(v, P.get(old)); P.delete(old); }
+  $('connectBtn').textContent = v; renderTickets(false); toast('Nickname saved: '+v);
+});
 $('sheetClose').addEventListener('click', function(){ openPage('gioca'); });
 $('sheetBody').addEventListener('click', function(e){ var t = e.target.closest('[data-board]'); if (t){ board = t.dataset.board; refreshSheet(); } });
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && page !== 'gioca') openPage('gioca'); });
@@ -1525,6 +1547,7 @@ function hud(title, big, bar, sub, timer){
 
 /* ================= state machine ================= */
 var FEW = /[?&]pochi=1/.test(location.search);
+var MYNICK = '';
 var PRICE = 10000, CHAT_MIN = 10000;   // live mode: both come from the game config
 var LIVE = /[?&]data=live/.test(location.search);   // real game data from the parent page
 var FORCED = (function(){ try { return new URLSearchParams(location.search).get('tipo'); } catch(e){ return null; } })();
@@ -1564,14 +1587,39 @@ var HINTS = {
   estrazione: 'Every ticket is a slice of my wheel. More tickets, bigger slice.',
   rinvio: 'Not enough tickets: prize and tickets roll into the next round.'
 };
-var hintUntil = 0;
+var hintUntil = 0, lastSay = -99;
+var LINES = {
+  gonfiaggio: ['Step right up! Fresh balloon, fresh prize.', 'Every trade pumps my balloon. Pump it!', 'The tent is open. Tickets, anyone?', 'New round, new hopium. Who is feeling lucky?'],
+  half: ['Halfway there! Plenty of seats left.', 'Fifty percent full. The crowd is warming up.'],
+  almost: ['Almost full… I can hear it creaking!', 'Ninety percent! Grab your tickets.'],
+  countdown: ['It is FULL! Three minutes on the clock.', 'Full balloon! Last calls for tickets.'],
+  last10: ['Ten seconds! The last ticket takes 5%!', 'Final seconds, snipers to your stations!'],
+  extend: ['Not enough tickets yet. One more minute!', 'Extra time, folks. Fill those seats!'],
+  esplosione: ['POP! Spin the wheel!', 'Kaboom! Let us see who takes it.'],
+  bigbuy: ['{w} just grabbed {n} tickets. Big spender!', 'Whoa, {w} went in for {n}!', '{w} wants that prize: {n} tickets!'],
+  rinvio: ['Postponed! Prize and tickets roll over.', 'Too few tickets. Everything rides again next round.'],
+  gala: ['GOLD NIGHT! Five SOL in the balloon!', 'The golden trophy is out. Gala time!']
+};
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+/** The Ringmaster comments on the game. Important lines (winner) always play; chatter is spaced out. */
+function say(text, important, dur){
+  if (INTRO.on || (typeof TOUR !== 'undefined' && TOUR.on) || /[?&]tour=auto/.test(location.search)) return false;
+  if (!important && (time - lastSay < 9 || time < hintUntil)) return false;
+  lastSay = time; speechX = null; introBubble(text); hintUntil = time + (dur || 4.5); return true;
+}
 function phaseHint(phase){
   if (!HINTS[phase] || INTRO.on || (typeof TOUR !== 'undefined' && TOUR.on) || /[?&]live=1/.test(location.search)) return;
   try { if (localStorage.getItem('circo_hint_'+phase)) return; localStorage.setItem('circo_hint_'+phase, '1'); } catch(e){ return; }
-  speechX = null; introBubble(HINTS[phase]); hintUntil = time + 6;
+  speechX = null; introBubble(HINTS[phase]); hintUntil = time + 6; lastSay = time;
 }
 function enter(phase){
-  setTimeout(function(){ phaseHint(phase); }, 900);
+  setTimeout(function(){
+    var hadHint = false;
+    try { hadHint = !!localStorage.getItem('circo_hint_'+phase); } catch(e){}
+    phaseHint(phase);
+    if (hadHint && LINES[phase]) say(pick(S.type === 'oro' && phase === 'gonfiaggio' ? LINES.gala : LINES[phase]), true);
+  }, 900);
+  S.saidHalf = S.saidAlmost = S.said10 = false;
   S.phase = phase; S.t = 0; setStepper(phase);
   var c = CAMS[phase]; camPos.set(c.p[0], c.p[1], c.p[2]); camTarget.set(c.l[0], c.l[1], c.l[2]);
   var ty = TYPES[S.type];
@@ -1644,6 +1692,8 @@ function enter(phase){
     S.stats.prizes += S.cap; S.stats.rounds += 1;
     S.winnersList.unshift({ round:S.round, wallet:S.winner.wallet, prize:main$ });
     renderWinners(); renderStats(); launchConfetti(); sfx('fanfare'); flash.color.setHex(0xffd34d); flash.intensity = 4;
+    say(S.winner.wallet === ME ? 'Congratulations, YOU! '+fmt(main$)+' SOL is yours!' : 'Congratulations, '+S.winner.wallet+'! '+fmt(main$)+' SOL is yours!', true, 6.5);
+    DIR.talk = 4;
     ringmaster(S.winner.wallet+' just took '+fmt(main$)+' SOL. Screenshot it, frame it, tell your mom.'+(S.lastBuyer ? ' '+S.lastBuyer+' sniped the last ticket for '+fmt(bonus$)+' SOL. Respect.' : ''));
     addFeed('Prize paid', '#5CE1FF', S.winner.wallet, fmt(main$)+' SOL', 'tx');
     if (S.lastBuyer) addFeed('Last-ticket bonus', '#FFD34D', S.lastBuyer, fmt(bonus$)+' SOL', 'tx');
@@ -1686,7 +1736,7 @@ function applyLiveRound(r){
   if (r.id === S.liveRoundId) S.liveR = r;
   S.cap = Math.max(0.01, +r.capacity_sol);
   if (r.phase === 'inflate'){ if (S.phase === 'gonfiaggio' || S.phase === 'scelta') S.fill = Math.min(0.999, (+r.collected_sol || 0) / S.cap); }
-  if (r.phase === 'countdown'){ S.cdEnds = Date.parse(r.countdown_ends_at); if (S.phase === 'gonfiaggio'){ S.fill = 1; enter('countdown'); } }
+  if (r.phase === 'countdown'){ var newEnd = Date.parse(r.countdown_ends_at); if (S.cdEnds && newEnd > S.cdEnds + 20000 && S.phase === 'countdown'){ say(pick(LINES.extend), true); S.said10 = false; } S.cdEnds = newEnd; if (S.phase === 'gonfiaggio'){ S.fill = 1; enter('countdown'); } }
   if (r.phase === 'drawing' && (S.phase === 'gonfiaggio' || S.phase === 'countdown')) enter('esplosione');
   if (r.phase === 'done'){ S.liveWinner = sh(r.winner_wallet); S.lastBuyer = sh(r.last_buyer) || S.lastBuyer; if (S.phase === 'gonfiaggio' || S.phase === 'countdown') enter('esplosione'); }
   if (r.phase === 'postponed' && (S.phase === 'gonfiaggio' || S.phase === 'countdown')) enter('rinvio');
@@ -1709,6 +1759,9 @@ window.addEventListener('message', function(e){
     else startLiveRound(r);
   } else applyLiveRound(r);
   }
+  if (m.nick !== undefined){ MYNICK = m.nick || ''; if (page === 'profilo') $('nickIn').value = MYNICK; }
+  if (m.nickSaved){ toast('Nickname saved: '+m.nickSaved); $('nickSave').disabled = false; }
+  if (m.nickError){ toast(m.nickError); $('nickSave').disabled = false; }
   if (m.me !== undefined){ ME = m.me ? sh(m.me) : 'Not connected'; $('connectBtn').textContent = m.me ? sh(m.me) : 'Connect wallet'; S.bal = m.balance || 0; renderChatGate(); }
   if (m.stats){ S.stats.burned = m.stats.burned; S.stats.buyback = m.stats.buyback; S.stats.prizes = m.stats.prizes; S.stats.rounds = m.stats.rounds; renderStats(); }
   if (m.tickets){
@@ -1999,6 +2052,11 @@ function market(dt){
 var clock = new THREE.Clock(), time = 0, lastStats = 0;
 function renderStatsThrottled(){ if (time - lastStats > 0.25){ lastStats = time; renderStats(); } }
 function update(dt){
+  if (S.phase === 'gonfiaggio'){
+    if (!S.saidHalf && S.fill >= 0.5 && S.fill < 0.85 && say(pick(LINES.half))) S.saidHalf = true;
+    if (!S.saidAlmost && S.fill >= 0.9 && say(pick(LINES.almost), true)) S.saidAlmost = true;
+  }
+  if (S.phase === 'countdown' && !S.said10 && (DUR.countdown - S.t)/DUR.countdown*180 <= 10){ S.said10 = true; say(pick(LINES.last10), true, 4); }
   var ty = TYPES[S.type], t = S.t;
   if (S.phase === 'scelta'){
     var k = Math.min(1, t/3.5);
@@ -2045,7 +2103,7 @@ function update(dt){
         totalTickets() < minT() ? 'This balloon needs '+minT()+' tickets, '+totalTickets()+' so far. Otherwise the countdown extends.'
           : (S.lastBuyer ? 'Last ticket: '+S.lastBuyer+'. The last ticket wins 5% of the prize.' : 'Last minutes to buy tickets.'), true);
     if (t >= DUR.countdown){
-      if (totalTickets() < minT() && S.ext < MAX_EXT){ S.t -= DUR.countdown*60/180; S.ext++; toast('Under '+minT()+' tickets: countdown extended by 1 minute ('+S.ext+' of '+MAX_EXT+').'); }
+      if (totalTickets() < minT() && S.ext < MAX_EXT){ S.t -= DUR.countdown*60/180; S.ext++; toast('Under '+minT()+' tickets: countdown extended by 1 minute ('+S.ext+' of '+MAX_EXT+').'); say(pick(LINES.extend), true); S.said10 = false; }
       else if (totalTickets() < minT() && (S.rinvii || 0) >= 3 && totalTickets() > 0){ ringmaster('Three postponements in a row. Enough suspense: we draw now with '+totalTickets()+' tickets.'); toast('Third postponement reached: this round is drawn anyway.'); beamMat.uniforms.uOp.value = 0.1; enter('esplosione'); }
       else if (totalTickets() < minT()){ enter('rinvio'); }
       else { beamMat.uniforms.uOp.value = 0.1; enter('esplosione'); }

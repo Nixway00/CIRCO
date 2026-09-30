@@ -71,6 +71,11 @@ Minigames (migration `0004_games.sql`):
 - [x] Daily cap of 5 game tickets per wallet (config `game_daily_ticket_cap`); game tickets respect the 10-per-round cap, extras become credits
 - [x] Game burns settled from the Helius webhook too, so closing the page loses nothing
 
+Personality (migration `0005_profiles.sql`):
+- [x] The Ringmaster comments the whole round in his speech balloon (new balloon, 50%, 90%, full, last 10 seconds, extensions, big buys, pop, postponement, gold night)
+- [x] Winner announced by name: "Congratulations, <nickname>!" on the stage, in the chat and on X
+- [x] Nicknames: set in Profile with a wallet signature, 3-16 letters/numbers/_, unique, reserved words blocked, change once a day; shown everywhere instead of the address
+
 Still to do before launch:
 - [ ] **End-to-end test on a throwaway token** with tiny balloons (set `balloons` capacities to 0.05 SOL in `config`).
 - [ ] **Deploy:** engine on a VPS (for example with `pm2`), site on Vercel, Helius webhook pointed at the engine.

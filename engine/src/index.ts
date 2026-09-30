@@ -18,6 +18,12 @@ let cfg: Config & GameConfig;
 let busy = false;
 const MEMO_PROGRAMS = new Set(['MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', 'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVuDwQkkHtCv']);
 const short = (w: string) => `${w.slice(0, 4)}…${w.slice(-4)}`;
+/** Nickname if the wallet set one, otherwise the short address. */
+async function nameOf(w: string | null): Promise<string> {
+  if (!w) return '';
+  const { data } = await db.from('profiles').select('nickname').eq('wallet', w).maybeSingle();
+  return data?.nickname ?? short(w);
+}
 const sol = (lamports: number) => String(Number((lamports / LAMPORTS).toFixed(4)));
 
 async function ok(p: PromiseLike<{ error: any }>): Promise<void> {
@@ -146,8 +152,9 @@ async function continueDraw(r: Round, forced = false) {
     phase: 'done', ended_at: new Date().toISOString(), winner_payout_tx: w?.signature ?? null, bonus_payout_tx: b?.signature ?? null,
   }).eq('id', r.id).eq('phase', 'drawing'));
   const won = sol(Number(w?.lamports ?? 0));
-  await ringmaster(`${short(r.winner_wallet!)} just took ${won} SOL. Screenshot it, frame it, tell your mom.`);
-  postPop(`POP. Round ${r.id}: ${short(r.winner_wallet!)} won ${won} SOL with ${r.draw_total_tickets ?? 0} tickets in play.${r.last_buyer ? ` Last-ticket bonus to ${short(r.last_buyer)}.` : ''} $CIRCO, the 24/7 memecoin circus.`)
+  const winnerName = await nameOf(r.winner_wallet), lastName = await nameOf(r.last_buyer);
+  await ringmaster(`Congratulations, ${winnerName}! ${won} SOL is yours. Screenshot it, frame it, tell your mom.`);
+  postPop(`POP. Round ${r.id}: congratulations ${winnerName}, ${won} SOL with ${r.draw_total_tickets ?? 0} tickets in play.${r.last_buyer ? ` Last-ticket bonus to ${lastName}.` : ''} $CIRCO, the 24/7 memecoin circus.`)
     .catch(e => console.error('X post failed', e));
   await startRound();
 }

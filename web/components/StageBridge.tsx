@@ -28,6 +28,19 @@ export default function StageBridge() {
   }, []);
 
   // Live, per-round data: small queries, re-run on every game event.
+  // wallet -> nickname, refreshed every minute; the stage only ever sees the nickname when there is one
+  const nicks = useRef(new Map<string, string>());
+  const nickAge = useRef(0);
+  const loadNicks = useCallback(async (wallets: (string | null | undefined)[]) => {
+    if (Date.now() - nickAge.current > 60_000) { nicks.current.clear(); nickAge.current = Date.now(); }
+    const need = [...new Set(wallets.filter((w): w is string => !!w && w.length > 30 && !nicks.current.has(w)))];
+    if (!need.length) return;
+    const { data } = await supabase.from('profiles').select('wallet,nickname').in('wallet', need);
+    for (const w of need) nicks.current.set(w, '');
+    for (const p of data ?? []) nicks.current.set(p.wallet, p.nickname);
+  }, []);
+  const nm = (w: string | null | undefined) => (w && nicks.current.get(w)) || w;
+
   const pushLive = useCallback(async () => {
     const [{ data: rounds }, { data: trades }, { data: chat }, { data: cfgRows }] = await Promise.all([
       supabase.from('rounds').select('*').order('id', { ascending: false }).limit(2),
@@ -53,9 +66,13 @@ export default function StageBridge() {
       for (const x of t ?? []) { m.set(x.wallet, (m.get(x.wallet) ?? 0) + x.count); if (x.kind === 'burn' || x.kind === 'late') lastBuyer = x.wallet; }
       tickets = [...m].map(([wallet, n]) => ({ wallet, tickets: n }));
     }
+    await loadNicks([...tickets.map(t => t.wallet), lastBuyer, ...(trades ?? []).map(t => t.wallet), ...(chat ?? []).map(c => c.wallet), round?.winner_wallet, round?.last_buyer, prev?.winner_wallet, prev?.last_buyer, meRef.current]);
+    tickets = tickets.map(t => ({ ...t, wallet: nm(t.wallet)! }));
+    lastBuyer = nm(lastBuyer) ?? null;
+    const named = (r: any) => r && { ...r, winner_wallet: nm(r.winner_wallet), last_buyer: nm(r.last_buyer) };
     const pumpUrl = (process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').startsWith('https://pump.fun/coin/') && !(process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').includes('YOUR_MINT') ? process.env.NEXT_PUBLIC_PUMPFUN_URL : undefined;
-    post({ round, prev, tickets, lastBuyer, trades: (trades ?? []).reverse(), chat: (chat ?? []).reverse(), price: price.current, chatMin: chatMin.current, pumpUrl, gameInfo });
-  }, [post]);
+    post({ round: named(round), prev: named(prev), tickets, lastBuyer, trades: (trades ?? []).map(t => ({ ...t, wallet: nm(t.wallet) })).reverse(), chat: (chat ?? []).map(c => ({ ...c, wallet: c.is_ringmaster ? c.wallet : nm(c.wallet) })).reverse(), price: price.current, chatMin: chatMin.current, pumpUrl, gameInfo });
+  }, [post, loadNicks]);
 
   // Stats, leaderboard and history: one precomputed snapshot written by the engine, never aggregated here.
   const pushSnapshots = useCallback(async () => {
@@ -75,13 +92,15 @@ export default function StageBridge() {
       for (const t of myT ?? []) mine.set(t.round_id, (mine.get(t.round_id) ?? 0) + t.count);
       if (meRow) leaderboard = [...leaderboard, meRow];
     }
+    await loadNicks([...leaderboard.map(l => l.wallet), ...(((snap('history') as any[]) ?? []).flatMap(r => [r.winner_wallet, r.last_buyer]))]);
+    leaderboard = leaderboard.map(l => ({ ...l, wallet: nm(l.wallet) }));
     const history = ((snap('history') as any[]) ?? []).map(r => ({
       round: r.id, type: B2T[r.balloon], cap: Number(r.capacity_sol), tickets: r.total_tickets, wallets: r.wallets,
-      mine: mine.get(r.id) ?? 0, rinvio: r.phase === 'postponed', winner: r.winner_wallet, winT: r.winner_tickets ?? 0,
-      main: Number(r.prize_sol ?? 0) * 0.95, last: r.last_buyer, bonus: r.last_buyer ? Number(r.prize_sol ?? 0) * 0.05 : 0,
+      mine: mine.get(r.id) ?? 0, rinvio: r.phase === 'postponed', winner: nm(r.winner_wallet), winT: r.winner_tickets ?? 0,
+      main: Number(r.prize_sol ?? 0) * 0.95, last: nm(r.last_buyer), bonus: r.last_buyer ? Number(r.prize_sol ?? 0) * 0.05 : 0,
     }));
     post({ stats, history, leaderboard });
-  }, [post]);
+  }, [post, loadNicks]);
 
   const pushState = useCallback(async () => { await Promise.all([pushLive(), pushSnapshots()]); }, [pushLive, pushSnapshots]);
 
@@ -105,25 +124,29 @@ export default function StageBridge() {
   useEffect(() => {
     meRef.current = publicKey ? publicKey.toBase58() : null;
     pushState();
-    if (!publicKey) { post({ me: null, balance: 0 }); return; }
-    circoBalanceClient(connection, publicKey).then(balance => post({ me: publicKey.toBase58(), balance })).catch(() => post({ me: publicKey.toBase58(), balance: 0 }));
-  }, [publicKey, connection, post, pushState]);
+    if (!publicKey) { post({ me: null, balance: 0, nick: '' }); return; }
+    const addr = publicKey.toBase58();
+    loadNicks([addr]).then(() => {
+      const nick = nicks.current.get(addr) || '';
+      circoBalanceClient(connection, publicKey).then(balance => post({ me: nick || addr, balance, nick })).catch(() => post({ me: nick || addr, balance: 0, nick }));
+    });
+  }, [publicKey, connection, post, pushState, loadNicks]);
 
   // requests coming from the stage
   useEffect(() => {
-    async function signed(action: string) {
+    async function signed(action: string, extra?: string) {
       if (!publicKey || !signMessage) throw new Error('Connect a wallet that can sign messages.');
-      const message = `${action}:${publicKey.toBase58()}:${Date.now()}`;
+      const message = `${action}:${publicKey.toBase58()}:${Date.now()}${extra ? ':' + extra : ''}`;
       const sig = await signMessage(new TextEncoder().encode(message));
       return { wallet: publicKey.toBase58(), message, signature: bs58.encode(sig) };
     }
     async function onMessage(e: MessageEvent) {
       if (e.source !== frame.current?.contentWindow) return;
-      const m = e.data as { type: string; n?: number; round?: number; text?: string; url?: string };
+      const m = e.data as { type: string; n?: number; round?: number; text?: string; url?: string; nick?: string };
       try {
         if (m.type === 'circo-ready') { pushState(); return; }
         if (m.type === 'circo-connect') { setVisible(true); return; }
-        if (!publicKey) { setVisible(true); post(m.type === 'circo-game' ? { gameError: 'Connect your wallet first.' } : { toast: 'Connect your wallet first.' }); return; }
+        if (!publicKey) { setVisible(true); post(m.type === 'circo-game' ? { gameError: 'Connect your wallet first.' } : m.type === 'circo-nick' ? { nickError: 'Connect your wallet first.' } : { toast: 'Connect your wallet first.' }); return; }
         if (m.type === 'circo-buy' && m.round && m.n) {
           const tx = await buildTicketTx(connection, publicKey, m.round, m.n, price.current);
           const sig = await sendTransaction(tx, connection);
@@ -133,6 +156,18 @@ export default function StageBridge() {
           const out = await res.json();
           post({ toast: !res.ok ? out.error : out.credited > 0 ? `Done: ${out.given} tickets this round, ${out.credited} saved for the next rounds.` : `Done: you hold ${out.tickets} tickets this round.` });
           circoBalanceClient(connection, publicKey).then(balance => post({ me: publicKey.toBase58(), balance }));
+        }
+        if (m.type === 'circo-nick' && typeof m.nick === 'string') {
+          try {
+            const res = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await signed('nickname', m.nick)) });
+            const out = await res.json();
+            if (!res.ok) { post({ nickError: out.error }); return; }
+            nicks.current.set(publicKey.toBase58(), out.nickname);
+            const balance = await circoBalanceClient(connection, publicKey).catch(() => 0);
+            post({ nickSaved: out.nickname, nick: out.nickname, me: out.nickname, balance });
+            pushState();
+          } catch (err) { post({ nickError: (err as Error).message }); }
+          return;
         }
         if (m.type === 'circo-game') {
           try {
