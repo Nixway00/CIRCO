@@ -218,6 +218,33 @@ nav.pages .sm{ display:none; }
   .mSteps span{ font-size:12px; padding:5px 10px; border-radius:999px; color:var(--muted); border:1px solid var(--line); }
   .mSteps span.on{ background:var(--electric); border-color:var(--electric); color:#fff; box-shadow:0 0 14px rgba(47,123,255,.6); }
 }
+#mMe{ display:none; }
+.tabs button{ flex:1; }
+.stat b{ white-space:nowrap; }
+@media (min-width: 901px){
+  .statset{ gap:22px; } .stat b{ font-size:17px; }
+  footer.stats .demo .btn{ height:36px; padding:0 12px; font-size:13px; white-space:nowrap; }
+  .stat span{ white-space:nowrap; }
+}
+@media (max-width: 900px){
+  /* the footer must not be transformed, or the fixed bottom menu inside it stops being fixed */
+  footer.stats{ translate:none !important; }
+  footer.stats .statset, footer.stats .demo{ translate:0 calc((1 - var(--ik, 1)) * 45vh); }
+  .overlay{ padding-bottom:calc(70px + env(safe-area-inset-bottom,0px)); }
+  #mMe{ grid-column:1 / -1; display:flex; justify-content:space-between; gap:6px; padding:10px 12px; border-radius:14px; background:rgba(8,16,52,.75); border:1px solid var(--line); font-size:12px; color:var(--muted); }
+  #mMe span{ display:flex; flex-direction:column; gap:2px; }
+  #mMe b{ font-family:'Unbounded',sans-serif; font-size:14px; color:var(--ink); font-weight:600; }
+  body.tab-tickets #chatPanel{ display:none !important; }
+  body.tab-chat #colR > section:not(#chatPanel){ display:none !important; }
+  body.tab-chat #chatPanel{ min-height:60vh; }
+  /* the four counters become one compact row, the gold timer a slim bar */
+  .statset{ grid-template-columns:repeat(4, minmax(0,1fr)) !important; gap:0 !important; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 4px; }
+  .statset .stat{ background:none !important; border:0 !important; border-radius:0 !important; padding:2px 6px !important; text-align:center; }
+  .statset .stat + .stat{ border-left:1px solid var(--line) !important; }
+  .statset .stat b{ font-size:13px !important; }
+  .statset .stat span{ font-size:10.5px; line-height:1.25; display:block; }
+  .statset .stat:last-child{ grid-column:1 / -1; border-left:0 !important; border-top:1px solid var(--line); margin-top:8px; padding-top:8px !important; display:flex; justify-content:center !important; align-items:baseline; gap:8px; }
+}
 #bpOdds{ font-size:13px; color:var(--cyan); text-align:center; min-height:18px; }
 .gameBtn{ width:100%; margin-top:10px; justify-content:center; font-weight:700; background:linear-gradient(90deg, rgba(255,61,110,.22), rgba(255,211,77,.22)); border-color:rgba(255,211,77,.45); }
 #mCta .gameBtn{ grid-column:1 / -1; margin-top:0; }
@@ -337,6 +364,7 @@ nav.pages .sm{ display:none; }
   <div class="tabs" role="tablist" aria-label="Panels">
     <button type="button" role="tab" aria-selected="true" data-tab="colL">Trades</button>
     <button type="button" role="tab" aria-selected="false" data-tab="colR">Tickets</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="chat">Chat</button>
   </div>
   <div class="col show" id="colL">
     <section class="panel howto" id="howto" aria-label="How it works">
@@ -380,7 +408,7 @@ nav.pages .sm{ display:none; }
         <div><span>Last ticket</span><b id="lastB" style="font-size:13px">none yet</b></div>
         <div class="small">The last ticket before the pop wins 5% of the prize.</div>
       </div>
-      <button class="btn gameBtn" type="button" id="gameBtn">🎯 Shooting gallery · win tickets</button>
+      <button class="btn gameBtn" type="button" id="gameBtn">🎯 Shooting gallery</button>
     </section>
     <section class="panel" id="chatPanel" style="flex:1; min-height:0">
       <div class="head"><h2>Live chat</h2><span class="small" id="chatCount">holders only</span></div>
@@ -404,6 +432,7 @@ nav.pages .sm{ display:none; }
     <button class="btn primary" type="button" id="mBuy">Buy tickets</button>
     <a class="btn linkbtn" href="#" id="mCoin" target="_blank" rel="noopener">Buy $CIRCO ↗</a>
     <button class="btn gameBtn" type="button" id="mGame">🎯 Shooting gallery · win tickets</button>
+    <div id="mMe" aria-live="polite"><span>Your tickets <b id="mMeT">0 / 10</b></span><span>Odds <b id="mMeP">0%</b></span><span>If you win <b id="mMeW">0.95 SOL</b></span></div>
   </div>
   <footer class="stats">
     <div class="statset">
@@ -1265,7 +1294,7 @@ function resize(){
   MOBILE_LAYOUT = window.innerWidth <= 900 && !document.body.classList.contains('recording');
   // phones: the visible stage is the top 52% of a full-height canvas, so widen the lens and shift the view up
   BASE_FOV = MOBILE_LAYOUT ? 2*Math.atan(Math.tan(26*Math.PI/180)/0.52)*180/Math.PI : (w < 700 ? 52 : 40);
-  VIEW_SHIFT = MOBILE_LAYOUT ? 0.24 : 0;
+  VIEW_SHIFT = MOBILE_LAYOUT ? 0.24 : 0.09;   // desktop: lift the stage a little so the round text sits under the pedestal
   if (typeof INTRO === 'undefined' || !INTRO.on) applyView(BASE_FOV, VIEW_SHIFT); else camera.updateProjectionMatrix();
   PORTRAIT = MOBILE_LAYOUT || camera.aspect < 0.95;
   if (typeof DIR !== 'undefined'){   // on phones the Ringmaster steps closer to the stage so both read bigger
@@ -1289,7 +1318,8 @@ function totalTickets(){ var n=0; S.tickets.forEach(function(v){ n+=v; }); retur
 function renderMe(){
   var mine = S.tickets.get(ME) || 0, tot = totalTickets();
   $('myT').textContent = mine+' / 10'; $('myP').textContent = tot ? fmt(mine/tot*100,1)+'%' : '0%';
-  $('myWin').textContent = '~'+fmt(S.cap*0.95)+' SOL';
+  $('myWin').textContent = fmt(S.cap*0.95)+' SOL';
+  $('mMeT').textContent = mine+' / 10'; $('mMeP').textContent = $('myP').textContent; $('mMeW').textContent = fmt(S.cap*0.95)+' SOL';
 }
 function renderTickets(withColors){
   var list = $('tList'), tot = totalTickets();
@@ -1339,7 +1369,7 @@ function bpRender(){
   $('bpN').textContent = bpN; $('bpRange').max = Math.max(1, mx); $('bpRange').value = bpN; $('bpRange').disabled = !mx;
   $('bpCost').textContent = fmt(bpN*PRICE,0)+' $CIRCO burned';
   var mineNow = S.tickets.get(ME) || 0, totNow = totalTickets();
-  $('bpOdds').textContent = mx ? 'With '+(mineNow+bpN)+' tickets: '+fmt((mineNow+bpN)/(totNow+bpN)*100,1)+'% chance at ~'+fmt(S.cap*0.95)+' SOL (if nobody else buys)' : '';
+  $('bpOdds').textContent = mx ? 'With '+(mineNow+bpN)+' tickets: '+fmt((mineNow+bpN)/(totNow+bpN)*100,1)+'% chance to win '+fmt(S.cap*0.95)+' SOL (if nobody else buys)' : '';
   $('bpInfo').textContent = mx ? 'You can buy '+mx+' more this round.' : 'You already hold the maximum of 10 tickets this round.';
   $('bpGo').textContent = bpN === 1 ? 'Buy 1 ticket' : 'Buy '+bpN+' tickets'; $('bpGo').disabled = !mx;
 }
@@ -1568,7 +1598,9 @@ $('skipBtn').addEventListener('click', function(){ skip(); });
 document.querySelectorAll('.tabs button').forEach(function(b){
   b.addEventListener('click', function(){
     document.querySelectorAll('.tabs button').forEach(function(x){ x.setAttribute('aria-selected', x===b ? 'true':'false'); });
-    ['colL','colR'].forEach(function(id){ $(id).classList.toggle('show', id === b.dataset.tab); });
+    var t = b.dataset.tab;
+    $('colL').classList.toggle('show', t === 'colL'); $('colR').classList.toggle('show', t === 'colR' || t === 'chat');
+    document.body.classList.toggle('tab-chat', t === 'chat'); document.body.classList.toggle('tab-tickets', t === 'colR');
   });
 });
 if (window.innerWidth > 900) $('colR').classList.add('show');
@@ -1639,6 +1671,7 @@ function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
 function say(text, important, dur){
   if (INTRO.on || (typeof TOUR !== 'undefined' && TOUR.on) || /[?&]tour=auto/.test(location.search)) return false;
   if (page !== 'gioca' || !$('gameModal').hidden || !$('nickModal').hidden) return false;   // never over pages or windows
+  if (MOBILE_LAYOUT && window.scrollY > 40) return false;                                  // phone scrolled: the stage is covered
   if (!important && (time - lastSay < 9 || time < hintUntil)) return false;
   lastSay = time; speechX = null; introBubble(text); hintUntil = time + (dur || 4.5); return true;
 }
@@ -2357,7 +2390,7 @@ function frame(){
   lookNow.lerp(tourOn ? (PORTRAIT ? new THREE.Vector3(-1.9, 1.05, 2.1) : new THREE.Vector3(-1.4, 1.25, 1.6)) : camTarget, Math.min(1, dt*(camSpeed + 0.4)));
   if (shake > 0){ camera.position.x += (Math.random()-0.5)*shake; camera.position.y += (Math.random()-0.5)*shake; shake = Math.max(0, shake - dt*0.9); }
   camera.lookAt(lookNow);
-  if (hintUntil){ if (time < hintUntil && page === 'gioca' && $('gameModal').hidden && $('nickModal').hidden) placeSpeech(dt); else { hintUntil = 0; $('speech').classList.remove('on'); } }
+  if (hintUntil){ if (time < hintUntil && page === 'gioca' && $('gameModal').hidden && $('nickModal').hidden && !(MOBILE_LAYOUT && window.scrollY > 40)) placeSpeech(dt); else { hintUntil = 0; $('speech').classList.remove('on'); } }
   flash.intensity = Math.max(0, flash.intensity - dt*9);
   composer.render();
 }
