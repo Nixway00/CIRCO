@@ -24,6 +24,7 @@ export interface Config {
   pick_price_tokens?: number;
   pick_return?: number;
   first_rounds_balloon?: string;
+  timer_min_fill?: number;
 }
 
 export type Phase = 'inflate' | 'countdown' | 'drawing' | 'done' | 'postponed';
@@ -85,7 +86,8 @@ export function step(r: RoundState, now: number, ticketCount: number, cfg: Confi
   if (r.phase === 'inflate') {
     if (r.collected_sol >= r.capacity_sol)
       return { type: 'start_countdown', ends_at: now + cfg.countdown_sec * 1000, capacity_sol: r.capacity_sol, reason: 'full' };
-    if (now - r.started_at >= cfg.inflate_max_sec * 1000)
+    // the timer pops a slow balloon, but never an (almost) empty one: below the minimum fill it keeps inflating
+    if (now - r.started_at >= cfg.inflate_max_sec * 1000 && r.collected_sol >= r.capacity_sol * (cfg.timer_min_fill ?? 0.25))
       return { type: 'start_countdown', ends_at: now + cfg.countdown_sec * 1000, capacity_sol: Math.max(r.collected_sol, 0), reason: 'timer' };
     return { type: 'none' };
   }

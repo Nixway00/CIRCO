@@ -7,7 +7,7 @@ The same rules shown on the site, in one place. Numbers are the launch values; t
 Every $CIRCO trade on pump.fun generates creator fees. Fee sharing splits them automatically:
 
 - **45%** to the prize wallet. Of this, 5% builds the Mega Jackpot and the rest fills the balloon.
-- **45%** to the buyback wallet. It does not buy on a fixed clock that bots could front-run: it buys hard into dips, supports the chart gently when trading is quiet, and never waits more than a day or on more than 10 SOL. Everything it buys is burned, and the Ringmaster announces the big dip buys.
+- **45%** to the buyback wallet. It does not buy on a fixed clock that bots could front-run: it buys dips in three steps as they deepen, waiting each time for the price to stop falling; it supports the chart gently when trading is quiet; and it never waits more than a day or on more than 10 SOL. Everything it buys is burned, the SOL it holds for the next dip is shown on the site, and the Ringmaster announces the dip buys. Details and simulation results: [buyback](buyback.md).
 - **10%** to the team.
 
 All three wallets are public. Fees that arrive while a countdown or draw is running, and anything above a balloon's size, roll into the next balloon. When trading is fast, the stage shows how much SOL is already queued for the next balloons.
@@ -34,7 +34,7 @@ All three wallets are public. Fees that arrive while a countdown or draw is runn
 
 ## 4. Countdown, minimum, postponement
 
-- When the balloon is full, a **3-minute countdown** starts. If it is not full after 30 minutes, the countdown starts anyway with the prize collected so far.
+- When the balloon is full, a **3-minute countdown** starts. If it is not full after 30 minutes, the countdown starts anyway with the prize collected so far, as long as the balloon is at least a quarter full (an almost empty balloon keeps inflating).
 - If the balloon's ticket minimum is not reached, the countdown extends by 1 minute, up to 3 times.
 - Still under the minimum: the round is **postponed**, and its prize and tickets carry over to the next round. After three postponements in a row, the next round is drawn anyway.
 

@@ -117,7 +117,7 @@ async function tick() {
       await ringmaster(`Not enough tickets yet. One more minute (${action.extensions} of ${cfg.max_extensions}).`);
     }
     if (action.type === 'postpone') {
-      const pb = await closingBlock();
+      const pb = await closingBlock(r.countdown_ends_at ?? Date.now());
       const psec = await must(db.from('round_secrets').select('secret').eq('round_id', r.id).single());
       await ok(db.from('rounds').update({ phase: 'postponed', ended_at: new Date().toISOString(), close_slot: pb.slot, close_blockhash: pb.blockhash, seed_secret: psec.secret, next_seed: drawSeed(psec.secret, pb.blockhash, r.id) }).eq('id', r.id));
       await ringmaster('Not enough tickets. The balloon flies to the next round, and so does your hopium.');
@@ -128,7 +128,7 @@ async function tick() {
       const fresh = await drawingRound();
       if (fresh) await continueDraw(fresh, action.forced);
     }
-  } catch (e) { console.error('tick failed', e); } finally { busy = false; }
+  } catch (e) { if (!String((e as Error)?.message).includes('not finalized yet')) console.error('tick failed', e); } finally { busy = false; }
 }
 
 /**
@@ -137,7 +137,7 @@ async function tick() {
  */
 async function continueDraw(r: Round, forced = false) {
   if (!r.winner_wallet) {
-    const { slot, blockhash } = await closingBlock();
+    const { slot, blockhash } = await closingBlock(r.countdown_ends_at ?? Date.now());
     const sec = await must(db.from('round_secrets').select('secret').eq('round_id', r.id).single());
     const totals = await ticketTotals(r.id);
     const seed = drawSeed(sec.secret, blockhash, r.id);
@@ -288,7 +288,7 @@ setInterval(() => {
     if (!r) return;
     console.log('buyback', r);
     const burned = Number(r.burned).toLocaleString('en-US');
-    if (r.reason === 'dip' || r.reason === 'deep_dip') await ringmaster(`Dip spotted! The buyback just scooped ${r.sol.toFixed(2)} SOL of $CIRCO and burned ${burned} tokens. 🔥`);
+    if (r.reason.startsWith('dip')) await ringmaster(`Dip spotted (${r.note})! The buyback just scooped ${r.sol.toFixed(2)} SOL of $CIRCO and burned ${burned} tokens. 🔥`);
   }).catch(e => console.error('buyback failed', e));
 }, 60_000);
 refreshSnapshots().catch(() => {});

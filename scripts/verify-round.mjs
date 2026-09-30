@@ -23,6 +23,19 @@ console.log(`Round ${id} · ${r.balloon} balloon · ${r.phase}\n`);
 const commitOk = sha256(r.seed_secret) === r.seed_commit;
 console.log(`commit       sha256(secret) = ${sha256(r.seed_secret)}\n             published      = ${r.seed_commit}  ${ok(commitOk)}`);
 const seed = sha256(`${r.seed_secret}:${r.close_blockhash}:${id}`);
+
+// the seeding block must be the FIRST block at least 2 seconds after sales closed (the engine cannot pick it)
+const RPC = process.env.SOLANA_RPC ?? 'https://api.mainnet-beta.solana.com';
+const rpc = async (method, params) => (await (await fetch(RPC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })).json()).result;
+try {
+  const target = Math.ceil(Date.parse(r.countdown_ends_at) / 1000) + 2;
+  const t = await rpc('getBlockTime', [r.close_slot]);
+  const before = await rpc('getBlocks', [Math.max(0, r.close_slot - 60), r.close_slot - 1]);
+  const prev = before?.length ? before[before.length - 1] : null;
+  const tp = prev !== null ? await rpc('getBlockTime', [prev]) : null;
+  const ruleOk = t !== null && t >= target && (tp === null || tp < target);
+  console.log(`close block  sales closed ${r.countdown_ends_at}; slot ${r.close_slot} at ${new Date(t * 1000).toISOString()}, previous block ${prev} at ${tp ? new Date(tp * 1000).toISOString() : '-'}  ${ok(ruleOk)} first block ≥ close + 2 s`);
+} catch { console.log('close block  (skipped: set SOLANA_RPC to an RPC that serves old blocks to check it)'); }
 console.log(`blockhash    ${r.close_blockhash} (slot ${r.close_slot})\nseed         ${seed}`);
 
 if (r.phase === 'done') {

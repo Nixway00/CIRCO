@@ -60,3 +60,6 @@ pump.fun's fee distribution and Jupiter buybacks exist only on mainnet. They are
 | Lucky meter | Settled on the rehearsal's finished rounds, then settled again | Winners excluded, losing tickets counted, free tickets granted as credits, second run changed nothing ✓ |
 | Graduation gala | The one-time "graduated" claim run twice | Claimed once, the second attempt did nothing ✓ |
 | Smart buyback | Strategy unit tests (dip, deep dip, quiet support, drip, dust, chunks) | ✓ Live buys are checked in the mainnet rehearsal |
+| Closing-block rule | A full draw on the local chain, then `verify-round.mjs` with the chain's RPC | Seed block = first block ≥ close + 2 s, previous block earlier ✓ |
+| Timer | A balloon with no fees reached the 30-minute limit | **Bug:** it was drawn with a 0 SOL prize. Fixed: the timer only pops a balloon at least 25% full ✓ |
+| Buyback v2 | 160 simulated days against a fixed clock ([report](buyback.md)) | 26–49% more tokens burned per SOL, ~10× fewer transactions ✓ |

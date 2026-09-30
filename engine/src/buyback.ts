@@ -4,7 +4,7 @@ import bs58 from 'bs58';
 import { connection, MINT, mintDecimals } from './chain.ts';
 import { env } from './env.ts';
 import { db } from './db.ts';
-import { decideBuyback, splitChunks, type BuybackCfg } from './buybackStrategy.ts';
+import { decideBuyback, splitChunks, initialState, type BuybackCfg, type BuybackState } from './buybackStrategy.ts';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
 const JUP = 'https://lite-api.jup.ag/swap/v1';
@@ -13,6 +13,18 @@ const PROBE_LAMPORTS = 10_000_000; // 0.01 SOL: a tiny quote that reads the pric
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 let nextAllowedAt = 0;           // random cool-down between buybacks, so there is no clock to front-run
+let state: BuybackState | null = null;   // dip episode, pacing clocks: kept in engine_state so restarts do not repeat a tranche
+
+async function loadState(): Promise<BuybackState> {
+  if (state) return state;
+  const { data } = await db.from('engine_state').select('value').eq('key', 'buyback').maybeSingle();
+  state = (data?.value as BuybackState) ?? initialState();
+  return state;
+}
+async function saveState(s: BuybackState) {
+  state = s;
+  await db.from('engine_state').upsert({ key: 'buyback', value: s, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+}
 
 export interface BuybackSettings extends BuybackCfg { maxImpact: number; enabled: boolean }
 export function buybackSettings(cfg: any): BuybackSettings {
@@ -44,7 +56,7 @@ export async function samplePrice(): Promise<void> {
 
 async function market(now: number) {
   const [{ data: ticks }, { data: trades }, { data: last }] = await Promise.all([
-    db.from('price_ticks').select('ts,price').gte('ts', new Date(now - 60 * 60_000).toISOString()).order('ts', { ascending: true }),
+    db.from('price_ticks').select('ts,price').gte('ts', new Date(now - 6 * 60 * 60_000).toISOString()).order('ts', { ascending: true }).limit(400),
     db.from('trades').select('amount_sol').gte('created_at', new Date(now - 30 * 60_000).toISOString()),
     db.from('buybacks').select('created_at').order('id', { ascending: false }).limit(1).maybeSingle(),
   ]);
@@ -60,7 +72,7 @@ async function market(now: number) {
  * in a few uneven chunks, each capped by price impact, then burns everything the wallet holds.
  * Returns what happened so the Ringmaster can announce the big ones.
  */
-export async function runBuyback(cfg: any): Promise<{ reason: string; sol: number; burned: string } | null> {
+export async function runBuyback(cfg: any): Promise<{ reason: string; sol: number; burned: string; note: string } | null> {
   if (!env.BUYBACK_WALLET_SECRET) return null;
   const s = buybackSettings(cfg);
   if (!s.enabled || Date.now() < nextAllowedAt) return null;
@@ -68,7 +80,10 @@ export async function runBuyback(cfg: any): Promise<{ reason: string; sol: numbe
   const available = (await connection.getBalance(kp.publicKey)) / LAMPORTS_PER_SOL - RESERVE_SOL;
   const now = Date.now();
   const m = await market(now);
-  const d = decideBuyback(available, m.lastBuyAt ?? (m.prices[0]?.t ?? null), { prices: m.prices, volume30mSol: m.volume30mSol, now }, s);
+  const before = await loadState();
+  const out = decideBuyback({ ...before, lastBuyAt: before.lastBuyAt ?? m.lastBuyAt }, available, { prices: m.prices, volume30mSol: m.volume30mSol, now }, s);
+  if (JSON.stringify(out.state) !== JSON.stringify(before)) await saveState(out.state);
+  const d = out.decision;
   if (d.reason === 'wait') return null;
 
   let spent = 0;
@@ -95,7 +110,7 @@ export async function runBuyback(cfg: any): Promise<{ reason: string; sol: numbe
   }
   const burned = await burnAll(kp, d.reason);
   nextAllowedAt = Date.now() + (3 + Math.random() * 5) * 60_000;   // 3 to 8 minutes before the next one
-  return spent > 0 ? { reason: d.reason, sol: spent, burned } : null;
+  return spent > 0 ? { reason: d.reason, sol: spent, burned, note: d.note } : null;
 }
 
 /** Burns every $CIRCO the buyback wallet holds (including anything bought earlier). */

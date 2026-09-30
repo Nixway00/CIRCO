@@ -13,6 +13,7 @@
   <a href="docs/how-it-works.md">How it works</a> ·
   <a href="docs/fairness.md">Provably fair</a> ·
   <a href="docs/architecture.md">Architecture</a> ·
+  <a href="docs/buyback.md">Buyback</a> ·
   <a href="docs/security.md">Security</a> ·
   <a href="docs/rehearsal.md">Rehearsal report</a> ·
   <a href="docs/journey.md">The journey</a>
@@ -54,7 +55,7 @@ stateDiagram-v2
 | Share | Destination |
 | ---: | --- |
 | **45%** | Prize wallet: fills the balloons (5% of it builds the Mega Jackpot) |
-| **45%** | Buyback of $CIRCO, timed on dips and quiet charts, then burned |
+| **45%** | Buyback of $CIRCO, laddered into dips and supporting quiet charts, then burned ([how](docs/buyback.md)) |
 | **10%** | Team: servers, development, running costs |
 
 Tickets are paid by **burning** $CIRCO (10,000 per ticket at launch). Buybacks burn more. The supply only goes one way.
@@ -88,7 +89,7 @@ Full rules: [docs/how-it-works.md](docs/how-it-works.md).
 Nobody, including the team, can choose or predict the winner.
 
 1. When a round starts, the engine publishes `sha256(secret)`.
-2. When sales close, it mixes the secret with the **Solana blockhash** of the closing slot, which nobody knows in advance.
+2. When sales close, it mixes the secret with the **blockhash of the first Solana block 2 seconds later**, which nobody knows in advance and the engine cannot choose.
 3. After the draw it reveals the secret. Anyone can recompute the winner, the Mega Pop and the next balloon:
 
 ```bash

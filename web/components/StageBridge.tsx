@@ -118,7 +118,7 @@ export default function StageBridge() {
       mine: mine.get(r.id) ?? 0, rinvio: r.phase === 'postponed', winner: nm(r.winner_wallet), winT: r.winner_tickets ?? 0,
       main: Number(r.prize_sol ?? 0) * 0.95, last: nm(r.last_buyer), bonus: r.last_buyer ? Number(r.prize_sol ?? 0) * 0.05 : 0,
     }));
-    post({ stats, history, leaderboard, jackpot: Number(st.jackpot_sol ?? 0), queue: Number(st.queue_sol ?? 0), teams: snap('teams') ?? undefined });
+    post({ stats, history, leaderboard, jackpot: Number(st.jackpot_sol ?? 0), queue: Number(st.queue_sol ?? 0), reserve: Number(st.buyback_reserve_sol ?? 0), teams: snap('teams') ?? undefined });
   }, [post, loadNicks]);
 
   const pushState = useCallback(async () => { await Promise.all([pushLive(), pushSnapshots()]); }, [pushLive, pushSnapshots]);

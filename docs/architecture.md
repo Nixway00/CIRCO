@@ -45,6 +45,7 @@ flowchart TB
 | **Draws survive restarts** | The winner is stored once; a restarted engine resumes the draw where it stopped. |
 | **Nothing burned is lost** | Tickets above the cap, or burns landing after sales close, become credits for the next rounds. |
 | **Missed events are recovered** | Every minute the engine re-reads the prize wallet and the mint; anything the webhook missed is counted. |
+| **No blockhash shopping** | The draw uses the first finalized block at least 2 s after sales close, a rule anyone can check, so the engine cannot wait for a blockhash it likes. |
 | **Fair ordering** | The last-ticket bonus follows the slot each burn landed in on-chain, not the order the engine saw them. |
 | **Top-ups are not fees** | SOL sent to the prize wallet by the team (for example the network-fee reserve) is never counted as prize. |
 | **A reserve for fees** | 0.01 SOL always stays in the prize wallet to pay network fees. |
@@ -54,7 +55,7 @@ flowchart TB
 
 - **Creator fees** accumulate in pump.fun; the engine runs the permissionless distribution every 30 seconds with the official SDK, and the shares land directly in the three wallets.
 - **Prize wallet**: fills the balloons and the Mega Jackpot, pays winners.
-- **Buyback wallet**: waits for the moments where buying helps most. A 12% drop from the 30-minute high triggers a buy of 40% of its SOL (80% on a drop twice as deep); a quiet chart drifting down gets gentle support; above 10 SOL or after 24 hours it drips the rest out anyway. Buys are split into uneven chunks at random times, each capped at 2% price impact, and everything bought is burned. The logic is in [`engine/src/buybackStrategy.ts`](../engine/src/buybackStrategy.ts), with tests.
+- **Buyback wallet**: buys dips as a three-step ladder sized to the chart's own volatility, waiting for the fall to stop before each step; gives gentle, rate-limited support to quiet charts; drips out anything above 10 SOL or older than 24 hours over several hours. Buys are split into uneven chunks at random times, each capped at 2% price impact, and everything bought is burned. Design, stress test and results: [buyback.md](buyback.md).
 - **Team wallet**: receives its 10% and nothing else touches it.
 
 ## Database
@@ -73,3 +74,4 @@ Migrations in [`supabase/migrations`](../supabase/migrations), applied in order:
 | `0009_burn_order` | On-chain slot of each burn |
 | `0010_smart_buyback` | Price samples, buyback reasons, green opening rounds |
 | `0011_lucky_meter_and_gala` | Lucky meter, graduation gala |
+| `0012_engine_state` | Buyback state that survives restarts, timer minimum fill |

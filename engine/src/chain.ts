@@ -63,8 +63,30 @@ export async function paySol(to: string, sol: number): Promise<string> {
 }
 
 /** Slot and blockhash at the moment sales close: mixed into the draw seed. */
-export async function closingBlock(): Promise<{ slot: number; blockhash: string }> {
-  const slot = await connection.getSlot('finalized');
+/** Seconds after sales close before the block that seeds the draw: no ticket can be bought knowing it. */
+export const CLOSE_GAP_SEC = 2;
+
+/**
+ * The block that seeds a draw is fixed by a public rule, not by when the engine happens to ask:
+ * the FIRST finalized block whose time is at least `closedAtMs` + 2 seconds. Anyone can check it
+ * (its time is at or after the target, the block before it is earlier), so the engine cannot wait
+ * for a blockhash it likes. Throws "not yet" until that block is finalized; the caller retries.
+ */
+export async function closingBlock(closedAtMs: number): Promise<{ slot: number; blockhash: string }> {
+  const target = Math.ceil(closedAtMs / 1000) + CLOSE_GAP_SEC;       // unix seconds
+  const tip = await connection.getSlot('finalized');
+  const tipTime = await connection.getBlockTime(tip);
+  if (tipTime === null || tipTime < target) throw new Error('closing block not finalized yet');
+  // search back far enough to reach the target (about 2.5 slots per second, with margin)
+  const back = Math.min(400_000, Math.max(400, Math.ceil((tipTime - target + 10) * 4)));
+  const slots = await connection.getBlocks(Math.max(0, tip - back), tip, 'finalized');
+  let lo = 0, hi = slots.length - 1;
+  while (lo < hi) {                                              // first block with time >= target
+    const mid = (lo + hi) >> 1;
+    const t = await connection.getBlockTime(slots[mid]);
+    if (t !== null && t >= target) hi = mid; else lo = mid + 1;
+  }
+  const slot = slots[lo];
   const block = await connection.getBlock(slot, { maxSupportedTransactionVersion: 0, transactionDetails: 'none', rewards: false });
   if (!block) throw new Error('block not available');
   return { slot, blockhash: block.blockhash };

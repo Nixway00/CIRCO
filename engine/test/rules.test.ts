@@ -185,3 +185,11 @@ test('the opening rounds can use the green balloon', () => {
   assert.deepEqual(nextBalloonFromSeed(2, false, { ...cfg, first_rounds_balloon: 'green' } as any, 's'), { balloon: 'green', forced: true });
   assert.deepEqual(nextBalloonFromSeed(2, false, cfg, 's'), { balloon: 'blue', forced: true });
 });
+
+test('the 30-minute timer never pops an almost empty balloon', () => {
+  const base = { id: 1, balloon: 'blue' as const, capacity_sol: 1, phase: 'inflate' as const, started_at: 0, countdown_ends_at: null, extensions: 0, postpone_streak: 0 };
+  const late = cfg.inflate_max_sec * 1000 + 1;
+  assert.equal(step({ ...base, collected_sol: 0.1 } as any, late, 0, cfg).type, 'none');                 // 10%: keep inflating
+  const a = step({ ...base, collected_sol: 0.3 } as any, late, 0, cfg);                                   // 30%: pop with what it has
+  assert.equal(a.type, 'start_countdown'); assert.equal((a as any).capacity_sol, 0.3);
+});

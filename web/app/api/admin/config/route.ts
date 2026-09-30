@@ -23,7 +23,8 @@ const EDITABLE: Record<string, (v: unknown) => boolean> = {
   game_daily_ticket_cap: int(0, 100),
   team_reward_tickets: int(0, 20),
   pumpfun_chat_relay: (v) => typeof v === 'boolean',
-  lucky_every: int(0, 1000),                 // 0 switches the lucky meter off
+  lucky_every: int(0, 1000),
+  timer_min_fill: num(0, 1),                 // 0 switches the lucky meter off
   buyback_mode: (v) => v === 'smart' || v === 'off',
   buyback_dip_pct: num(0.02, 0.8),
   buyback_quiet_volume_sol: num(0, 10000),

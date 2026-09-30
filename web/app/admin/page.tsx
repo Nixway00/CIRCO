@@ -18,6 +18,7 @@ const SETTINGS: { key: string; label: string; help: string; step?: number; min?:
   { key: 'game_daily_ticket_cap', label: 'Game tickets per day', help: 'Most tickets a wallet can win in games each day.', min: 0, max: 100 },
   { key: 'team_reward_tickets', label: 'Team reward (tickets)', help: 'Bonus tickets for each active member of the weekly winning team.', min: 0, max: 20 },
   { key: 'pumpfun_chat_relay', label: 'pump.fun chat in the site chat', help: 'Turn the pump.fun chat bridge on or off.', bool: true },
+  { key: 'timer_min_fill', label: 'Timer: minimum fill', help: 'The 30-minute timer only pops a balloon at least this full (0.25 = 25%).', step: 0.05, min: 0, max: 1 },
   { key: 'lucky_every', label: 'Lucky meter', help: 'Losing tickets needed for 1 free ticket (0 = off).', min: 0, max: 1000 },
   { key: 'buyback_dip_pct', label: 'Buyback: dip size', help: 'Drop from the 30-minute high that triggers a dip buy (0.12 = 12%).', step: 0.01, min: 0.02, max: 0.8 },
   { key: 'buyback_quiet_volume_sol', label: 'Buyback: quiet market (SOL in 30 min)', help: 'Under this volume a drifting chart gets gentle support.', step: 0.5, min: 0 },
