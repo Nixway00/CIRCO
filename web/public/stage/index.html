@@ -186,6 +186,8 @@ body.recording #recTitle{ display:block; }
 .spotlit{ box-shadow:0 0 0 4px #FFD34D, 0 0 30px 8px rgba(255,211,77,.7) !important; animation:spotp 1s ease-in-out infinite; }
 @keyframes spotp{ 50%{ box-shadow:0 0 0 7px #FFD34D, 0 0 40px 14px rgba(255,211,77,.5); } }
 .linkbtn{ display:inline-flex; align-items:center; text-decoration:none; }
+#mCta, .iconbtn{ display:none; }
+nav.pages .sm{ display:none; }
 .actions .btn{ white-space:nowrap; }
 #toast{ position:absolute; top:88px; left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--lineHi); border-radius:12px; padding:10px 16px; font-size:14px; opacity:0; transition:opacity .3s; pointer-events:none; backdrop-filter:blur(10px); }
 #toast.on{ opacity:1; }
@@ -198,7 +200,7 @@ body.recording #recTitle{ display:block; }
   nav.pages{ overflow-x:auto; }
   .cards{ grid-template-columns:repeat(2, minmax(0,1fr)); }
   body{ overflow:auto; }
-  #stage{ position:relative; height:60vh; }
+  #stage{ position:relative; height:52vh; min-height:330px; }
   .overlay{ position:static; }
   header.top{ position:fixed; height:60px; padding:0 14px; z-index:3; grid-template-columns:1fr auto; }
   header.top .stepper{ display:none; }
@@ -207,15 +209,37 @@ body.recording #recTitle{ display:block; }
   .brand .chip{ display:none; }
   .actions{ gap:8px; }
   .actions .btn{ padding:0 12px; font-size:14px; }
-  .hud{ position:absolute; top:calc(60vh - 140px); bottom:auto; width:calc(100% - 32px); min-width:0; }
-  #hudBig{ font-size:30px; } #hudBig.timer{ font-size:42px; }
+  .overlay{ display:flex; flex-direction:column; }
+  .hud{ order:1; position:static; transform:none; left:auto; bottom:auto; width:auto; min-width:0; padding:14px 16px 0; gap:6px; }
+  #mCta{ order:2; display:grid; grid-template-columns:1fr auto; gap:10px; padding:14px 14px 4px; }
+  #mCta .btn{ height:52px; font-size:16px; justify-content:center; }
+  #mCta .primary{ font-weight:700; }
+  footer.stats{ order:3; }
+  .tabs{ order:4; } .col{ order:5; } .note{ order:6; }
+  .actions #buyBtn{ display:none; }
+  .actions .btn.iconbtn{ display:inline-flex; align-items:center; justify-content:center; width:44px; padding:0; }
+  #mCta #mCoin{ display:inline-flex; align-items:center; padding:0 16px; border:1px solid var(--line); border-radius:12px; background:rgba(8,16,52,.72); color:var(--ink); font-weight:600; }
+  #hudTitle{ font-size:15px; }
+  #hudBig{ font-size:30px; line-height:1.15; } #hudBig.timer{ font-size:44px; }
+  #hudSub{ font-size:14px; }
   .tabs{ display:flex; gap:8px; padding:12px 14px 0; }
   .tabs button{ flex:1; height:44px; border-radius:12px; border:1px solid var(--line); background:transparent; color:var(--ink); font-weight:500; }
   .tabs button[aria-selected="true"]{ background:var(--ink); color:var(--night); font-weight:700; }
   .col{ position:static; width:auto; padding:12px 14px; display:none; }
   .col.show{ display:flex; }
-  footer.stats{ position:static; height:auto; flex-direction:column; align-items:stretch; padding:14px; gap:14px; background:none; }
-  .statset{ flex-wrap:wrap; gap:18px; }
+  footer.stats{ position:static; height:auto; flex-direction:column; align-items:stretch; padding:10px 14px; gap:10px; background:none; }
+  .statset{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .statset .stat{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; }
+  .statset .stat:last-child{ grid-column:1 / -1; display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+  .stat b{ font-size:17px; }
+  footer.stats .demo{ display:flex; flex-wrap:wrap; gap:8px; }
+  footer.stats .demo #audioBtn, footer.stats .demo #liveBtn{ display:none; }
+  nav.pages{ position:fixed; left:0; right:0; bottom:0; z-index:4; display:grid; grid-template-columns:repeat(6, 1fr); gap:2px; border-radius:0; border-width:1px 0 0; padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px)); background:rgba(3,7,22,.94); backdrop-filter:blur(14px); overflow:visible; }
+  nav.pages button{ min-height:46px; padding:0 2px; font-size:12px; border-radius:10px; }
+  nav.pages .lg{ display:none; } nav.pages .sm{ display:inline; }
+  body{ padding-bottom:calc(64px + env(safe-area-inset-bottom,0px)); }
+  .sheet{ bottom:calc(58px + env(safe-area-inset-bottom,0px)) !important; }
+  #bubble{ bottom:calc(80px + env(safe-area-inset-bottom,0px)) !important; }
   .note{ position:static; padding:0 14px 24px; }
 }
 @media (prefers-reduced-motion: reduce){ .new{ animation:none; } }
@@ -235,6 +259,7 @@ body.recording #recTitle{ display:block; }
       <span class="s" data-p="estrazione">Draw</span>
     </div>
     <div class="actions">
+      <button class="btn iconbtn" type="button" id="audioMini" aria-label="Turn sound on" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4z"/><path id="audioWaves" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" opacity=".25"/></svg></button>
       <button class="btn" type="button" id="connectBtn">Connect wallet</button>
       <a class="btn linkbtn" href="#" id="buyCoin">Buy $CIRCO ↗</a>
       <button class="btn primary" type="button" id="buyBtn" aria-expanded="false" aria-controls="buyPop">Buy tickets</button>
@@ -307,6 +332,10 @@ body.recording #recTitle{ display:block; }
     <div class="bar" id="hudBarWrap"><span id="hudBar"></span></div>
     <div id="hudSub"></div>
   </div>
+  <div id="mCta">
+    <button class="btn primary" type="button" id="mBuy">Buy tickets</button>
+    <a class="btn linkbtn" href="#" id="mCoin" target="_blank" rel="noopener">Buy $CIRCO ↗</a>
+  </div>
   <footer class="stats">
     <div class="statset">
       <div class="stat"><b id="sBurn">0</b><span>tokens burned</span></div>
@@ -318,7 +347,7 @@ body.recording #recTitle{ display:block; }
     <nav class="pages" aria-label="Site sections">
       <button type="button" data-page="gioca" aria-current="page">Play</button>
       <button type="button" data-page="storico">History</button>
-      <button type="button" data-page="classifiche">Leaderboards</button>
+      <button type="button" data-page="classifiche"><span class="lg">Leaderboards</span><span class="sm">Ranks</span></button>
       <button type="button" data-page="profilo">Profile</button>
       <button type="button" data-page="missioni">Mission</button>
       <button type="button" data-page="regolamento">Rules</button>
@@ -1196,7 +1225,15 @@ $('bpGo').addEventListener('click', function(){
   var got = buy(ME, bpN); bpOpen(false); sfx('coin');
   toast(got ? 'You bought '+got+(got === 1 ? ' ticket: ' : ' tickets: ')+fmt(got*10000,0)+' $CIRCO burned.' : 'You already hold the maximum of 10 tickets this round.');
 });
-$('buyCoin').addEventListener('click', function(e){ e.preventDefault(); toast('This will link to the $CIRCO page on Pump.fun.'); });
+var PUMP_URL = '';
+function coinClick(e){ if (!PUMP_URL){ e.preventDefault(); toast('$CIRCO is not launched yet. The Pump.fun link arrives on launch day.'); } }
+$('buyCoin').addEventListener('click', coinClick); $('mCoin').addEventListener('click', coinClick);
+$('mBuy').addEventListener('click', function(){ $('buyBtn').click(); });
+$('audioMini').addEventListener('click', function(){ $('audioBtn').click(); });
+function syncAudioMini(){ var on = $('audioBtn').getAttribute('aria-pressed') === 'true';
+  $('audioMini').setAttribute('aria-pressed', on ? 'true' : 'false'); $('audioMini').setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on');
+  document.getElementById('audioWaves').setAttribute('opacity', on ? '1' : '.25'); }
+new MutationObserver(syncAudioMini).observe($('audioBtn'), { attributes:true, attributeFilter:['aria-pressed'] });
 
 /* ---------- audio: circus music and effects, generated in the browser ---------- */
 var AC = null, master = null, musicGain = null, audioOn = false, nextNote = 0, step = 0, lastSec = -1;
@@ -1577,6 +1614,7 @@ window.addEventListener('message', function(e){
     P = new Map(m.leaderboard.map(function(l){ return [sh(l.wallet), { t:l.tickets_bought, b:+l.tokens_burned, wins:l.wins, won:+l.sol_won, bonus:+l.bonus_sol, rounds:l.rounds_played }]; }));
     refreshSheet();
   }
+  if (m.pumpUrl){ PUMP_URL = m.pumpUrl; $('buyCoin').href = PUMP_URL; $('mCoin').href = PUMP_URL; $('buyCoin').target = '_blank'; }
   if (m.toast) toast(m.toast);
 });
 if (LIVE){

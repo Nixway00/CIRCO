@@ -73,7 +73,8 @@ export default function StageBridge() {
       const { data: meRow } = await supabase.from('leaderboard').select('*').eq('wallet', me).maybeSingle();
       if (meRow) leaderboard = [...leaderboard, meRow];
     }
-    post({ round, prev, tickets, lastBuyer, trades: (trades ?? []).reverse(), chat: (chat ?? []).reverse(), stats, history, leaderboard });
+    const pumpUrl = (process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').startsWith('https://pump.fun/coin/') && !(process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').includes('YOUR_MINT') ? process.env.NEXT_PUBLIC_PUMPFUN_URL : undefined;
+    post({ round, prev, tickets, lastBuyer, trades: (trades ?? []).reverse(), chat: (chat ?? []).reverse(), stats, history, leaderboard, pumpUrl });
   }, [post]);
 
   // live updates: any change in the game tables re-sends the state (debounced)
