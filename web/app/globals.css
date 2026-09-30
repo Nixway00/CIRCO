@@ -1,0 +1,10 @@
+:root{ --night:#030716; --panel:rgba(8,16,52,.72); --line:rgba(80,150,255,.28); --electric:#2F7BFF; --cyan:#5CE1FF; --ink:#EAF2FF; --muted:#A4B8EC; --gold:#FFD34D; }
+html,body{ margin:0; height:100%; background:var(--night); color:var(--ink); font-family:system-ui,sans-serif; }
+.stage{ position:fixed; inset:0; border:0; width:100%; height:100%; }
+.drawer{ position:fixed; right:16px; bottom:16px; width:min(340px, calc(100% - 32px)); background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:16px; backdrop-filter:blur(14px); display:flex; flex-direction:column; gap:10px; z-index:2; }
+.drawer h2{ margin:0; font-size:15px; }
+.buy .qty{ display:flex; align-items:center; justify-content:space-between; }
+.buy .qty button{ width:48px; height:48px; border-radius:12px; border:1px solid var(--line); background:rgba(47,123,255,.15); color:var(--ink); font-size:22px; }
+.buy output{ font-size:30px; font-weight:800; }
+button.primary{ height:48px; border-radius:12px; border:0; background:var(--electric); color:#fff; font-weight:700; font-size:16px; }
+a{ color:var(--cyan); }
