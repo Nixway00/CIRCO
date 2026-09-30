@@ -23,7 +23,7 @@ Not from the team.
 Every $CIRCO trade on pump.fun generates creator fees, and pump.fun's fee sharing splits them automatically, locked at launch:
 
 - **45% goes to the prize wallet**, which fills the balloons
-- **45% goes to buyback**: every 10 minutes it buys $CIRCO on the market and burns it
+- **45% goes to buyback**, and it is smart about it: instead of buying on a clock, it waits for dips and buys hard into them, supports the chart when trading goes quiet, and burns everything it buys
 - **10% goes to the team** for servers and development
 
 All three wallets are public. You can watch the money move.

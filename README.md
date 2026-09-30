@@ -54,7 +54,7 @@ stateDiagram-v2
 | Share | Destination |
 | ---: | --- |
 | **45%** | Prize wallet: fills the balloons (5% of it builds the Mega Jackpot) |
-| **45%** | Automatic buyback of $CIRCO, then burned |
+| **45%** | Buyback of $CIRCO, timed on dips and quiet charts, then burned |
 | **10%** | Team: servers, development, running costs |
 
 Tickets are paid by **burning** $CIRCO (10,000 per ticket at launch). Buybacks burn more. The supply only goes one way.

@@ -180,3 +180,8 @@ test('next balloon ignores the key order stored in the database', () => {
   const shuffled = { ...cfg, balloons: { red: cfg.balloons.red, blue: cfg.balloons.blue, gold: cfg.balloons.gold, green: cfg.balloons.green } };
   for (let i = 0; i < 200; i++) assert.deepEqual(nextBalloonFromSeed(10, false, shuffled as any, 's' + i), nextBalloonFromSeed(10, false, cfg, 's' + i));
 });
+
+test('the opening rounds can use the green balloon', () => {
+  assert.deepEqual(nextBalloonFromSeed(2, false, { ...cfg, first_rounds_balloon: 'green' } as any, 's'), { balloon: 'green', forced: true });
+  assert.deepEqual(nextBalloonFromSeed(2, false, cfg, 's'), { balloon: 'blue', forced: true });
+});

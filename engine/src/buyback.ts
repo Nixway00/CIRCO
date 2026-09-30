@@ -4,47 +4,110 @@ import bs58 from 'bs58';
 import { connection, MINT, mintDecimals } from './chain.ts';
 import { env } from './env.ts';
 import { db } from './db.ts';
+import { decideBuyback, splitChunks, type BuybackCfg } from './buybackStrategy.ts';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
 const JUP = 'https://lite-api.jup.ag/swap/v1';
 const RESERVE_SOL = 0.02;        // kept in the wallet for network fees
-const MIN_BUY_SOL = 0.05;        // no point swapping dust
+const PROBE_LAMPORTS = 10_000_000; // 0.01 SOL: a tiny quote that reads the price without trading
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+let nextAllowedAt = 0;           // random cool-down between buybacks, so there is no clock to front-run
+
+export interface BuybackSettings extends BuybackCfg { maxImpact: number; enabled: boolean }
+export function buybackSettings(cfg: any): BuybackSettings {
+  return {
+    enabled: cfg.buyback_mode !== 'off',
+    dipPct: Number(cfg.buyback_dip_pct ?? 0.12),
+    quietVolumeSol: Number(cfg.buyback_quiet_volume_sol ?? 5),
+    maxHoldSol: Number(cfg.buyback_max_hold_sol ?? 10),
+    maxHoldHours: Number(cfg.buyback_max_hold_hours ?? 24),
+    maxImpact: Number(cfg.buyback_max_impact ?? 0.02),
+    minBuySol: 0.05,
+  };
+}
+
+async function quote(lamports: number, slippageBps = 150) {
+  const q = await (await fetch(`${JUP}/quote?inputMint=${SOL_MINT}&outputMint=${MINT.toBase58()}&amount=${lamports}&slippageBps=${slippageBps}`)).json();
+  if (!q?.outAmount) throw new Error(`no Jupiter quote: ${JSON.stringify(q).slice(0, 160)}`);
+  return q;
+}
+
+/** Every minute: record the price (SOL per whole token) so the strategy can see dips. */
+export async function samplePrice(): Promise<void> {
+  const q = await quote(PROBE_LAMPORTS);
+  const dec = await mintDecimals();
+  const tokens = Number(q.outAmount) / 10 ** dec;
+  if (tokens > 0) await db.from('price_ticks').insert({ price: (PROBE_LAMPORTS / LAMPORTS_PER_SOL) / tokens });
+  await db.from('price_ticks').delete().lt('ts', new Date(Date.now() - 24 * 3600_000).toISOString());
+}
+
+async function market(now: number) {
+  const [{ data: ticks }, { data: trades }, { data: last }] = await Promise.all([
+    db.from('price_ticks').select('ts,price').gte('ts', new Date(now - 60 * 60_000).toISOString()).order('ts', { ascending: true }),
+    db.from('trades').select('amount_sol').gte('created_at', new Date(now - 30 * 60_000).toISOString()),
+    db.from('buybacks').select('created_at').order('id', { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  return {
+    prices: (ticks ?? []).map(t => ({ t: Date.parse(t.ts), p: Number(t.price) })),
+    volume30mSol: (trades ?? []).reduce((a, t) => a + Number(t.amount_sol), 0),
+    lastBuyAt: last ? Date.parse(last.created_at) : null,
+  };
+}
 
 /**
- * Every few minutes: spend the buyback wallet's SOL on $CIRCO through Jupiter, then burn every
- * $CIRCO the wallet holds. Both transactions are logged in `buybacks` and shown on the site.
+ * Runs every minute. Decides whether to buy (dip, deep dip, quiet support, drip) and executes the buy
+ * in a few uneven chunks, each capped by price impact, then burns everything the wallet holds.
+ * Returns what happened so the Ringmaster can announce the big ones.
  */
-export async function runBuyback(): Promise<void> {
-  if (!env.BUYBACK_WALLET_SECRET) return;
+export async function runBuyback(cfg: any): Promise<{ reason: string; sol: number; burned: string } | null> {
+  if (!env.BUYBACK_WALLET_SECRET) return null;
+  const s = buybackSettings(cfg);
+  if (!s.enabled || Date.now() < nextAllowedAt) return null;
   const kp = Keypair.fromSecretKey(bs58.decode(env.BUYBACK_WALLET_SECRET));
-  const balance = (await connection.getBalance(kp.publicKey)) / LAMPORTS_PER_SOL;
-  const spend = balance - RESERVE_SOL;
-  let swapSig: string | null = null;
+  const available = (await connection.getBalance(kp.publicKey)) / LAMPORTS_PER_SOL - RESERVE_SOL;
+  const now = Date.now();
+  const m = await market(now);
+  const d = decideBuyback(available, m.lastBuyAt ?? (m.prices[0]?.t ?? null), { prices: m.prices, volume30mSol: m.volume30mSol, now }, s);
+  if (d.reason === 'wait') return null;
 
-  if (spend >= MIN_BUY_SOL) {
-    const lamports = Math.floor(spend * LAMPORTS_PER_SOL);
-    const quote = await (await fetch(`${JUP}/quote?inputMint=${SOL_MINT}&outputMint=${MINT.toBase58()}&amount=${lamports}&slippageBps=300`)).json();
-    if (!quote?.outAmount) throw new Error(`no Jupiter quote: ${JSON.stringify(quote).slice(0, 200)}`);
+  let spent = 0;
+  for (const chunk of splitChunks(d.spendSol, s.minBuySol)) {
+    // shrink a chunk until its price impact is acceptable, or skip it
+    let lamports = Math.floor(chunk * LAMPORTS_PER_SOL), q: any = null;
+    while (lamports >= s.minBuySol * LAMPORTS_PER_SOL) {
+      q = await quote(lamports);
+      if (Number(q.priceImpactPct ?? 0) <= s.maxImpact) break;
+      lamports = Math.floor(lamports / 2); q = null;
+    }
+    if (!q) continue;
     const swap = await (await fetch(`${JUP}/swap`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quoteResponse: quote, userPublicKey: kp.publicKey.toBase58(), dynamicComputeUnitLimit: true, prioritizationFeeLamports: 'auto' }),
+      body: JSON.stringify({ quoteResponse: q, userPublicKey: kp.publicKey.toBase58(), dynamicComputeUnitLimit: true, prioritizationFeeLamports: 'auto' }),
     })).json();
     const vtx = VersionedTransaction.deserialize(Buffer.from(swap.swapTransaction, 'base64'));
     vtx.sign([kp]);
-    swapSig = await connection.sendRawTransaction(vtx.serialize(), { maxRetries: 3 });
-    await connection.confirmTransaction(swapSig, 'confirmed');
-    await db.from('buybacks').insert({ swap_tx: swapSig, sol_spent: spend, tokens_burned: 0 });
+    const sig = await connection.sendRawTransaction(vtx.serialize(), { maxRetries: 3 });
+    await connection.confirmTransaction(sig, 'confirmed');
+    await db.from('buybacks').insert({ swap_tx: sig, sol_spent: lamports / LAMPORTS_PER_SOL, tokens_burned: 0, reason: d.reason });
+    spent += lamports / LAMPORTS_PER_SOL;
+    await sleep(4000 + Math.random() * 12000);             // spread the chunks over some blocks
   }
+  const burned = await burnAll(kp, d.reason);
+  nextAllowedAt = Date.now() + (3 + Math.random() * 5) * 60_000;   // 3 to 8 minutes before the next one
+  return spent > 0 ? { reason: d.reason, sol: spent, burned } : null;
+}
 
-  // burn everything the buyback wallet holds (including tokens bought in earlier runs)
+/** Burns every $CIRCO the buyback wallet holds (including anything bought earlier). */
+async function burnAll(kp: Keypair, reason: string): Promise<string> {
   const ata = getAssociatedTokenAddressSync(MINT, kp.publicKey);
   let amount = 0n;
-  try { amount = (await getAccount(connection, ata)).amount; } catch { return; }
-  if (amount === 0n) return;
+  try { amount = (await getAccount(connection, ata)).amount; } catch { return '0'; }
+  if (amount === 0n) return '0';
   const dec = await mintDecimals();
   const burnSig = await connection.sendTransaction(new Transaction().add(createBurnCheckedInstruction(ata, MINT, kp.publicKey, amount, dec)), [kp]);
   await connection.confirmTransaction(burnSig, 'confirmed');
   const whole = (amount / 10n ** BigInt(dec)).toString();
-  if (swapSig) await db.from('buybacks').update({ burn_tx: burnSig, tokens_burned: whole }).eq('swap_tx', swapSig);
-  else await db.from('buybacks').insert({ burn_tx: burnSig, sol_spent: 0, tokens_burned: whole });
+  await db.from('buybacks').insert({ burn_tx: burnSig, sol_spent: 0, tokens_burned: whole, reason });
+  return whole;
 }

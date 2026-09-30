@@ -247,6 +247,8 @@ nav.pages .sm{ display:none; }
 }
 .jackpot{ font-size:12px; font-weight:700; letter-spacing:.04em; color:#1a1030; background:linear-gradient(90deg,#FFD34D,#FFB347,#FFD34D); background-size:200% 100%; animation:jpShine 3s linear infinite; padding:5px 12px; border-radius:999px; box-shadow:0 0 18px rgba(255,211,77,.45); }
 .jackpot b{ font-family:'Unbounded',sans-serif; }
+.queue{ font-size:12px; color:#bfe9ff; background:rgba(47,123,255,.18); border:1px solid rgba(92,225,255,.35); padding:3px 10px; border-radius:999px; margin-top:4px; }
+.queue b{ font-family:'Unbounded',sans-serif; color:#fff; }
 @keyframes jpShine{ to{ background-position:-200% 0; } }
 .showRow{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
 #mCta .showRow{ grid-column:1 / -1; margin-top:0; }
@@ -495,6 +497,7 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
   </div>
   <div class="hud" aria-live="polite">
     <div id="jackpotPill" class="jackpot" aria-live="polite">💰 MEGA JACKPOT <b id="jpAmt">0.00 SOL</b></div>
+    <div id="queuePill" class="queue" hidden>🎈 <b id="qAmt">+0.00 SOL</b> queued for the next balloons</div>
     <div id="hudTitle">Round 1</div>
     <div class="mSteps" id="mSteps" aria-hidden="true"><span data-p="scelta">Pick</span><span data-p="gonfiaggio">Inflate</span><span data-p="countdown">Countdown</span><span data-p="estrazione">Draw</span></div>
     <div id="hudBig">Picking the balloon</div>
@@ -1644,8 +1647,8 @@ function pageRegolamento(){
   function d(title, body, open){ return '<details'+(open?' open':'')+'><summary>'+title+'</summary>'+body+'</details>'; }
   return '<div class="rules"><p class="small rulesTop">Everything is open: <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/story.md" target="_blank" rel="noopener">the story ↗</a> · <a href="https://github.com/Nixway00/CIRCO" target="_blank" rel="noopener">code on GitHub ↗</a> · <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/fairness.md" target="_blank" rel="noopener">check a draw ↗</a> · <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/rehearsal.md" target="_blank" rel="noopener">test report ↗</a></p>'+
     d('How it works', '<p>Every $CIRCO trade creates fees. Part of them inflates a balloon full of coins. When the balloon is full, a countdown starts: everyone holding tickets joins the draw, and the wheel picks the winner.</p>', true)+
-    d('Where the fees go', '<ul><li>45% into the balloon prize.</li><li>45% into automatic $CIRCO buyback and burn.</li><li>10% to the team for servers, development and running costs.</li></ul><p>Of what reaches the prize wallet, '+Math.round(SHOW.jackpotShare*100)+'% feeds the Mega Jackpot and the rest fills the balloons.</p><p>All three wallets are public: <a href="#">prize ↗</a>, <a href="#">buyback ↗</a>, <a href="#">team ↗</a>.</p>')+
-    d('The balloons', '<ul><li>Green balloon dog: 0.5 SOL, 40% of rounds, 50 tickets minimum.</li><li>Blue balloon: 1 SOL, 35%, 100 tickets minimum.</li><li>Red rocket: 2 SOL, 20%, 150 tickets minimum.</li><li>Gold trophy: 5 SOL, 5%, 300 tickets minimum.</li></ul><p>The first three rounds always use the blue 1 SOL balloon. Every day at 01:00 UTC, if no gold trophy came out in the last 24 hours, the next balloon is a gold trophy. The countdown is always on screen.</p><p>Otherwise the next balloon is drawn from the previous round\'s revealed seed, so anyone can check it on the win page.</p>')+
+    d('Where the fees go', '<ul><li>45% into the balloon prize.</li><li>45% into $CIRCO buyback and burn. The buyback waits for the moments where it helps most: it buys hard into dips, supports the chart gently when trading is quiet, and never sits on the money for more than a day.</li><li>10% to the team for servers, development and running costs.</li></ul><p>Of what reaches the prize wallet, '+Math.round(SHOW.jackpotShare*100)+'% feeds the Mega Jackpot and the rest fills the balloons.</p><p>All three wallets are public: <a href="#">prize ↗</a>, <a href="#">buyback ↗</a>, <a href="#">team ↗</a>.</p>')+
+    d('The balloons', '<ul><li>Green balloon dog: 0.5 SOL, 40% of rounds, 50 tickets minimum.</li><li>Blue balloon: 1 SOL, 35%, 100 tickets minimum.</li><li>Red rocket: 2 SOL, 20%, 150 tickets minimum.</li><li>Gold trophy: 5 SOL, 5%, 300 tickets minimum.</li></ul><p>The first three rounds always use the green 0.5 SOL balloon dog. Every day at 01:00 UTC, if no gold trophy came out in the last 24 hours, the next balloon is a gold trophy. The countdown is always on screen.</p><p>Otherwise the next balloon is drawn from the previous round\'s revealed seed, so anyone can check it on the win page.</p>')+
     d('Tickets', '<ul><li>One ticket costs '+fmt(PRICE,0)+' $CIRCO, burned at purchase. The team can change the price in tokens when $CIRCO moves a lot, announcing it on X first.</li><li>Up to 10 tickets per wallet per round.</li><li>Tickets are sold while the balloon inflates and during the countdown. Sales close when the countdown ends.</li><li>Tickets count for the current round only, unless the round is postponed.</li><li>Nothing you burn is ever lost: tickets above the 10 cap, or bought a moment after sales closed, are saved as credits and added automatically at the start of the next rounds.</li></ul>')+
     d('Daily mission', '<ul><li>Share a round on X and paste the link to your post: you get 3 bonus tickets, once a day.</li><li>Bonus tickets burn nothing, count toward the 10-ticket cap and the round minimum.</li><li>One X account per wallet.</li></ul>')+
     d('Countdown, minimum and postponement', '<ul><li>The countdown lasts 3 minutes.</li><li>If the balloon is not full after 30 minutes, it goes to the countdown anyway with the prize collected so far.</li><li>Each balloon has a ticket minimum. If it is not reached, the countdown extends by 1 minute, up to 3 times.</li><li>If tickets are still under the minimum after the third extension, the round is postponed: the prize and the tickets carry over to the next round.</li><li>After three postponements in a row, the next round is drawn anyway with the tickets it has.</li></ul>')+
@@ -1750,7 +1753,7 @@ function pickType(){
   if (LIVE && S.liveType) return S.liveType;
   if (FORCED && TYPES[FORCED]) return FORCED;
   if (S.galaDue && S.round > 3){ S.galaDue = false; return 'oro'; }
-  if (S.round <= 3) return 'blu';
+  if (S.round <= 3) return 'verde';
   var tot = KEYS.reduce(function(a,k){ return a+TYPES[k].w; },0), r = Math.random()*tot;
   for (var i=0;i<KEYS.length;i++){ r -= TYPES[KEYS[i]].w; if (r <= 0) return KEYS[i]; }
   return 'blu';
@@ -1980,6 +1983,7 @@ window.addEventListener('message', function(e){
   if (m.gameError){ G.state = 'idle'; gInfo(); $('gInfo').innerHTML = m.gameError + '<br>' + $('gInfo').innerHTML; }
   if (m.showCfg){ var sc = m.showCfg; if (sc.fxPrices) SHOW.fxPrices = sc.fxPrices; if (sc.jackpotShare !== undefined) SHOW.jackpotShare = sc.jackpotShare; if (sc.jackpotChance !== undefined) SHOW.jackpotChance = sc.jackpotChance; if (sc.teamReward !== undefined) SHOW.teamReward = sc.teamReward; if (sc.gameCap !== undefined) SHOW.gameCap = sc.gameCap; if (sc.pickPrice) SHOW.pickPrice = sc.pickPrice; if (sc.pickReturn) SHOW.pickReturn = sc.pickReturn; if (sc.weights){ KEYS.forEach(function(k){ if (sc.weights[T2B[k]] !== undefined) TYPES[k].w = sc.weights[T2B[k]]; }); } }
   if (m.jackpot !== undefined){ SHOW.jackpot = +m.jackpot || 0; renderJackpot(); }
+  if (m.queue !== undefined){ SHOW.queue = +m.queue || 0; renderJackpot(); }
   if (m.teams){ SHOW.teams.clowns = +m.teams.clowns || 0; SHOW.teams.acrobats = +m.teams.acrobats || 0; if (m.teams.ends_at) SHOW.teams.ends = Date.parse(m.teams.ends_at); SHOW.teams.last = m.teams.last_winner || null; renderTeams(); }
   if (m.team !== undefined){ SHOW.myTeam = m.team || ''; SHOW.teamSetAt = m.teamSetAt ? Date.parse(m.teamSetAt) : 0; renderTeams(); }
   if (m.myPick !== undefined){ SHOW.myPick = m.myPick ? { round: m.myPick.round_id, color: B2T[m.myPick.color], tickets: m.myPick.tickets_if_win } : null; if (!$('pickModal').hidden) renderPick(); renderDock(); }
@@ -2208,7 +2212,7 @@ var FXDEF = [
   ['tomato',    '🍅', 'Tomato', 'Throw a tomato at the Ringmaster'],
   ['goldrain',  '💰', 'Gold rain', 'Golden coins pour from the sky']
 ];
-function renderJackpot(){ $('jpAmt').textContent = fmt(SHOW.jackpot)+' SOL'; }
+function renderJackpot(){ $('jpAmt').textContent = fmt(SHOW.jackpot)+' SOL'; var q = SHOW.queue || 0; $('queuePill').hidden = q < 0.01; $('qAmt').textContent = '+'+fmt(q)+' SOL'; }
 
 /* ----- stage effects ----- */
 var FW = [], TOM = null, SPLATS = [], GOLD = null;
@@ -2400,7 +2404,11 @@ renderJackpot(); renderTeams(); renderFxList(); renderDock();
 setInterval(renderTeams, 30000);
 /* demo: the crowd plays too */
 if (!LIVE) setInterval(function(){
-  if (S.phase === 'gonfiaggio'){ SHOW.jackpot += 0.004; renderJackpot(); }
+  if (S.phase === 'gonfiaggio'){ SHOW.jackpot += 0.004; }
+  if (S.phase === 'countdown' || S.phase === 'estrazione' || S.phase === 'vincitore') SHOW.queue = (SHOW.queue || 0) + 0.006 + Math.random()*0.01;
+  if (S.phase === 'scelta') SHOW.queue = 0;
+  renderJackpot();
+  if (Math.random() < 0.006 && page === 'gioca' && !INTRO.on){ var b = 0.3 + Math.random()*1.5, t = Math.round(b*2.1e6); S.stats.buyback += b; S.stats.burned += t; renderStats(); ringmaster('Dip spotted! The buyback just scooped '+fmt(b)+' SOL of $CIRCO and burned '+fmtBig(t)+' tokens. 🔥'); }
   SHOW.teams.clowns += Math.random()*40000; SHOW.teams.acrobats += Math.random()*38000;
   if (Math.random() < 0.06 && page === 'gioca' && !INTRO.on) queueFx(FXDEF[Math.floor(Math.random()*FXDEF.length)][0], POOL[Math.floor(Math.random()*POOL.length)]);
 }, 1000);
@@ -2480,7 +2488,7 @@ function update(dt){
     if (t > 3.5){ var f = Math.min(1,(t-3.5)/0.9);
       cItems.forEach(function(h){ var keep = h.userData.key === S.type; h.scale.setScalar(Math.max(0.001, keep ? 0.5*(1+0.25*Math.sin(f*Math.PI)) * (1-ease(Math.max(0,(f-0.6)/0.4))) : 0.5*(1-ease(f)))); }); }
     hud('Round '+S.round, t < 3.5 ? 'Which balloon is next?' : NAMES[S.type]+' <small>'+fmt(S.cap)+' SOL</small>', null,
-        S.round <= 3 ? 'The first three rounds use the blue 1 SOL balloon.' : 'Green dog 0.5, blue balloon 1, red rocket 2, gold trophy 5 SOL');
+        S.round <= 3 ? 'The first three rounds use the green 0.5 SOL balloon dog.' : 'Green dog 0.5, blue balloon 1, red rocket 2, gold trophy 5 SOL');
     if (t >= DUR.scelta){ enter('gonfiaggio'); if (LIVE && S.liveR && S.liveR.id === S.liveRoundId) applyLiveRound(S.liveR); }
   }
   else if (S.phase === 'gonfiaggio'){

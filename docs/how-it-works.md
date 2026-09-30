@@ -7,10 +7,10 @@ The same rules shown on the site, in one place. Numbers are the launch values; t
 Every $CIRCO trade on pump.fun generates creator fees. Fee sharing splits them automatically:
 
 - **45%** to the prize wallet. Of this, 5% builds the Mega Jackpot and the rest fills the balloon.
-- **45%** to the buyback wallet: every 10 minutes it buys $CIRCO on the market and burns it.
+- **45%** to the buyback wallet. It does not buy on a fixed clock that bots could front-run: it buys hard into dips, supports the chart gently when trading is quiet, and never waits more than a day or on more than 10 SOL. Everything it buys is burned, and the Ringmaster announces the big dip buys.
 - **10%** to the team.
 
-All three wallets are public. Fees that arrive while a countdown or draw is running, and anything above a balloon's size, roll into the next balloon.
+All three wallets are public. Fees that arrive while a countdown or draw is running, and anything above a balloon's size, roll into the next balloon. When trading is fast, the stage shows how much SOL is already queued for the next balloons.
 
 ## 2. The balloons
 
@@ -21,7 +21,7 @@ All three wallets are public. Fees that arrive while a countdown or draw is runn
 | Red rocket | 2 SOL | 20% | 150 |
 | Gold trophy | 5 SOL | 5% | 300 |
 
-- The first three rounds are always the blue balloon.
+- The first three rounds are always the green balloon dog (0.5 SOL), so the show starts fast.
 - **Gold guarantee:** every day at 01:00 UTC, if no gold trophy came out in the previous 24 hours, the next balloon is a gold trophy.
 - Otherwise the next balloon is drawn from the previous round's revealed seed, so it can be checked (see [fairness](fairness.md)).
 

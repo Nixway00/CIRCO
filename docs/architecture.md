@@ -54,7 +54,7 @@ flowchart TB
 
 - **Creator fees** accumulate in pump.fun; the engine runs the permissionless distribution every 30 seconds with the official SDK, and the shares land directly in the three wallets.
 - **Prize wallet**: fills the balloons and the Mega Jackpot, pays winners.
-- **Buyback wallet**: every 10 minutes swaps its SOL for $CIRCO through Jupiter and burns what it bought.
+- **Buyback wallet**: waits for the moments where buying helps most. A 12% drop from the 30-minute high triggers a buy of 40% of its SOL (80% on a drop twice as deep); a quiet chart drifting down gets gentle support; above 10 SOL or after 24 hours it drips the rest out anyway. Buys are split into uneven chunks at random times, each capped at 2% price impact, and everything bought is burned. The logic is in [`engine/src/buybackStrategy.ts`](../engine/src/buybackStrategy.ts), with tests.
 - **Team wallet**: receives its 10% and nothing else touches it.
 
 ## Database

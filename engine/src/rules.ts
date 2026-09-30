@@ -23,6 +23,7 @@ export interface Config {
   team_reward_tickets?: number;
   pick_price_tokens?: number;
   pick_return?: number;
+  first_rounds_balloon?: string;
 }
 
 export type Phase = 'inflate' | 'countdown' | 'drawing' | 'done' | 'postponed';
@@ -43,7 +44,7 @@ export interface TicketTotal { wallet: string; tickets: number; last_at: number 
 
 // ---------- balloon pick ----------
 export function pickBalloon(roundNumber: number, galaDue: boolean, cfg: Config, rand: () => number): BalloonKey {
-  if (roundNumber <= cfg.first_blue_rounds) return 'blue';
+  if (roundNumber <= cfg.first_blue_rounds) return (cfg.first_rounds_balloon ?? 'blue') as BalloonKey;   // the opening balloon
   if (galaDue) return 'gold';
   // fixed order, so anyone can recompute the balloon from the seed (the database may store keys in any order)
   const keys = (['green', 'blue', 'red', 'gold'] as BalloonKey[]).filter(k => k in cfg.balloons);
@@ -234,7 +235,7 @@ export function pickPayout(chance: number, stakeTickets: number, returnRate: num
 }
 /** The next balloon, drawn from the previous round's revealed seed (or forced by the first rounds / gold guarantee). */
 export function nextBalloonFromSeed(roundNumber: number, galaDue: boolean, cfg: Config, seed: string | null): { balloon: BalloonKey; forced: boolean } {
-  if (roundNumber <= cfg.first_blue_rounds) return { balloon: 'blue', forced: true };
+  if (roundNumber <= cfg.first_blue_rounds) return { balloon: (cfg.first_rounds_balloon ?? 'blue') as BalloonKey, forced: true };
   if (galaDue) return { balloon: 'gold', forced: true };
   const r = seed ? seedFloat(seed, 'balloon') : Math.random();
   return { balloon: pickBalloon(roundNumber, false, cfg, () => r), forced: false };

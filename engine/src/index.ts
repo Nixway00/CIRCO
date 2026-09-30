@@ -15,7 +15,7 @@ import { processBurn, grantCredits } from './tickets.ts';
 import { refreshSnapshots } from './snapshots.ts';
 import { startGame, playGame, settleGameFromBurn, cleanupGames, type GameConfig } from './games.ts';
 import { distributeCreatorFees } from './fees.ts';
-import { runBuyback } from './buyback.ts';
+import { runBuyback, samplePrice } from './buyback.ts';
 import { postPop } from './xpost.ts';
 
 let cfg: Config & GameConfig;
@@ -259,10 +259,22 @@ setInterval(() => {
   reconcileFees(cfg).then(n => n && console.log(`reconcile: ${n} fee(s) recovered`)).catch(e => console.error('fee reconcile failed', e.message));
   reconcileBurns(routeBurn).catch(e => console.error('burn reconcile failed', e.message));
 }, Number(process.env.RECONCILE_MS ?? 60_000));
-setInterval(() => { cleanupGames().catch(e => console.error('game cleanup failed', e)); }, 15 * 60_000);
+setInterval(() => {
+  cleanupGames().catch(e => console.error('game cleanup failed', e));
+  db.from('trades').delete().lt('created_at', new Date(Date.now() - 3 * 86400_000).toISOString()).then(() => {});   // the live feed keeps 3 days
+}, 15 * 60_000);
 setInterval(() => { settleTeamWeek(cfg).then(r => r && console.log('team week settled', r)).catch(e => console.error('team week failed', e)); }, 10 * 60_000);
 setInterval(() => { distributeCreatorFees().then(r => r && console.log('fees distributed', r)).catch(e => console.error('fee distribution failed', e)); }, 30_000);
-setInterval(() => { runBuyback().catch(e => console.error('buyback failed', e)); }, 10 * 60_000);
+// buyback: price sampled every minute; buys land on dips, on quiet drifting charts, or as a slow drip
+setInterval(() => { samplePrice().catch(e => console.error('price sample failed', e.message)); }, 60_000);
+setInterval(() => {
+  runBuyback(cfg).then(async r => {
+    if (!r) return;
+    console.log('buyback', r);
+    const burned = Number(r.burned).toLocaleString('en-US');
+    if (r.reason === 'dip' || r.reason === 'deep_dip') await ringmaster(`Dip spotted! The buyback just scooped ${r.sol.toFixed(2)} SOL of $CIRCO and burned ${burned} tokens. 🔥`);
+  }).catch(e => console.error('buyback failed', e));
+}, 60_000);
 refreshSnapshots().catch(() => {});
 // the coin's pump.fun chat shows up in the site chat
 pumpChat = new PumpFunChat(env.CIRCO_MINT, env.PUMPFUN_CHAT_TOKEN || null, () => (cfg as any).pumpfun_chat_relay !== false, env.RINGMASTER_WALLET_SECRET);
