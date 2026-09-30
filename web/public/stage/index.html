@@ -138,7 +138,7 @@ body.livemode #liveBar{ display:flex; }
 #buyPop .cost{ font-size:13px; color:var(--muted); text-align:center; }
 #buyPop .btn.primary{ height:52px; font-size:16px; }
 #buyPop .row2{ display:flex; gap:8px; } #buyPop .row2 .btn{ flex:1; }
-@media (max-width: 900px){ #buyPop{ position:fixed; top:auto; bottom:0; left:0; right:0; width:auto; border-radius:18px 18px 0 0; padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px)); } }
+@media (max-width: 900px){ #buyPop{ z-index:20; position:fixed; top:auto; bottom:0; left:0; right:0; width:auto; max-height:80vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px)); } }
 .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(2,4,14,.62); z-index:10; padding:16px; }
 .modal.on{ display:flex; }
 .modal .box{ width:min(520px, 100%); background:rgba(6,12,40,.96); border:1px solid var(--lineHi); border-radius:22px; padding:24px; display:flex; flex-direction:column; gap:14px; box-shadow:0 30px 80px rgba(0,0,0,.55); }
@@ -173,11 +173,9 @@ body.livemode #liveBar{ display:flex; }
 #bubble.intro .dots, #bubble.intro #bubNext{ display:none; }
 #bubble.intro #bubSkip{ height:36px; font-size:13px; }
 #bubble.intro p{ font-size:18px; }
-header.top, nav.pages, #liveBar{ transition:opacity .9s ease .5s; }
-.hud, #mCta, footer.stats, .tabs, .col, .note{ transition:transform 1.5s cubic-bezier(.65,0,.25,1) .35s, opacity 1s ease .6s; }
-body.intro header.top, body.intro nav.pages, body.intro #liveBar{ opacity:0; pointer-events:none; transition:none; }
-body.intro .hud, body.intro #mCta, body.intro footer.stats, body.intro .tabs, body.intro .col, body.intro .note{ opacity:0; transform:translateY(55vh); pointer-events:none; transition:none; }
-body.intro .overlay{ background:none; }
+header.top, nav.pages, #liveBar{ opacity:var(--ik, 1); }
+.hud, #mCta, footer.stats, .tabs, .col, .note{ opacity:var(--ik, 1); translate:0 calc((1 - var(--ik, 1)) * 45vh); }
+body.intro header.top, body.intro nav.pages, body.intro #liveBar, body.intro .hud, body.intro #mCta, body.intro footer.stats, body.intro .tabs, body.intro .col, body.intro .note{ pointer-events:none; }
 body.intro{ overflow:hidden; }
 body.touring .hud{ opacity:0; transition:opacity .4s; }
 body.recording{ overflow:hidden !important; }
@@ -218,7 +216,8 @@ nav.pages .sm{ display:none; }
   body{ overflow:auto; }
   #stage{ position:fixed; top:0; left:0; right:0; height:100vh; height:100lvh; }
   #bubble.intro{ bottom:calc(28px + env(safe-area-inset-bottom,0px)) !important; }
-  .overlay{ position:relative; inset:auto; min-height:100vh; padding-top:52vh; padding-top:52lvh; background:linear-gradient(to bottom, rgba(3,7,22,0) 0, rgba(3,7,22,0) calc(52lvh - 90px), rgba(3,7,22,.96) 52lvh, var(--night) 60lvh); }
+  .overlay{ position:relative; inset:auto; z-index:1; min-height:100vh; padding-top:52vh; padding-top:52lvh; }
+  .overlay::before{ content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:var(--ik, 1); background:linear-gradient(to bottom, rgba(3,7,22,0) 0, rgba(3,7,22,0) calc(52lvh - 90px), rgba(3,7,22,.96) 52lvh, var(--night) 60lvh); }
   header.top{ position:fixed; height:60px; padding:0 14px; z-index:3; grid-template-columns:1fr auto; }
   header.top .stepper{ display:none; }
   .actions .btn:not(.primary){ display:none; }
@@ -1158,10 +1157,10 @@ function launchConfetti(){
 
 /* resize */
 var lastW = 0, lastH = 0, BASE_FOV = 40, VIEW_SHIFT = 0, MOBILE_LAYOUT = false;
-function applyView(fov, shift){
-  var w = lastW, h = lastH;
+function applyView(fov, shift, shiftX){
+  var w = lastW, h = lastH; shiftX = shiftX || 0;
   camera.fov = fov;
-  if (shift > 0.0001) camera.setViewOffset(w, h, 0, h*shift, w, h); else camera.clearViewOffset();
+  if (Math.abs(shift) > 0.0001 || Math.abs(shiftX) > 0.0001) camera.setViewOffset(w, h, w*shiftX, h*shift, w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
 }
 function resize(){
@@ -1833,8 +1832,10 @@ var INTRO = { on: !reduced && !/[?&]tour=auto/.test(location.search), t:0, stage
 var introRight = new THREE.Vector3(), introHead = new THREE.Vector3(), introCam = new THREE.Vector3(), flyFrom = new THREE.Vector3(), flyLookFrom = new THREE.Vector3(),
     flyTo = new THREE.Vector3(), flyLookTo = new THREE.Vector3(), flyCtrl = new THREE.Vector3(), flyFov0 = 36, flyFov1 = 40;
 var INTRO_FOV = 38;
+function INTRO_SHIFTX(){ return MOBILE_LAYOUT ? 0.2 : 0.14; }   // he stands left of centre, the speech balloon fills the right
+function setIK(v){ document.documentElement.style.setProperty('--ik', v.toFixed(3)); }
 var INTRO_LINES = [[0.25, 'Welcome to $CIRCO, anon. Grab a seat, the show never stops.'], [2.4, 'The show starts in 3…'], [3.4, 'The show starts in 2…'], [4.4, 'The show starts in 1…'], [5.2, 'Showtime! 🎪']];
-if (INTRO.on) document.body.classList.add('intro');
+if (INTRO.on){ document.body.classList.add('intro'); document.documentElement.style.setProperty('--ik', '0'); }
 function normalCam(out){
   var o = reduced ? 0 : Math.sin(time*0.15)*0.5;
   if (PORTRAIT) return out.set(camTarget.x + (camPos.x + o - camTarget.x)*0.74, camTarget.y + (camPos.y - camTarget.y)*0.8 - 0.1, camTarget.z + (camPos.z - camTarget.z)*0.74);
@@ -1864,7 +1865,7 @@ function startFly(){
   flyFrom.copy(camera.position); flyLookFrom.copy(lookNow); flyFov0 = INTRO_FOV;
 }
 function endIntro(){
-  INTRO.on = false; INTRO.stage = 'done';
+  INTRO.on = false; INTRO.stage = 'done'; setIK(1);
   resize();                                                  // restores the normal field of view
   carousel.scale.setScalar(1); if (S.phase === 'scelta') carousel.visible = true;
   if (INTRO.afterTut) setTimeout(tutOpen, 400);
@@ -1872,15 +1873,12 @@ function endIntro(){
 function introFrame(dt){
   if (INTRO.stage === 'hold'){
     INTRO.t += dt;
-    DIR.head.getWorldPosition(introHead);
-    var ry = DIR.g.rotation.y, d = MOBILE_LAYOUT ? 3.8 : 3.3;
-    introCam.set(introHead.x + Math.sin(ry)*d + 0.1, introHead.y + 0.2, introHead.z + Math.cos(ry)*d);
-    introHead.y -= MOBILE_LAYOUT ? 0.35 : 0.2;
-    // aim to his right so he stands on the left of the frame and the speech balloon fits beside his mouth
-    introRight.subVectors(introHead, introCam).normalize().cross(camera.up).normalize();
-    introHead.addScaledVector(introRight, MOBILE_LAYOUT ? 0.24 : 0.55);
+    DIR.g.getWorldPosition(introHead);
+    var ry = DIR.g.rotation.y + 0.18, d = MOBILE_LAYOUT ? 5.6 : 4.4, sc = DIR.g.scale.x;
+    introHead.y += 1.05*sc;                                   // his chest: the camera stays level, nothing leans
+    introCam.set(introHead.x + Math.sin(ry)*d, introHead.y + 0.15, introHead.z + Math.cos(ry)*d);
     carousel.visible = false;
-    if (!INTRO.snapped){ camera.position.copy(introCam); lookNow.copy(introHead); INTRO.snapped = true; applyView(INTRO_FOV, 0); }
+    if (!INTRO.snapped){ camera.position.copy(introCam); lookNow.copy(introHead); INTRO.snapped = true; applyView(INTRO_FOV, 0, INTRO_SHIFTX()); setIK(0); }
     camera.position.lerp(introCam, Math.min(1, dt*3)); lookNow.lerp(introHead, Math.min(1, dt*3));
     while (INTRO.msg + 1 < INTRO_LINES.length && INTRO.t >= INTRO_LINES[INTRO.msg + 1][0]){ INTRO.msg++; introBubble(INTRO_LINES[INTRO.msg][1]); if (INTRO.msg >= 1 && INTRO.msg <= 3) sfx('beep'); }
     if ($('speech').classList.contains('on')) placeSpeech(dt);
@@ -1895,7 +1893,8 @@ function introFrame(dt){
   var a = 1 - e;
   camera.position.set(a*a*flyFrom.x + 2*a*e*flyCtrl.x + e*e*flyTo.x, a*a*flyFrom.y + 2*a*e*flyCtrl.y + e*e*flyTo.y, a*a*flyFrom.z + 2*a*e*flyCtrl.z + e*e*flyTo.z);
   lookNow.copy(flyLookFrom).lerp(flyLookTo, e);
-  applyView(flyFov0 + (BASE_FOV - flyFov0)*e, VIEW_SHIFT*e);
+  applyView(flyFov0 + (BASE_FOV - flyFov0)*e, VIEW_SHIFT*e, INTRO_SHIFTX()*(1 - e));
+  setIK(easeInOutCubic(Math.max(0, Math.min(1, (k - 0.3)/0.7))));
   if (S.phase === 'scelta'){ var cs = Math.max(0, Math.min(1, (k - 0.35)/0.6)); carousel.visible = cs > 0; carousel.scale.setScalar(0.001 + easeInOutCubic(cs)); }
   if (k >= 1) endIntro();
 }
