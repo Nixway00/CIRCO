@@ -1,5 +1,8 @@
 import { Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
-import { OnlinePumpSdk } from '@pump-fun/pump-sdk';
+import { createRequire } from 'node:module';
+import type { OnlinePumpSdk as OnlinePumpSdkT } from '@pump-fun/pump-sdk';
+// The SDK's ESM build imports a named export from a CommonJS package, which Node refuses; its CommonJS build works.
+const { OnlinePumpSdk } = createRequire(import.meta.url)('@pump-fun/pump-sdk') as { OnlinePumpSdk: typeof OnlinePumpSdkT };
 import { connection, MINT, prizeKeypair } from './chain.ts';
 
 const pump = new OnlinePumpSdk(connection);

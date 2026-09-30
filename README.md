@@ -84,6 +84,13 @@ Show features (migration `0007_show_features.sql`):
 - [x] Teams: Clowns vs Acrobats, chosen with the nickname; weekly score = tokens burned by members; every active member of the winning team gets `team_reward_tickets` credits
 - [x] Guess the next balloon: one guess per round (`pick_price_tokens`), payout fixed at guess time with expected value `pick_return` of the stake; the next balloon is now drawn from the previous round's revealed seed, so anyone can check it; forced balloons (first rounds, gold guarantee) refund every guess as 1 ticket
 
+pump.fun chat (migration `0008_pumpfun_chat.sql`):
+- [x] The engine joins the coin's pump.fun live chat (unofficial socket.io protocol, tested live) and every message appears in the site chat with a green "pump.fun" tag
+- [x] Optional: with `PUMPFUN_CHAT_TOKEN` (auth token of a pump.fun account for the Ringmaster) winners and Mega Pops are announced in the pump.fun chat too
+- [x] Switch off any time with config `pumpfun_chat_relay = false`; if pump.fun changes its protocol only the relay stops, the game is unaffected
+
+Engine start-up (fixed): the pump.fun SDK's ESM build failed to load under Node; it is now loaded through its CommonJS build, and every engine module is verified to load with plain type stripping.
+
 Still to do before launch:
 - [ ] **End-to-end test on a throwaway token** with tiny balloons (set `balloons` capacities to 0.05 SOL in `config`).
 - [ ] **Deploy:** engine on a VPS (for example with `pm2`), site on Vercel, Helius webhook pointed at the engine.

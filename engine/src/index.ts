@@ -7,6 +7,7 @@ import { db, loadConfig, openRound, drawingRound, ticketTotals, prizeCollected, 
 import { isGalaDue, step, commit, drawSeed, pickWinner, lastBuyer, payoutPlan, overflowOnFull, feeTargetsCurrentRound, jackpotPart, isMegaPop, nextBalloonFromSeed, LAMPORTS, type Config, type BalloonKey } from './rules.ts';
 import { processFx, processPick, settlePredictions, settleTeamWeek } from './show.ts';
 import { readBurn } from './chain.ts';
+import { PumpFunChat } from './pumpchat.ts';
 import { closingBlock } from './chain.ts';
 import { planPayouts, settlePayouts } from './payouts.ts';
 import { processBurn, grantCredits } from './tickets.ts';
@@ -18,6 +19,7 @@ import { postPop } from './xpost.ts';
 
 let cfg: Config & GameConfig;
 let busy = false;
+let pumpChat: PumpFunChat | null = null;
 const MEMO_PROGRAMS = new Set(['MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', 'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVuDwQkkHtCv']);
 const short = (w: string) => `${w.slice(0, 4)}…${w.slice(-4)}`;
 /** @handle if X is linked, otherwise the nickname, otherwise the short address. */
@@ -168,6 +170,7 @@ async function continueDraw(r: Round, forced = false) {
   const won = sol(Number(w?.lamports ?? 0) + Number(jp?.lamports ?? 0));
   const winnerName = await nameOf(r.winner_wallet), lastName = await nameOf(r.last_buyer);
   await ringmaster(`Congratulations, ${winnerName}! ${won} SOL is yours. Screenshot it, frame it, tell your mom.`);
+  pumpChat?.say(`${r.mega ? 'MEGA POP! ' : ''}Round ${r.id}: congratulations ${winnerName}, ${won} SOL won on the $CIRCO balloon 🎈`);
   postPop(`POP. Round ${r.id}: congratulations ${winnerName}, ${won} SOL with ${r.draw_total_tickets ?? 0} tickets in play.${r.last_buyer ? ` Last-ticket bonus to ${lastName}.` : ''} $CIRCO, the 24/7 memecoin circus.`)
     .catch(e => console.error('X post failed', e));
   await startRound();
@@ -244,12 +247,17 @@ app.post('/picks/confirm', async (req, res) => {
 app.get('/health', (_req, res) => res.json({ ok: true, busy }));
 
 // ---------- boot ----------
-cfg = (await loadConfig()) as Config & GameConfig;
-setInterval(async () => { try { cfg = (await loadConfig()) as Config & GameConfig; } catch (e) { console.error('config reload failed', e); } }, 60_000);
+// the database may still be waking up: keep trying instead of crashing
+for (;;) { try { cfg = (await loadConfig()) as Config & GameConfig; break; } catch (e) { console.error('config not reachable yet, retrying in 5 s', (e as Error).message); await new Promise(r => setTimeout(r, 5000)); } }
+setInterval(async () => { try { // the database may still be waking up: keep trying instead of crashing
+for (;;) { try { cfg = (await loadConfig()) as Config & GameConfig; break; } catch (e) { console.error('config not reachable yet, retrying in 5 s', (e as Error).message); await new Promise(r => setTimeout(r, 5000)); } } } catch (e) { console.error('config reload failed', e); } }, 60_000);
 setInterval(tick, 1000);
 setInterval(() => { refreshSnapshots().catch(e => console.error('snapshots failed', e)); }, 15_000);
 setInterval(() => { settleTeamWeek(cfg).then(r => r && console.log('team week settled', r)).catch(e => console.error('team week failed', e)); }, 10 * 60_000);
 setInterval(() => { distributeCreatorFees().then(r => r && console.log('fees distributed', r)).catch(e => console.error('fee distribution failed', e)); }, 30_000);
 setInterval(() => { runBuyback().catch(e => console.error('buyback failed', e)); }, 10 * 60_000);
 refreshSnapshots().catch(() => {});
+// the coin's pump.fun chat shows up in the site chat
+pumpChat = new PumpFunChat(env.CIRCO_MINT, env.PUMPFUN_CHAT_TOKEN || null, () => (cfg as any).pumpfun_chat_relay !== false);
+pumpChat.start();
 app.listen(env.PORT, () => console.log(`engine on :${env.PORT}`));

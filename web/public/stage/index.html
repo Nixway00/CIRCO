@@ -308,6 +308,8 @@ body.intro #stageDock, body.livemode #stageDock, body.recording #stageDock, body
   header.top{ background:linear-gradient(to bottom, rgba(3,7,22,.88) 55%, rgba(3,7,22,0)); }
   body{ background:var(--night); }
 }
+.pfTag{ font-style:normal; font-size:10px; font-weight:700; color:#0a1033; background:#86efac; border-radius:6px; padding:1px 5px; margin-right:6px; vertical-align:1px; }
+#chatLog .m.pf b{ color:#86efac; }
 #bpOdds{ font-size:13px; color:var(--cyan); text-align:center; min-height:18px; }
 .gameBtn{ width:100%; margin-top:10px; justify-content:center; font-weight:700; background:linear-gradient(90deg, rgba(255,61,110,.22), rgba(255,211,77,.22)); border-color:rgba(255,211,77,.45); }
 #mCta .gameBtn{ grid-column:1 / -1; margin-top:0; }
@@ -474,7 +476,7 @@ body.intro #stageDock, body.livemode #stageDock, body.recording #stageDock, body
       <button class="btn gameBtn" type="button" id="gameBtn">🎯 Shooting gallery</button>
     </section>
     <section class="panel" id="chatPanel" style="flex:1; min-height:0">
-      <div class="head"><h2>Live chat</h2><span class="small" id="chatCount">holders only</span></div>
+      <div class="head"><h2>Live chat</h2><span class="small" id="chatCount">site + pump.fun</span></div>
       <div id="chatLog" role="log" aria-live="polite" aria-label="Live chat messages"></div>
       <form id="chatForm" autocomplete="off">
         <label for="chatIn" style="position:absolute;left:-9999px">Message</label>
@@ -1948,7 +1950,7 @@ window.addEventListener('message', function(e){
     addFeed(t.side === 'buy' ? 'Buy' : 'Sell', t.side === 'buy' ? '#2EF2A6' : '#FF8FA8', sh(t.wallet), (t.side === 'buy' ? '+' : '−')+fmt(+t.amount_sol)+' SOL', 'tx');
     if (S.phase === 'gonfiaggio'){ kick(0.25 + (+t.amount_sol)*0.18); infV += 0.03; } });
   (m.chat || []).forEach(function(c){ if (seenChat[c.id]) return; seenChat[c.id] = 1;
-    if (c.is_ringmaster) ringmaster(c.body); else chatAdd(sh(c.wallet), c.body, sh(c.wallet) === ME ? 'self' : ''); });
+    if (c.is_ringmaster) ringmaster(c.body); else if (c.source === 'pumpfun') chatAdd(c.wallet, c.body, 'pf'); else chatAdd(sh(c.wallet), c.body, sh(c.wallet) === ME ? 'self' : ''); });
   if (m.history){
     S.history = m.history.map(function(h){ return Object.assign({}, h, { winner: sh(h.winner), last: sh(h.last) }); });
     S.winnersList = S.history.filter(function(h){ return !h.rinvio; }).map(function(h){ return { round:h.round, wallet:h.winner, prize:h.main }; });
@@ -2391,6 +2393,9 @@ if (!LIVE) setInterval(function(){
 }, 1000);
 
 /* ---------- live chat (simulated in demo mode) ---------- */
+if (!LIVE) setInterval(function(){
+  if (Math.random() < 0.35) chatAdd(pick(['degenmax', 'solsniper', 'moonboi', 'pumpqueen', 'rugless']), pick(['who is watching the balloon lol', 'LFG circus', 'just bought more', 'that tomato was hilarious', 'mega jackpot when?']), 'pf');
+}, 9000);
 var CROWD = {
   scelta:['what are we getting', 'gold pls', 'rocket rocket rocket', 'dog round incoming', 'new balloon lfg'],
   gonfiaggio:['pump it', 'lfg', 'coins going in', 'this balloon is getting thicc', 'bought 5 tickets', 'who is buying', 'keep trading fam', 'fees looking healthy'],
@@ -2403,6 +2408,7 @@ var CROWD = {
 var chatT = 1.5, chatN = 0;
 function chatAdd(who, text, cls){
   var log = $('chatLog'), d = document.createElement('div'); d.className = 'm' + (cls ? ' ' + cls : '');
+  if (cls === 'pf'){ var tag = document.createElement('i'); tag.className = 'pfTag'; tag.textContent = 'pump.fun'; d.appendChild(tag); }
   var b = document.createElement('b'); b.textContent = who; var t = document.createElement('span'); t.textContent = text;
   d.appendChild(b); d.appendChild(t); log.appendChild(d);
   while (log.children.length > 60) log.removeChild(log.firstChild);
