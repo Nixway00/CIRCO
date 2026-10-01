@@ -27,7 +27,7 @@ All three wallets are public. Fees that arrive while a countdown or draw is runn
 
 ## 3. Tickets
 
-- One ticket costs **10,000 $CIRCO**, **burned** when you buy.
+- One ticket costs about **$0.25** worth of $CIRCO, **burned** when you buy. The engine checks the price every hour; when the right number of tokens moves more than 20% it announces the new price, which applies from the next round (the old one is still accepted for 15 minutes).
 - Up to **10 tickets per wallet per round**.
 - Tickets are sold while the balloon inflates and during the countdown. Sales close when the countdown ends.
 - Nothing you burn is lost: tickets above the cap, or bought a moment after sales closed, become **credits** added automatically at the start of the next rounds.
@@ -35,6 +35,8 @@ All three wallets are public. Fees that arrive while a countdown or draw is runn
 ## 4. Countdown, minimum, postponement
 
 - When the balloon is full, a **3-minute countdown** starts. If it is not full after 30 minutes, the countdown starts anyway with the prize collected so far, as long as the balloon is at least a quarter full (an almost empty balloon keeps inflating).
+- **The last-ticket war:** a ticket bought in the final 15 seconds pushes the end back to 15 seconds after it, up to 2 minutes past the original end. The last ticket before the close still takes 5%, so the fight for it is real.
+- Sales close a few seconds after the timer hits zero, so burns that landed on-chain just in time are always counted.
 - If the balloon's ticket minimum is not reached, the countdown extends by 1 minute, up to 3 times.
 - Still under the minimum: the round is **postponed**, and its prize and tickets carry over to the next round. After three postponements in a row, the next round is drawn anyway.
 
@@ -61,14 +63,14 @@ In a simulated hour with 10 SOL of fees every 10 minutes, this doubled the SOL p
 
 ## 8. Shooting gallery
 
-- Burn 10,000 $CIRCO for **3 shots**, each with a **30%** chance to pop a balloon. Every pop is 1 ticket for the current round.
+- Burn one ticket's worth of $CIRCO for **3 shots**, each with a **30%** chance to pop a balloon. Every pop is 1 ticket for the current round.
 - On average a game returns 0.9 tickets, so buying tickets directly stays slightly cheaper.
 - Up to 5 game tickets per wallet per day.
 - The result is decided by a secret committed before your burn, mixed with your burn signature, and revealed after the game.
 
 ## 9. Guess the next balloon
 
-- One guess per round, 10,000 $CIRCO, burned. Guesses close with ticket sales.
+- One guess per round, one ticket's worth of $CIRCO, burned. Guesses close with ticket sales.
 - A right guess pays tickets for the next round: green 2, blue 2, red 4, gold 18.
 - On average a guess returns 90% of its cost in tickets: less than buying tickets directly.
 - If the next balloon is fixed by the rules (first rounds or the gold guarantee), every guess comes back as 1 ticket.

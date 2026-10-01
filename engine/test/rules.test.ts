@@ -193,3 +193,20 @@ test('the 30-minute timer never pops an almost empty balloon', () => {
   const a = step({ ...base, collected_sol: 0.3 } as any, late, 0, cfg);                                   // 30%: pop with what it has
   assert.equal(a.type, 'start_countdown'); assert.equal((a as any).capacity_sol, 0.3);
 });
+
+import { snipeExtension, ticketTokensForUsd } from '../src/rules.ts';
+test('last-ticket war: late tickets push the end back, up to the cap', () => {
+  const c = { ...cfg, snipe_window_sec: 15, snipe_cap_sec: 120 } as any;
+  assert.equal(snipeExtension(100_000, 80_000, null, c), null);                                  // 20 s before the end: no change
+  assert.deepEqual(snipeExtension(100_000, 95_000, null, c), { endsAt: 110_000, warBase: 100_000 });
+  assert.deepEqual(snipeExtension(215_000, 214_000, 100_000, c), { endsAt: 220_000, warBase: 100_000 });   // capped at +120 s
+  assert.equal(snipeExtension(220_000, 219_000, 100_000, c), null);                              // the cap is reached: the end stands
+  assert.equal(snipeExtension(100_000, 101_000, null, c), null);                                 // after the end: no extension
+  assert.equal(snipeExtension(100_000, 95_000, null, cfg), null);                                // switched off
+});
+test('ticket price in dollars: two significant figures, within bounds', () => {
+  assert.equal(ticketTokensForUsd(0.25, 0.00001, 1000, 1_000_000), 25_000);                     // ~$10k market cap
+  assert.equal(ticketTokensForUsd(0.25, 0.000037, 1000, 1_000_000), 6_800);                      // 6,756 -> 6,800
+  assert.equal(ticketTokensForUsd(0.25, 0.01, 1000, 1_000_000), 1000);                           // floor
+  assert.equal(ticketTokensForUsd(0.25, 0.0000001, 1000, 1_000_000), 1_000_000);                 // ceiling
+});

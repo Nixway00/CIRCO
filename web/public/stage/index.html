@@ -1679,6 +1679,7 @@ function pageRegolamento(){
     d('Mega Jackpot', '<ul><li>'+Math.round(SHOW.jackpotShare*100)+'% of the fees reaching the prize wallet build the Mega Jackpot, shown live on stage.</li><li>Every draw has a '+(SHOW.jackpotChance*100).toFixed(0)+'% chance to be a Mega Pop: the winner takes the balloon prize and the whole jackpot.</li><li>The Mega Pop is decided by the same provably fair seed as the wheel.</li></ul>')+
     d('Shooting gallery', '<ul><li>Burn '+fmt(G.price,0)+' $CIRCO for '+G.shots+' shots. Each shot has a '+Math.round(G.chance*100)+'% chance to pop a balloon; every pop is 1 ticket for the current round.</li><li>You can win up to '+(SHOW.gameCap || 5)+' tickets a day in games.</li><li>The result is decided by the server with a secret committed before you burn, mixed with your burn signature; the secret is revealed after the game.</li></ul>')+
     d('Guess the next balloon', '<ul><li>One guess per round, it burns '+fmt(SHOW.pickPrice,0)+' $CIRCO. Guesses close with ticket sales.</li><li>A right guess pays tickets for the next round: '+KEYS.map(function(k){ return NAMES[k].toLowerCase()+' '+pickPay(k); }).join(', ')+'.</li><li>On average a guess returns less than buying tickets directly.</li><li>If the next balloon is fixed by the rules (first rounds or the gold guarantee), every guess comes back as 1 ticket.</li></ul>')+
+    d('The last-ticket war', '<ul><li>A ticket bought in the last 15 seconds pushes the end back to 15 seconds after it, up to 2 minutes past the original end.</li><li>The last ticket before the close takes 5% of the prize, so the fight is real.</li><li>Sales close a few seconds after zero: burns that landed on-chain in time are always counted.</li></ul>')+
     d('Busy markets', '<ul><li>When fees arrive faster than balloons pop, the extra SOL waits in a queue shown on stage.</li><li>If the queue already pays for the next balloon, the countdown is an express one (90 seconds).</li><li>If the queue holds more than two balloons, half of the excess supercharges the next balloon\'s prize.</li></ul>')+
     d('Loyalty tickets', '<p>Hold at least '+fmtBig(SHOW.loyaltyMin || 100000)+' $CIRCO for a full day and you get a free ticket every day, automatically. Holding is playing.</p>')+
     d('Milestone balloons', '<p>Every time $CIRCO sets a new market-cap record ($100k, $250k, $500k, $1M and up), the next balloon is a Milestone gold trophy, with a party on stage. The stage shows how close the next one is.</p>')+
@@ -1954,7 +1955,7 @@ function startLiveRound(r){
   applyLiveRound(r);
 }
 function applyLiveRound(r){
-  if (typeof SHOW !== 'undefined'){ SHOW.superSol = +r.supercharged_sol || 0; SHOW.express = !!r.express; renderHot(); }
+  if (typeof SHOW !== 'undefined'){ var sn = +r.snipes || 0; if (sn > (SHOW.snipes || 0) && r.phase === 'countdown'){ sfx('beep'); shake = Math.max(shake, 0.12); } SHOW.snipes = sn; SHOW.superSol = +r.supercharged_sol || 0; SHOW.express = !!r.express; renderHot(); }
   if (r.id === S.liveRoundId) S.liveR = r;
   S.cap = Math.max(0.01, +r.capacity_sol);
   if (r.phase === 'inflate'){ if (S.phase === 'gonfiaggio' || S.phase === 'scelta') S.fill = Math.min(0.999, (+r.collected_sol || 0) / S.cap); }
@@ -2255,6 +2256,7 @@ function renderLucky(){
 }
 function renderHot(){
   var t = [];
+  if (SHOW.snipes > 0 && S.phase === 'countdown') t.push('⚔️ Last-ticket war · '+SHOW.snipes+' snipe'+(SHOW.snipes > 1 ? 's' : ''));
   if (SHOW.superSol > 0) t.push('⚡ Supercharged: +'+fmt(SHOW.superSol)+' SOL from the queue');
   if (SHOW.express && S.phase === 'countdown') t.push('⚡ Express countdown');
   $('hotPill').hidden = !t.length; $('hotPill').textContent = t.join(' · ');

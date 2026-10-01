@@ -45,14 +45,17 @@ export async function readBurn(signature: string): Promise<Burn> {
  * A ticket purchase is one transaction that burns exactly tickets × price $CIRCO from the signer
  * and carries the memo "CIRCO:<roundId>:<tickets>". Anything else is rejected.
  */
-export async function verifyTicketBurn(signature: string, priceTokens: number): Promise<VerifiedBurn> {
+export async function verifyTicketBurn(signature: string, priceTokens: number, prevPriceTokens = 0): Promise<VerifiedBurn> {
   const b = await readBurn(signature);
   const m = b.memo?.match(/^CIRCO:(\d+):(\d+)$/);
   if (!m) throw new Error('missing or malformed memo');
   const roundId = Number(m[1]), tickets = Number(m[2]);
   if (tickets < 1 || tickets > 10) throw new Error('bad ticket count');
-  const expected = BigInt(tickets) * BigInt(priceTokens) * 10n ** BigInt(b.decimals);
-  if (b.burned !== expected) throw new Error(`burned ${b.burned}, expected ${expected}`);
+  const unit = 10n ** BigInt(b.decimals);
+  const expected = BigInt(tickets) * BigInt(priceTokens) * unit;
+  // right after a price change, a burn built at the previous price is still a valid purchase
+  const expectedPrev = prevPriceTokens > 0 ? BigInt(tickets) * BigInt(prevPriceTokens) * unit : -1n;
+  if (b.burned !== expected && b.burned !== expectedPrev) throw new Error(`burned ${b.burned}, expected ${expected}`);
   return { wallet: b.wallet, tickets, roundId, tokens: b.burned / 10n ** BigInt(b.decimals), blockTime: b.blockTime, slot: b.slot };
 }
 

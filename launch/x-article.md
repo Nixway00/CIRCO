@@ -34,7 +34,7 @@ All three wallets are public. You can watch the money move.
 
 ## How you play
 
-You enter by **burning** $CIRCO. One ticket costs 10,000 $CIRCO, and those tokens are gone forever. Each wallet can hold up to 10 tickets per round, so a single whale cannot own the wheel.
+You enter by **burning** $CIRCO. One ticket costs about $0.25 worth of $CIRCO, and those tokens are gone forever. Each wallet can hold up to 10 tickets per round, so a single whale cannot own the wheel.
 
 When the balloon is full a three-minute countdown begins. Sales close, the balloon pops, and the wheel spins: every ticket is one slice.
 

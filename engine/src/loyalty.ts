@@ -40,6 +40,17 @@ export async function runLoyalty(cfg: any) {
 // ---------- market cap and milestones ----------
 let solUsd = 0, solUsdAt = 0, supply = 0, supplyAt = 0;
 
+/** USD value of one whole $CIRCO, from the latest price sample and the SOL price. */
+export async function tokenUsd(): Promise<number | null> {
+  const { data: tick } = await db.from('price_ticks').select('price').order('ts', { ascending: false }).limit(1).maybeSingle();
+  if (!tick) return null;
+  if (Date.now() - solUsdAt > 10 * 60_000) {
+    const q = await (await fetch('https://lite-api.jup.ag/swap/v1/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000000&slippageBps=50')).json();
+    if (q?.outAmount) { solUsd = Number(q.outAmount) / 1e6; solUsdAt = Date.now(); }
+  }
+  return solUsd ? Number(tick.price) * solUsd : null;
+}
+
 /** Market cap in USD from the latest price sample (SOL per token), the live supply and the SOL price. */
 export async function marketCapUsd(): Promise<number | null> {
   const { data: tick } = await db.from('price_ticks').select('price').order('ts', { ascending: false }).limit(1).maybeSingle();
@@ -70,4 +81,37 @@ export async function checkMilestones(cfg: any, announce: (usd: number) => Promi
   }
   const next = list.filter(m => !(cfg.milestones_reached ?? []).includes(m)).sort((a, b) => a - b)[0] ?? null;
   return { mcap, next };
+}
+
+/**
+ * Keeps the ticket near its dollar target. When the right number of tokens moves more than 20% away
+ * from the current price, the new price is announced and applied from the next round.
+ */
+export async function adjustTicketPrice(cfg: any, announce: (tokens: number, usd: number) => Promise<void>) {
+  if (cfg.ticket_price_mode !== 'usd') return null;
+  const usd = await tokenUsd();
+  if (!usd) return null;
+  const { ticketTokensForUsd } = await import('./rules.ts');
+  const target = Number(cfg.ticket_usd_target ?? 0.25);
+  const tokens = ticketTokensForUsd(target, usd, Number(cfg.ticket_tokens_min ?? 1000), Number(cfg.ticket_tokens_max ?? 1_000_000));
+  const current = Number(cfg.ticket_price_tokens), pending = Number(cfg.ticket_price_pending ?? 0);
+  if (pending === tokens || Math.abs(tokens - current) / current < 0.2) return null;
+  await db.from('config').update({ value: tokens as any, updated_at: new Date().toISOString() }).eq('key', 'ticket_price_pending');
+  cfg.ticket_price_pending = tokens;
+  await announce(tokens, tokens * usd);
+  return { tokens, usd: tokens * usd };
+}
+
+/** At the start of a round: a pending ticket price becomes the price (games and guesses cost one ticket too). */
+export async function applyPendingTicketPrice(cfg: any) {
+  const p = Number(cfg.ticket_price_pending ?? 0);
+  if (!p || p === Number(cfg.ticket_price_tokens)) return null;
+  const now = new Date().toISOString(), prev = Number(cfg.ticket_price_tokens);
+  const set = (key: string, value: any) => db.from('config').update({ value, updated_at: now }).eq('key', key);
+  await Promise.all([
+    set('ticket_price_prev', prev), set('ticket_price_changed_at', Date.now()), set('ticket_price_tokens', p),
+    set('game_price_tokens', p), set('pick_price_tokens', p), set('ticket_price_pending', 0),
+  ]);
+  Object.assign(cfg, { ticket_price_prev: prev, ticket_price_changed_at: Date.now(), ticket_price_tokens: p, game_price_tokens: p, pick_price_tokens: p, ticket_price_pending: 0 });
+  return { from: prev, to: p };
 }

@@ -59,7 +59,7 @@ stateDiagram-v2
 | **45%** | Buyback of $CIRCO, laddered into dips and supporting quiet charts, then burned ([how](docs/buyback.md)) |
 | **10%** | Team: servers, development, running costs |
 
-Tickets are paid by **burning** $CIRCO (10,000 per ticket at launch). Buybacks burn more. The supply only goes one way.
+Tickets are paid by **burning** $CIRCO, about **$0.25** worth each (the engine keeps the number of tokens in step with the price, announcing every change). Buybacks burn more. The supply only goes one way.
 
 ## The balloons
 

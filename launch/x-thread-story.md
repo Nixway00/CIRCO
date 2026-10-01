@@ -27,7 +27,7 @@ Every $CIRCO trade generates creator fees, split automatically on pump.fun:
 **4/**
 How do you enter? You burn $CIRCO.
 
-10,000 $CIRCO = 1 ticket, max 10 per wallet per round. Every ticket makes the supply smaller.
+~$0.25 of $CIRCO = 1 ticket, max 10 per wallet per round. Every ticket makes the supply smaller.
 
 Playing the game is a burn. Buybacks are a burn. The supply only goes one way.
 

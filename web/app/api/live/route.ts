@@ -15,7 +15,7 @@ const CFG_KEYS = ['ticket_price_tokens', 'chat_min_tokens', 'game_price_tokens',
 // Two parts, so the database is read as little as possible on the free plans:
 //  - fast (default, cached 2 s): the round, tickets, trades, chat, effects, headline numbers
 //  - slow (?part=slow, cached 20 s): settings, history, leaderboard, team battle
-const ROUND_COLS = 'id,balloon,phase,capacity_sol,collected_sol,carried_sol,started_at,countdown_ends_at,extensions,postpone_streak,winner_wallet,winner_tickets,last_buyer,prize_sol,draw_total_tickets,mega,jackpot_won,supercharged_sol,express,grand_opening,forced_gala,seed_commit,ended_at';
+const ROUND_COLS = 'id,balloon,phase,capacity_sol,collected_sol,carried_sol,started_at,countdown_ends_at,extensions,postpone_streak,winner_wallet,winner_tickets,last_buyer,prize_sol,draw_total_tickets,mega,jackpot_won,supercharged_sol,express,snipes,grand_opening,forced_gala,seed_commit,ended_at';
 
 export async function GET(req: Request) {
   if (new URL(req.url).searchParams.get('part') === 'slow') return slow();

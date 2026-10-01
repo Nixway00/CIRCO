@@ -9,7 +9,7 @@ import { processFx, processPick, settlePredictions, settleTeamWeek } from './sho
 import { readBurn } from './chain.ts';
 import { PumpFunChat } from './pumpchat.ts';
 import { reconcileFees, reconcileBurns, notFeeSenders } from './reconcile.ts';
-import { runLoyalty, checkMilestones } from './loyalty.ts';
+import { runLoyalty, checkMilestones, adjustTicketPrice, applyPendingTicketPrice } from './loyalty.ts';
 import { closingBlock } from './chain.ts';
 import { planPayouts, settlePayouts } from './payouts.ts';
 import { processBurn, grantCredits } from './tickets.ts';
@@ -46,6 +46,7 @@ async function must<T>(p: PromiseLike<{ data: T; error: any }>): Promise<NonNull
 
 // ---------- rounds ----------
 async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: number; postpone_streak?: number } = {}) {
+  const priceChange = await applyPendingTicketPrice(cfg).catch(() => null);   // a price announced during the last round starts now
   const { count } = await db.from('rounds').select('id', { count: 'exact', head: true });
   const { data: lastGold, error: gErr } = await db.from('rounds').select('started_at').eq('balloon', 'gold').order('id', { ascending: false }).limit(1).maybeSingle();
   if (gErr) throw gErr;
@@ -94,6 +95,7 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   else if (gradGala && balloon === 'gold') await ringmaster(`GRAND OPENING GALA! $CIRCO graduated, so tonight's balloon is a ${cfg.balloons.gold.capacity_sol} SOL gold trophy. Everybody in!`);
   else if (supercharged > 0) await ringmaster(`SUPERCHARGED! The crowd is wild, so this balloon swallows ${supercharged.toFixed(2)} extra SOL from the queue: ${(baseCap + supercharged).toFixed(2)} SOL up for grabs!`);
   else await ringmaster(balloon === 'gold' ? `GOLD TROPHY. ${cfg.balloons.gold.capacity_sol} SOL. Seatbelts on, degens, it is gala night.` : `Round ${round.id}. Fresh balloon, fresh hopium.`);
+  if (priceChange) await ringmaster(`New ticket price from this round: ${priceChange.to.toLocaleString('en-US')} $CIRCO per ticket.`);
   console.log(`round ${round.id} started: ${balloon}, carried ${carried} SOL`);
 }
 
@@ -323,6 +325,13 @@ setInterval(() => {
     postPop(`$CIRCO just crossed $${usd.toLocaleString('en-US')} market cap. The circus answers with a Milestone gold trophy balloon, live now. 🎪`);
   }).then(r => { if (r) { mcapInfo = r; setMilestoneInfo(r); } }).catch(e => console.error('milestones failed', e.message));
 }, 5 * 60_000);
+// ticket priced in dollars: checked every hour, announced, applied from the next round
+setInterval(() => {
+  adjustTicketPrice(cfg, async (tokens, usd) => {
+    await ringmaster(`Price check: from the next round a ticket costs ${tokens.toLocaleString('en-US')} $CIRCO (about $${usd.toFixed(2)}).`);
+    postPop(`$CIRCO ticket update: from the next round a ticket costs ${tokens.toLocaleString('en-US')} $CIRCO (about $${usd.toFixed(2)}).`);
+  }).then(r => r && console.log('ticket price', r)).catch(e => console.error('ticket price failed', e.message));
+}, 60 * 60_000);
 // buyback: price sampled every minute; buys land on dips, on quiet drifting charts, or as a slow drip
 setInterval(() => { samplePrice().catch(e => console.error('price sample failed', e.message)); }, 60_000);
 setInterval(() => {

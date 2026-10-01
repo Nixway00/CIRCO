@@ -28,7 +28,7 @@ Every trade inflates a balloon full of SOL. When it pops, someone takes it.
 
 2/ How the balloon fills: 45% of creator fees go into the prize, 45% buy back and burn $CIRCO, 10% keep the lights on. Three public wallets, locked at launch.
 
-3/ Tickets: 10,000 $CIRCO each, burned on purchase. Up to 10 per wallet per round. More tickets, bigger slice of the wheel.
+3/ Tickets: about $0.25 of $CIRCO each, burned on purchase. Up to 10 per wallet per round. More tickets, bigger slice of the wheel.
 
 4/ Snipers welcome: the last ticket before the pop wins 5% of the prize. Every day a gold trophy worth 5 SOL is guaranteed.
 

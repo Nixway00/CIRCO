@@ -25,6 +25,9 @@ export interface Config {
   pick_return?: number;
   first_rounds_balloon?: string;
   timer_min_fill?: number;
+  close_grace_sec?: number;
+  snipe_window_sec?: number;
+  snipe_cap_sec?: number;
 }
 
 export type Phase = 'inflate' | 'countdown' | 'drawing' | 'done' | 'postponed';
@@ -91,7 +94,8 @@ export function step(r: RoundState, now: number, ticketCount: number, cfg: Confi
       return { type: 'start_countdown', ends_at: now + cfg.countdown_sec * 1000, capacity_sol: Math.max(r.collected_sol, 0), reason: 'timer' };
     return { type: 'none' };
   }
-  if (r.phase === 'countdown' && r.countdown_ends_at !== null && now >= r.countdown_ends_at) {
+  // a few seconds of grace after the end, so burns that landed on-chain just before it reach the engine in time
+  if (r.phase === 'countdown' && r.countdown_ends_at !== null && now >= r.countdown_ends_at + (cfg.close_grace_sec ?? 0) * 1000) {
     if (ticketCount >= min) return { type: 'close_and_draw', forced: false };
     if (r.extensions < cfg.max_extensions)
       return { type: 'extend', ends_at: now + cfg.extension_sec * 1000, extensions: r.extensions + 1 };
@@ -253,4 +257,26 @@ export function weekStart(ms: number): number {
 export function teamWinner(clowns: number, acrobats: number): Team | null {
   if (clowns === acrobats) return null;
   return clowns > acrobats ? 'clowns' : 'acrobats';
+}
+
+// ---------- the last-ticket war ----------
+/**
+ * A ticket bought in the last `snipe_window_sec` of the countdown pushes the end back to
+ * `snipe_window_sec` after that purchase, but never more than `snipe_cap_sec` past the end the
+ * war started from. Returns the new end, or null when nothing changes. Times are on-chain times.
+ */
+export function snipeExtension(endsAt: number, burnAt: number, warBase: number | null, cfg: Config): { endsAt: number; warBase: number } | null {
+  const w = (cfg.snipe_window_sec ?? 0) * 1000, cap = (cfg.snipe_cap_sec ?? 0) * 1000;
+  if (!w || burnAt > endsAt || endsAt - burnAt >= w) return null;
+  const base = warBase ?? endsAt;
+  const next = Math.min(burnAt + w, base + cap);
+  return next > endsAt ? { endsAt: next, warBase: base } : null;
+}
+
+/** Tokens per ticket for a target price in USD, rounded to two significant figures and kept within bounds. */
+export function ticketTokensForUsd(targetUsd: number, tokenUsd: number, min: number, max: number): number {
+  if (!(tokenUsd > 0) || !(targetUsd > 0)) return min;
+  const raw = targetUsd / tokenUsd;
+  const mag = 10 ** Math.max(0, Math.floor(Math.log10(raw)) - 1);
+  return Math.min(max, Math.max(min, Math.round(raw / mag) * mag));
 }

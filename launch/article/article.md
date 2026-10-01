@@ -30,11 +30,11 @@ All three wallets are public. You can watch the money move.
 
 ## How you play
 
-You enter by **burning** $CIRCO. One ticket costs 10,000 $CIRCO, and those tokens are gone forever. Each wallet can hold up to 10 tickets per round, so a single whale cannot own the wheel.
+You enter by **burning** $CIRCO. One ticket costs about $0.25 worth of $CIRCO, and those tokens are gone forever. Each wallet can hold up to 10 tickets per round, so a single whale cannot own the wheel.
 
 **[Image: `03-round.png`]**
 
-When the balloon is full, a three-minute countdown begins. Sales close, the balloon pops, and the wheel spins. **95% of the prize goes to the winner, 5% to whoever bought the last ticket.** Payment is automatic, in SOL, straight to the winner's wallet. Then a new balloon appears.
+When the balloon is full, a three-minute countdown begins. In the last fifteen seconds every new ticket pushes the clock back, so the fight for the last ticket, which wins 5%, can go on for up to two extra minutes. Then sales close, the balloon pops, and the wheel spins. **95% of the prize goes to the winner, 5% to whoever bought the last ticket.** Payment is automatic, in SOL, straight to the winner's wallet. Then a new balloon appears.
 
 If a round does not sell enough tickets, the countdown extends; if it still falls short, the round is postponed and its prize carries over. Nothing you burn is ever lost: tickets above the cap, or bought a moment too late, become credits for the next rounds.
 

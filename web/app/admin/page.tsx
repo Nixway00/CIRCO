@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase';
 
 type Balloons = Record<'green' | 'blue' | 'red' | 'gold', { capacity_sol: number; weight: number; min_tickets: number; shape: string }>;
 
-const SETTINGS: { key: string; label: string; help: string; step?: number; min?: number; max?: number; bool?: boolean }[] = [
+const SETTINGS: { key: string; label: string; help: string; step?: number; min?: number; max?: number; bool?: boolean; opts?: [string, string][] }[] = [
+  { key: 'ticket_price_mode', label: 'Ticket price mode', help: 'Automatic: the engine keeps the ticket near the dollar target. Manual: you set the tokens per ticket above.', opts: [['usd', 'Automatic (in dollars)'], ['manual', 'Manual']] },
   { key: 'jackpot_cap_sol', label: 'Mega Jackpot cap (SOL)', help: 'Above this the jackpot stops taking fees, so the hot wallet never holds too much (0 = no cap).', step: 1, min: 0 },
   { key: 'jackpot_share', label: 'Mega Jackpot share', help: 'Part of each prize-wallet fee that feeds the jackpot (0 to 0.3, e.g. 0.05 = 5%).', step: 0.01, min: 0, max: 0.3 },
   { key: 'jackpot_chance', label: 'Mega Pop chance', help: 'Chance that a draw is a Mega Pop (0 to 0.2, e.g. 0.02 = 2%).', step: 0.005, min: 0, max: 0.2 },
@@ -23,6 +24,9 @@ const SETTINGS: { key: string; label: string; help: string; step?: number; min?:
   { key: 'supercharge_share', label: 'Hot mode: supercharge share', help: 'Share of a big queue added to the next balloon (0.5 = half, 0 = off).', step: 0.1, min: 0, max: 1 },
   { key: 'loyalty_min_tokens', label: 'Loyalty: tokens to hold', help: 'Hold at least this for a full day to get loyalty tickets (0 = off).', min: 0 },
   { key: 'loyalty_tickets', label: 'Loyalty: tickets per day', help: 'Free tickets for each loyal holder, every day.', min: 0, max: 10 },
+  { key: 'ticket_usd_target', label: 'Ticket price target ($)', help: 'In automatic mode the engine keeps a ticket near this value (e.g. 0.25).', step: 0.05, min: 0.01 },
+  { key: 'snipe_window_sec', label: 'Last-ticket war: window (s)', help: 'A ticket in the last N seconds pushes the end back (0 = off).', min: 0, max: 120 },
+  { key: 'snipe_cap_sec', label: 'Last-ticket war: most extra time (s)', help: 'The war can add at most this much to the countdown.', min: 0, max: 900 },
   { key: 'timer_min_fill', label: 'Timer: minimum fill', help: 'The 30-minute timer only pops a balloon at least this full (0.25 = 25%).', step: 0.05, min: 0, max: 1 },
   { key: 'lucky_every', label: 'Lucky meter', help: 'Losing tickets needed for 1 free ticket (0 = off).', min: 0, max: 1000 },
   { key: 'buyback_dip_pct', label: 'Buyback: dip size', help: 'Drop from the 30-minute high that triggers a dip buy (0.12 = 12%).', step: 0.01, min: 0.02, max: 0.8 },
@@ -95,7 +99,9 @@ export default function Admin() {
       {SETTINGS.map(st => (
         <div key={st.key} style={field}>
           <label htmlFor={st.key}>{st.label}</label>
-          {st.bool
+          {st.opts
+            ? <select id={st.key} value={String(cfg[st.key] ?? st.opts[0][0])} onChange={e => setCfg({ ...cfg, [st.key]: e.target.value })} style={input}>{st.opts.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select>
+            : st.bool
             ? <select id={st.key} value={String(cfg[st.key] ?? true)} onChange={e => setCfg({ ...cfg, [st.key]: e.target.value === 'true' })} style={input}><option value="true">On</option><option value="false">Off</option></select>
             : <input id={st.key} type="number" step={st.step ?? 1} min={st.min} max={st.max} value={cfg[st.key] ?? ''} onChange={e => setCfg({ ...cfg, [st.key]: Number(e.target.value) })} style={input} />}
           <small style={{ opacity: .7 }}>{st.help}</small>

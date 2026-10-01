@@ -25,6 +25,13 @@ const EDITABLE: Record<string, (v: unknown) => boolean> = {
   pumpfun_chat_relay: (v) => typeof v === 'boolean',
   lucky_every: int(0, 1000),
   timer_min_fill: num(0, 1),
+  close_grace_sec: int(0, 30),
+  snipe_window_sec: int(0, 120),             // 0 switches the last-ticket war off
+  snipe_cap_sec: int(0, 900),
+  ticket_price_mode: (v) => v === 'usd' || v === 'manual',
+  ticket_usd_target: num(0.01, 100),
+  ticket_tokens_min: int(1, 1_000_000_000),
+  ticket_tokens_max: int(1, 1_000_000_000),
   loyalty_min_tokens: int(0, 1_000_000_000),   // 0 switches loyalty tickets off
   loyalty_tickets: int(0, 10),
   milestones_usd: (v) => Array.isArray(v) && v.length <= 30 && v.every(x => Number.isInteger(x) && x > 0),
