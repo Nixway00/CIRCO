@@ -421,7 +421,7 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
 <div id="stage" aria-hidden="true"></div>
 <div class="overlay">
   <header class="top">
-    <div class="brand"><b>CIRCO</b><span class="chip">$CIRCO</span></div>
+    <div class="brand"><b>$CIRCO</b></div>
     <div class="stepper" aria-label="Round phase">
       <span class="rn" id="roundChip">Round 1</span>
       <span class="s" data-p="scelta">Pick</span>
@@ -2785,8 +2785,8 @@ var GFX = (function(){
   // the big top: striped canvas walls and roof far behind the ring
   function stripeTex(a, b, n){ var c = document.createElement('canvas'); c.width = 512; c.height = 8; var g = c.getContext('2d'); for (var i = 0; i < n; i++){ g.fillStyle = i % 2 ? a : b; g.fillRect(i * 512 / n, 0, 512 / n + 1, 8); } var t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; return t; }
   var tentMat = new THREE.MeshBasicMaterial({ map: stripeTex('#3a0a1e', '#0b1440', 24), side: THREE.BackSide, fog: true });
-  var walls = new THREE.Mesh(new THREE.CylinderGeometry(22, 22, 9, 96, 1, true), tentMat); walls.position.y = 4.5; scene.add(walls);
-  var roof = new THREE.Mesh(new THREE.ConeGeometry(22, 9, 96, 1, true), new THREE.MeshBasicMaterial({ map: stripeTex('#2a0716', '#08102f', 24), side: THREE.BackSide, fog: true })); roof.position.y = 13.5; scene.add(roof);
+  var walls = new THREE.Mesh(new THREE.CylinderGeometry(27, 27, 10, 96, 1, true), tentMat); walls.position.y = 5; scene.add(walls);
+  var roof = new THREE.Mesh(new THREE.ConeGeometry(27, 10, 96, 1, true), new THREE.MeshBasicMaterial({ map: stripeTex('#2a0716', '#08102f', 24), side: THREE.BackSide, fog: true })); roof.position.y = 15; scene.add(roof);
 
   // bulb garlands: warm lights strung across the back, twinkling (the bloom makes them glow)
   var strands = [], bulbs = [];
@@ -2800,13 +2800,14 @@ var GFX = (function(){
   scene.add(bulbMesh);
 
   // the stands and the audience: silhouettes behind the ring; how many are lit follows how lively the round is
-  var STAND_R = 15.5;                       // far behind the ring: the balloons always stand in front of the crowd
+  var STAND_R = 19;                         // far behind the ring, and only on the two sides: nothing behind the balloons
+  var ARCS = [[1.06, 1.34], [1.66, 1.94]];  // in units of π: back-left and back-right, leaving the centre clear
   var standMat = new THREE.MeshStandardMaterial({ color: 0x050816, roughness: 0.95, metalness: 0.05 });
-  for (var tier = 0; tier < 3; tier++){
-    // cylinder angles run x = sin(t), z = cos(t): this arc matches the audience's angles 1.08π…1.92π (behind the ring)
-    var ring = new THREE.Mesh(new THREE.CylinderGeometry(STAND_R + tier * 1.4, STAND_R + tier * 1.4, 0.5 + tier * 0.6, 72, 1, false, -Math.PI * 1.42, Math.PI * 0.84), standMat);
+  for (var tier = 0; tier < 3; tier++) ARCS.forEach(function(arc){
+    // cylinder angles run x = sin(t), z = cos(t), so an audience angle a becomes t = π/2 − a
+    var ring = new THREE.Mesh(new THREE.CylinderGeometry(STAND_R + tier * 1.4, STAND_R + tier * 1.4, 0.5 + tier * 0.6, 40, 1, false, Math.PI * (0.5 - arc[1]), Math.PI * (arc[1] - arc[0])), standMat);
     ring.position.y = (0.5 + tier * 0.6) / 2; scene.add(ring);
-  }
+  });
   var personGeo = new THREE.LatheGeometry([new THREE.Vector2(0, 0), new THREE.Vector2(0.17, 0), new THREE.Vector2(0.2, 0.32), new THREE.Vector2(0.14, 0.52), new THREE.Vector2(0.06, 0.56), new THREE.Vector2(0.11, 0.66), new THREE.Vector2(0.1, 0.78), new THREE.Vector2(0, 0.82)], 10);
   var MAXP = 210;
   var crowd = new THREE.InstancedMesh(personGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0.0 }), MAXP);
@@ -2814,7 +2815,7 @@ var GFX = (function(){
   for (var cI = 0; cI < MAXP; cI++) crowd.setColorAt(cI, col.setHex(shirts[cI % shirts.length]));
   var people = [];
   for (var n = 0; n < MAXP; n++){
-    var tierN = n % 3, ang = Math.PI * (1.11 + Math.random() * 0.78), r = STAND_R + 0.2 + tierN * 1.4 + Math.random() * 0.4;
+    var arcP = ARCS[n % 2], tierN = Math.floor(n / 2) % 3, ang = Math.PI * (arcP[0] + 0.02 + Math.random() * (arcP[1] - arcP[0] - 0.04)), r = STAND_R + 0.2 + tierN * 1.4 + Math.random() * 0.4;
     people.push({ x: Math.cos(ang) * r, z: Math.sin(ang) * r, y: 0.5 + tierN * 0.6, s: 0.85 + Math.random() * 0.35, ph: Math.random() * 6.28, jump: 0, on: false });
   }
   scene.add(crowd);
