@@ -42,7 +42,9 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
   // between apps and lose the session. Open the site inside Phantom's own browser instead, where it just works.
   const openWallet = useCallback(() => {
     const mobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
-    const hasWallet = wallets.some(w => w.readyState === 'Installed');
+    const w = window as any;
+    const injected = !!(w.phantom?.solana || w.solana || w.solflare || w.backpack);
+    const hasWallet = injected || wallets.some(x => x.readyState === 'Installed' || x.readyState === 'Loadable');
     if (mobile && !hasWallet) {
       const here = window.location.href;
       window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(window.location.origin)}`;
@@ -65,6 +67,7 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
   const live = useRef<any>(null);
   const slowData = useRef<any>({});
   const balAt = useRef(0);
+  const askedNick = useRef<string | null>(null);
   const me = useRef<any>(null);
   const lastFx = useRef<number | null>(null);
 
@@ -117,7 +120,9 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
       const m = await r.json();
       if (withBal) balAt.current = Date.now(); else m.balance = me.current?.balance ?? 0;
       me.current = m;
-      post({ me: m.display || addr, balance: m.balance, nick: m.nick, xHandle: m.xHandle, team: m.team, teamSetAt: m.teamSetAt, needNick: m.needNick });
+      const ask = m.needNick && askedNick.current !== addr;   // the window opens once; actions ask again if still needed
+      if (ask) askedNick.current = addr;
+      post({ me: m.display || addr, balance: m.balance, nick: m.nick, xHandle: m.xHandle, team: m.team, teamSetAt: m.teamSetAt, needNick: ask });
       publish();
     } catch { /* next poll */ }
   }, [post, publish]);
@@ -167,10 +172,14 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
         if (!publicKey) { openWallet(); post(m.type === 'circo-game' ? { gameError: 'Connect your wallet first.' } : m.type === 'circo-nick' ? { nickError: 'Connect your wallet first.' } : { toast: 'Connect your wallet first.' }); return; }
         // playing needs a nickname: buying, chatting, games and the mission all ask for one first
         if (['circo-buy', 'circo-chat', 'circo-game', 'circo-mission', 'circo-fx', 'circo-pick'].includes(m.type)) {
-          if (!me.current) await refreshMe();
-          if (!me.current || me.current.needNick) { post({ needNick: true, ...(m.type === 'circo-game' ? { gameError: 'Choose a nickname first.' } : {}) }); return; }
+          if (!me.current || me.current.needNick) await refreshMe();     // fresh answer from the server, never a stale one
+          if (!me.current) { post({ toast: 'Could not reach the server, try again in a moment.' }); return; }
+          if (me.current.needNick) { post({ needNick: true, toast: 'Choose a nickname first, then try again.', ...(m.type === 'circo-game' ? { gameError: 'Choose a nickname first.' } : {}) }); return; }
         }
         if (m.type === 'circo-buy' && m.round && m.n) {
+          balAt.current = 0; await refreshMe();
+          const need = m.n * price.current, have = Number(me.current?.balance ?? 0);
+          if (have < need) { post({ toast: `You need ${need.toLocaleString('en-US')} $CIRCO for ${m.n} ticket${m.n > 1 ? 's' : ''}, you have ${Math.floor(have).toLocaleString('en-US')}. Buy some on Pump.fun first.` }); return; }
           const tx = await buildTicketTx(connection, publicKey, m.round, m.n, price.current);
           const sig = await sendTransaction(tx, connection);
           post({ toast: 'Burning… waiting for confirmation.' });

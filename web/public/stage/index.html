@@ -1518,7 +1518,8 @@ $('bpPlus').addEventListener('click', function(){ bpN++; bpRender(); });
 $('bpRange').addEventListener('input', function(){ bpN = +this.value; bpRender(); });
 $('bpCancel').addEventListener('click', function(){ bpOpen(false); });
 $('bpGo').addEventListener('click', function(){
-  if (S.phase !== 'gonfiaggio' && S.phase !== 'countdown'){ bpOpen(false); toast('Sales just closed.'); return; }
+  var liveOpen = LIVE && S.liveR && (S.liveR.phase === 'inflate' || S.liveR.phase === 'countdown');
+  if (LIVE ? !liveOpen : (S.phase !== 'gonfiaggio' && S.phase !== 'countdown')){ bpOpen(false); toast('Sales just closed.'); return; }
   if (LIVE){ bpOpen(false); parent.postMessage({ type:'circo-buy', round:S.liveRoundId, n:bpN }, '*'); toast('Confirm the burn in your wallet…'); return; }
   if (!MYNICK){ bpOpen(false); nickAsk(); return; }
   var got = buy(ME, bpN); bpOpen(false); sfx('coin');
@@ -1987,7 +1988,7 @@ window.addEventListener('message', function(e){
   if (m.nickSaved){ toast('Nickname saved: '+m.nickSaved); $('nickSave').disabled = false; $('nickSave2').disabled = false; $('nickModal').hidden = true; }
   if (m.nickError){ toast(m.nickError); $('nickSave').disabled = false; $('nickSave2').disabled = false; }
   if (m.xHandle !== undefined){ MYX = m.xHandle || ''; renderX(); }
-  if (m.needNick){ nickAsk(); }
+  if (m.needNick && !MYNICK && $('nickModal').hidden){ nickAsk(); }   // never reopen it on top of itself, never once a nickname is known
   if (m.me !== undefined){ ME = m.me ? sh(m.me) : 'Not connected'; $('connectBtn').textContent = m.me ? sh(m.me) : 'Connect wallet'; S.bal = m.balance || 0; renderChatGate(); }
   if (m.stats){ S.stats.burned = m.stats.burned; S.stats.buyback = m.stats.buyback; S.stats.prizes = m.stats.prizes; S.stats.rounds = m.stats.rounds; renderStats(); }
   if (m.tickets){
