@@ -8,6 +8,12 @@ import { buildTicketTx, buildGameTx, buildMemoBurnTx } from '@/lib/tickets';
 import type { Connection } from '@solana/web3.js';
 
 /** Waits for a transaction by polling its status (no websocket needed, so it works through the RPC proxy). */
+/** Reads a JSON reply, or turns a server crash into a readable error. */
+async function readJson(res: Response): Promise<any> {
+  const t = await res.text();
+  try { return JSON.parse(t); } catch { return { error: res.ok ? 'Unexpected reply from the server.' : `Server error (${res.status}). Try again in a minute.` }; }
+}
+
 async function waitForSignature(connection: Connection, sig: string, timeoutMs = 90_000) {
   const t0 = Date.now();
   while (Date.now() - t0 < timeoutMs) {
@@ -157,14 +163,14 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
           post({ toast: 'Burning… waiting for confirmation.' });
           await waitForSignature(connection, sig);
           const res = await fetch('/api/tickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
-          const out = await res.json();
+          const out = await readJson(res);
           post({ toast: !res.ok ? out.error : out.credited > 0 ? `Done: ${out.given} tickets this round, ${out.credited} saved for the next rounds.` : `Done: you hold ${out.tickets} tickets this round.` });
           balAt.current = 0; refreshMe(); refreshLive();
         }
         if (m.type === 'circo-nick' && typeof m.nick === 'string') {
           try {
             const res = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await signed('nickname', m.team ? `${m.nick}:${m.team}` : m.nick)) });
-            const out = await res.json();
+            const out = await readJson(res);
             if (!res.ok) { post({ nickError: out.error }); return; }
             post({ nickSaved: out.nickname });
             await sendIdentity(publicKey.toBase58());
@@ -175,7 +181,7 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
         if (m.type === 'circo-team' && m.team) {
           try {
             const res = await fetch('/api/team', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await signed('team', m.team)) });
-            const out = await res.json();
+            const out = await readJson(res);
             post({ toast: res.ok ? `Welcome to the ${m.team === 'clowns' ? 'Clowns 🤡' : 'Acrobats 🤸'}!` : out.error });
             if (res.ok) await sendIdentity(publicKey.toBase58());
           } catch (err) { post({ toast: (err as Error).message }); }
@@ -188,7 +194,7 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
             const sig = await sendTransaction(await buildMemoBurnTx(connection, publicKey, cost, `CIRCO-FX:${m.effect}`), connection);
             await waitForSignature(connection, sig);
             const res = await fetch('/api/fx', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
-            if (!res.ok) post({ toast: (await res.json()).error });
+            if (!res.ok) post({ toast: (await readJson(res)).error });
           } catch (err) { post({ toast: (err as Error).message }); }
           return;
         }
@@ -198,7 +204,7 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
             const sig = await sendTransaction(await buildMemoBurnTx(connection, publicKey, cost, `CIRCO-PICK:${m.round}:${m.color}`), connection);
             await waitForSignature(connection, sig);
             const res = await fetch('/api/pick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
-            const out = await res.json();
+            const out = await readJson(res);
             post({ toast: !res.ok ? out.error : out.refunded ? out.reason : `Guess saved: ${m.color}. It pays ${out.ticketsIfWin} tickets if it comes up.` });
             pushLive();
           } catch (err) { post({ toast: (err as Error).message }); }
@@ -207,7 +213,7 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
         if (m.type === 'circo-xlink') {
           try {
             const res = await fetch('/api/x/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await signed('xlink')) });
-            const out = await res.json();
+            const out = await readJson(res);
             if (!res.ok) { post({ toast: out.error }); return; }
             window.location.href = out.url;           // X login, then back to /?x=...
           } catch (err) { post({ toast: (err as Error).message }); }
@@ -216,7 +222,7 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
         if (m.type === 'circo-xunlink') {
           try {
             const res = await fetch('/api/x/unlink', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await signed('xunlink')) });
-            const out = await res.json();
+            const out = await readJson(res);
             if (!res.ok) { post({ toast: out.error }); return; }
             post({ toast: 'X account unlinked.' });
             await sendIdentity(publicKey.toBase58()); pushState();
@@ -241,11 +247,11 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
         }
         if (m.type === 'circo-chat' && m.text) {
           const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(await signed('chat')), body: m.text }) });
-          if (!res.ok) post({ toast: (await res.json()).error });
+          if (!res.ok) post({ toast: (await readJson(res)).error });
         }
         if (m.type === 'circo-mission' && m.url) {
           const res = await fetch('/api/mission', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(await signed('mission')), url: m.url }) });
-          const out = await res.json();
+          const out = await readJson(res);
           post({ toast: res.ok ? `Claimed ${out.tickets} bonus tickets for round ${out.round}.` : out.error });
         }
       } catch (err) { post({ toast: (err as Error).message }); }

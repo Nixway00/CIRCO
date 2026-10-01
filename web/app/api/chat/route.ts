@@ -5,6 +5,11 @@ import { chatProblem } from '@/lib/chatGuard';
 
 /** Anyone reads the chat; only wallets holding the chat minimum of $CIRCO can write. */
 export async function POST(req: Request) {
+  try { return await handle(req); }
+  catch (e) { return NextResponse.json({ error: (e as Error).message }, { status: 500 }); }
+}
+
+async function handle(req: Request) {
   const { wallet, body, message, signature } = await req.json();
   const text = String(body ?? '').trim();
   if (!text || text.length > 120) return NextResponse.json({ error: 'Messages are 1 to 120 characters.' }, { status: 400 });

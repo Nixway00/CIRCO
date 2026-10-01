@@ -4,6 +4,11 @@ import { verifySignedMessage, freshMessage } from '@/lib/verify';
 
 /** Switch team. Signed message "team:<wallet>:<time>:<clowns|acrobats>". Once a week. */
 export async function POST(req: Request) {
+  try { return await handle(req); }
+  catch (e) { return NextResponse.json({ error: (e as Error).message }, { status: 500 }); }
+}
+
+async function handle(req: Request) {
   const { wallet, message, signature } = await req.json();
   if (!freshMessage(message, 'team', wallet) || !verifySignedMessage(wallet, message, signature))
     return NextResponse.json({ error: 'Signature check failed.' }, { status: 401 });

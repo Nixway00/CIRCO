@@ -10,6 +10,11 @@ const POST_URL = /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})
  * Optional before launch: confirm the post exists with one X API read ($0.005 per read).
  */
 export async function POST(req: Request) {
+  try { return await handle(req); }
+  catch (e) { return NextResponse.json({ error: (e as Error).message }, { status: 500 }); }
+}
+
+async function handle(req: Request) {
   const { wallet, url, message, signature } = await req.json();
   if (!freshMessage(message, 'mission', wallet) || !verifySignedMessage(wallet, message, signature))
     return NextResponse.json({ error: 'Signature check failed.' }, { status: 401 });

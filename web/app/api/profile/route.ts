@@ -6,6 +6,11 @@ const RESERVED = ['ringmaster', 'admin', 'team', 'circo', 'moderator', 'mod', 's
 
 /** Set or change the wallet's nickname. The signed message is "nickname:<wallet>:<time>:<nickname>". */
 export async function POST(req: Request) {
+  try { return await handle(req); }
+  catch (e) { return NextResponse.json({ error: (e as Error).message }, { status: 500 }); }
+}
+
+async function handle(req: Request) {
   const { wallet, message, signature } = await req.json();
   if (!freshMessage(message, 'nickname', wallet) || !verifySignedMessage(wallet, message, signature))
     return NextResponse.json({ error: 'Signature check failed.' }, { status: 401 });
