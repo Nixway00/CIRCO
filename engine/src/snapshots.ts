@@ -5,6 +5,7 @@ import bs58 from 'bs58';
 import { connection } from './chain.ts';
 import { env } from './env.ts';
 
+let reserveAt = 0, reserveSol = 0;
 const buybackAddress = env.BUYBACK_WALLET_SECRET ? Keypair.fromSecretKey(bs58.decode(env.BUYBACK_WALLET_SECRET)).publicKey : null;
 
 /**
@@ -26,7 +27,9 @@ export async function refreshSnapshots() {
     db.from('fees').select('amount_sol,jackpot_sol').is('round_id', null).eq('wallet', 'prize'),
   ]);
   // SOL the buyback is holding for the next dip (public, so everyone sees the buy wall waiting)
-  const buyback_reserve_sol = buybackAddress ? Math.max(0, (await connection.getBalance(buybackAddress).catch(() => 0)) / LAMPORTS_PER_SOL - 0.02) : 0;
+  // read once a minute (the snapshot itself refreshes every 15 s): RPC credits matter on a free plan
+  if (buybackAddress && Date.now() - reserveAt > 60_000) { reserveAt = Date.now(); reserveSol = Math.max(0, (await connection.getBalance(buybackAddress).catch(() => 0)) / LAMPORTS_PER_SOL - 0.02); }
+  const buyback_reserve_sol = reserveSol;
   const queue_sol = (over ?? []).reduce((a, r) => a + Number(r.overflow_sol), 0) + (waiting ?? []).reduce((a, f) => a + Number(f.amount_sol) - Number(f.jackpot_sol ?? 0), 0);
   const { error } = await db.from('snapshots').upsert([
     { key: 'stats', data: { ...(stats ?? {}), queue_sol, buyback_reserve_sol }, updated_at: now },

@@ -4,7 +4,7 @@
 - [x] Provably fair draw with public verification (`scripts/verify-round.mjs`)
 - [x] Engine safety: resumable draws, idempotent payouts, credits, reserve, minute re-read of the chain
 - [x] Full rehearsal on a local Solana chain ([report](rehearsal.md))
-- [ ] Supabase Pro; uptime monitor on the engine's `/health`; two-factor authentication everywhere; delete the development GitHub token
+- [ ] Uptime monitor on the engine's `/health`; two-factor authentication everywhere; delete the development GitHub token (Supabase, Helius and Vercel start on free plans: see [operations](operations.md#starting-on-free-plans))
 - [ ] Wallets: prize, buyback, team, launch (Phantom), only public addresses shared
 - [ ] Helius API key and webhook
 - [ ] Engine on an always-on server, secrets set in the host's panel

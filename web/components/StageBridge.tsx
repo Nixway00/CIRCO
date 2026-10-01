@@ -45,11 +45,14 @@ export default function StageBridge() {
   // The public state comes from /api/live, cached by the CDN for a second: a thousand viewers cost the
   // database the same as one, with no per-viewer realtime connections.
   const live = useRef<any>(null);
+  const slowData = useRef<any>({});
+  const balAt = useRef(0);
   const me = useRef<any>(null);
   const lastFx = useRef<number | null>(null);
 
   const publish = useCallback(() => {
-    const L = live.current; if (!L) return;
+    if (!live.current) return;
+    const L = { ...slowData.current, ...live.current };
     const M = me.current;
     const raw = L.config ?? {};
     const n = (k: string) => (raw[k] !== undefined && raw[k] !== null ? Number(raw[k]) : undefined);
@@ -82,28 +85,35 @@ export default function StageBridge() {
   const refreshLive = useCallback(async () => {
     try { const r = await fetch('/api/live', { cache: 'no-store' }); if (r.ok) { live.current = await r.json(); publish(); } } catch { /* next poll */ }
   }, [publish]);
+  const refreshSlow = useCallback(async () => {
+    try { const r = await fetch('/api/live?part=slow', { cache: 'no-store' }); if (r.ok) { slowData.current = await r.json(); publish(); } } catch { /* next poll */ }
+  }, [publish]);
   const refreshMe = useCallback(async () => {
     const addr = meRef.current;
     if (!addr) { me.current = null; post({ me: null, balance: 0, nick: '' }); publish(); return; }
     try {
-      const r = await fetch(`/api/me?wallet=${addr}`, { cache: 'no-store' }); if (!r.ok) return;
-      const m = await r.json(); me.current = m;
+      const withBal = Date.now() - balAt.current > 60_000;      // the balance costs an RPC call: once a minute, or right after an action
+      const r = await fetch(`/api/me?wallet=${addr}${withBal ? '&bal=1' : ''}`, { cache: 'no-store' }); if (!r.ok) return;
+      const m = await r.json();
+      if (withBal) balAt.current = Date.now(); else m.balance = me.current?.balance ?? 0;
+      me.current = m;
       post({ me: m.display || addr, balance: m.balance, nick: m.nick, xHandle: m.xHandle, team: m.team, teamSetAt: m.teamSetAt, needNick: m.needNick });
       publish();
     } catch { /* next poll */ }
   }, [post, publish]);
   const pushLive = refreshLive;
-  const pushState = useCallback(async () => { await Promise.all([refreshLive(), refreshMe()]); }, [refreshLive, refreshMe]);
+  const pushState = useCallback(async () => { balAt.current = 0; await Promise.all([refreshLive(), refreshSlow(), refreshMe()]); }, [refreshLive, refreshSlow, refreshMe]);
   const sendIdentity = useCallback(async (_addr: string) => { await refreshMe(); }, [refreshMe]);
 
   // polling: every 1.5 s while the page is visible, every 15 s in the background; your own data every 8 s
   useEffect(() => {
     let alive = true;
-    const loop = async () => { if (!alive) return; await refreshLive(); setTimeout(loop, document.visibilityState === 'visible' ? 1500 : 15000); };
-    loop();
-    const meTimer = setInterval(() => { if (document.visibilityState === 'visible') refreshMe(); }, 8000);
-    return () => { alive = false; clearInterval(meTimer); };
-  }, [refreshLive, refreshMe]);
+    const loop = async () => { if (!alive) return; await refreshLive(); setTimeout(loop, document.visibilityState === 'visible' ? 2000 : 20000); };
+    loop(); refreshSlow();
+    const slowTimer = setInterval(() => { if (document.visibilityState === 'visible') refreshSlow(); }, 20000);
+    const meTimer = setInterval(() => { if (document.visibilityState === 'visible') refreshMe(); }, 10000);
+    return () => { alive = false; clearInterval(meTimer); clearInterval(slowTimer); };
+  }, [refreshLive, refreshSlow, refreshMe]);
 
   // wallet identity and balance for the chat gate
   useEffect(() => {
@@ -148,7 +158,7 @@ export default function StageBridge() {
           const res = await fetch('/api/tickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
           const out = await res.json();
           post({ toast: !res.ok ? out.error : out.credited > 0 ? `Done: ${out.given} tickets this round, ${out.credited} saved for the next rounds.` : `Done: you hold ${out.tickets} tickets this round.` });
-          refreshMe(); refreshLive();
+          balAt.current = 0; refreshMe(); refreshLive();
         }
         if (m.type === 'circo-nick' && typeof m.nick === 'string') {
           try {

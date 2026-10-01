@@ -12,15 +12,21 @@ const B2T: Record<string, string> = { green: 'verde', blue: 'blu', red: 'rosso',
 const CFG_KEYS = ['ticket_price_tokens', 'chat_min_tokens', 'game_price_tokens', 'game_shots', 'game_hit_chance', 'game_daily_ticket_cap', 'fx_prices',
   'pick_price_tokens', 'pick_return', 'balloons', 'jackpot_share', 'jackpot_chance', 'team_reward_tickets', 'lucky_every'];
 
-export async function GET() {
-  const [{ data: rounds }, { data: trades }, { data: chat }, { data: cfgRows }, { data: snaps }, { data: fx }] = await Promise.all([
-    supabase.from('rounds').select('*').order('id', { ascending: false }).limit(2),
+// Two parts, so the database is read as little as possible on the free plans:
+//  - fast (default, cached 2 s): the round, tickets, trades, chat, effects, headline numbers
+//  - slow (?part=slow, cached 20 s): settings, history, leaderboard, team battle
+const ROUND_COLS = 'id,balloon,phase,capacity_sol,collected_sol,carried_sol,started_at,countdown_ends_at,extensions,postpone_streak,winner_wallet,winner_tickets,last_buyer,prize_sol,draw_total_tickets,mega,jackpot_won,supercharged_sol,express,grand_opening,forced_gala,seed_commit,ended_at';
+
+export async function GET(req: Request) {
+  if (new URL(req.url).searchParams.get('part') === 'slow') return slow();
+  const [{ data: rounds }, { data: trades }, { data: chat }, { data: snaps }, { data: fx }] = await Promise.all([
+    supabase.from('rounds').select(ROUND_COLS).order('id', { ascending: false }).limit(2),
     supabase.from('trades').select('tx,wallet,side,amount_sol').order('id', { ascending: false }).limit(12),
-    supabase.from('chat_messages').select('id,wallet,body,is_ringmaster,source,author').order('id', { ascending: false }).limit(40),
-    supabase.from('config').select('key,value').in('key', CFG_KEYS),
-    supabase.from('snapshots').select('key,data').in('key', ['stats', 'history', 'leaderboard', 'teams']),
+    supabase.from('chat_messages').select('id,wallet,body,is_ringmaster,source,author').order('id', { ascending: false }).limit(25),
+    supabase.from('snapshots').select('key,data').eq('key', 'stats'),
     supabase.from('effects').select('id,wallet,effect,created_at').order('id', { ascending: false }).limit(10),
   ]);
+  const cfgRows: any[] = [];
   const round = rounds?.[0], prev = rounds?.[1];
 
   // tickets of the current round, totalled per wallet, and the last purchase (on-chain order)
@@ -35,13 +41,12 @@ export async function GET() {
     tickets = [...m].map(([wallet, n]) => ({ wallet, tickets: n }));
   }
   const snap = (k: string) => snaps?.find(s => s.key === k)?.data as any;
-  const leaderboard: any[] = snap('leaderboard') ?? [];
-  const history: any[] = snap('history') ?? [];
+  const leaderboard: any[] = [];
+  const history: any[] = [];
 
   // display names: @handle if linked, else nickname, else the address (the stage shortens it)
   const wallets = new Set<string>([
     ...tickets.map(t => t.wallet), ...(trades ?? []).map(t => t.wallet), ...(chat ?? []).map(c => c.wallet), ...(fx ?? []).map(e => e.wallet),
-    ...leaderboard.map(l => l.wallet), ...history.flatMap(r => [r.winner_wallet, r.last_buyer]),
     round?.winner_wallet, round?.last_buyer, prev?.winner_wallet, prev?.last_buyer, lastBuyer,
   ].filter((w): w is string => !!w && w.length > 30));
   const names = new Map<string, string>();
@@ -61,15 +66,35 @@ export async function GET() {
     trades: (trades ?? []).map(t => ({ ...t, wallet: nm(t.wallet) })).reverse(),
     chat: (chat ?? []).map(c => ({ ...c, wallet: c.is_ringmaster ? c.wallet : c.source === 'pumpfun' ? (c.author || 'pump.fun') : nm(c.wallet) })).reverse(),
     effects: (fx ?? []).map(e => ({ id: e.id, effect: e.effect, who: e.wallet === 'ringmaster' ? 'The Ringmaster' : nm(e.wallet), at: e.created_at })).reverse(),
-    config: raw,
     stats: { burned: Number(st.tokens_burned ?? 0), buyback: Number(st.sol_bought_back ?? 0), prizes: Number(st.sol_paid ?? 0), rounds: Number(st.rounds_played ?? 0) },
-    jackpot: Number(st.jackpot_sol ?? 0), queue: Number(st.queue_sol ?? 0), reserve: Number(st.buyback_reserve_sol ?? 0), teams: snap('teams') ?? null,
+    jackpot: Number(st.jackpot_sol ?? 0), queue: Number(st.queue_sol ?? 0), reserve: Number(st.buyback_reserve_sol ?? 0),
+    serverTime: Date.now(),
+  };
+  void raw; void cfgRows; void leaderboard; void history;
+  return NextResponse.json(body, { headers: { 'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=6' } });
+}
+
+async function slow() {
+  const [{ data: cfgRows }, { data: snaps }] = await Promise.all([
+    supabase.from('config').select('key,value').in('key', CFG_KEYS),
+    supabase.from('snapshots').select('key,data').in('key', ['history', 'leaderboard', 'teams']),
+  ]);
+  const snap = (k: string) => snaps?.find(s => s.key === k)?.data as any;
+  const leaderboard: any[] = snap('leaderboard') ?? [];
+  const history: any[] = snap('history') ?? [];
+  const wallets = [...new Set([...leaderboard.map(l => l.wallet), ...history.flatMap(r => [r.winner_wallet, r.last_buyer])].filter((w): w is string => !!w && w.length > 30))];
+  const names = new Map<string, string>();
+  for (let i = 0; i < wallets.length; i += 200) {
+    const { data } = await supabase.from('profiles').select('wallet,nickname,x_handle').in('wallet', wallets.slice(i, i + 200));
+    for (const p of data ?? []) names.set(p.wallet, p.x_handle ? '@' + p.x_handle : p.nickname);
+  }
+  const nm = (w: string | null | undefined) => (w && names.get(w)) || w;
+  return NextResponse.json({
+    config: Object.fromEntries((cfgRows ?? []).map(c => [c.key, c.value as any])), teams: snap('teams') ?? null,
     leaderboard: leaderboard.map(l => ({ ...l, wallet: nm(l.wallet), address: l.wallet })),
     history: history.map(r => ({
       round: r.id, type: B2T[r.balloon], cap: Number(r.capacity_sol), tickets: r.total_tickets, wallets: r.wallets, rinvio: r.phase === 'postponed',
       winner: nm(r.winner_wallet), winT: r.winner_tickets ?? 0, main: Number(r.prize_sol ?? 0) * 0.95, last: nm(r.last_buyer), bonus: r.last_buyer ? Number(r.prize_sol ?? 0) * 0.05 : 0,
     })),
-    serverTime: Date.now(),
-  };
-  return NextResponse.json(body, { headers: { 'Cache-Control': 'public, s-maxage=1, stale-while-revalidate=5' } });
+  }, { headers: { 'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=60' } });
 }

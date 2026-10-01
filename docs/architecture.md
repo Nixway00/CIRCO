@@ -27,7 +27,7 @@ flowchart TB
 | --- | --- | --- |
 | **Engine** | Node 22, TypeScript (run with type stripping, no build step) | Round state machine, ticket verification, draws, payouts, fee distribution, buybacks, snapshots, the pump.fun chat bridge, X posts. |
 | **Database** | Supabase (Postgres, Realtime, row-level security) | Rounds, tickets, fees, payouts, chat, games, profiles, settings. The public can read; only the engine's service key can write. |
-| **Site** | Next.js on Vercel | Wallet connect, builds burn transactions for the player to sign, forwards signatures to the engine, win pages, the public stats page, team panel. Viewers read one cached state (`/api/live`, 1 s at the CDN), so a thousand viewers cost the database the same as one; the browser's Solana calls go through `/api/rpc`, so the RPC key never reaches the browser. |
+| **Site** | Next.js on Vercel | Wallet connect, builds burn transactions for the player to sign, forwards signatures to the engine, win pages, the public stats page, team panel. Viewers read one cached state (`/api/live`: fast part 2 s, slow part 20 s at the CDN), so a thousand viewers cost the database the same as one; the browser's Solana calls go through `/api/rpc`, so the RPC key never reaches the browser. |
 | **Stage** | Three.js in a single HTML file | The 3D show. Receives live data from the site through `postMessage`; never talks to the chain or the database directly. |
 
 ## Life of a ticket

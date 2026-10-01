@@ -6,7 +6,9 @@ import { circoBalance } from '@/lib/verify';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  const wallet = new URL(req.url).searchParams.get('wallet') ?? '';
+  const url = new URL(req.url);
+  const wallet = url.searchParams.get('wallet') ?? '';
+  const withBal = url.searchParams.get('bal') === '1';
   if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet)) return NextResponse.json({ error: 'bad wallet' }, { status: 400 });
   const d = new Date(), day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString();
   const { data: round } = await supabase.from('rounds').select('id').order('id', { ascending: false }).limit(1).maybeSingle();
@@ -18,7 +20,7 @@ export async function GET(req: Request) {
     supabase.from('lucky_meter').select('losing_tickets,free_given').eq('wallet', wallet).maybeSingle(),
     supabase.from('tickets').select('round_id,count').eq('wallet', wallet).order('id', { ascending: false }).limit(500),
     supabase.from('leaderboard').select('*').eq('wallet', wallet).maybeSingle(),
-    circoBalance(wallet).catch(() => 0),
+    withBal ? circoBalance(wallet).catch(() => 0) : Promise.resolve(null),
   ]);
   const mine: Record<number, number> = {};
   for (const t of myT ?? []) mine[t.round_id] = (mine[t.round_id] ?? 0) + t.count;

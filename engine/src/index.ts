@@ -280,7 +280,8 @@ for (;;) { try { cfg = (await loadConfig()) as Config & GameConfig; break; } cat
 setInterval(async () => { try { cfg = (await loadConfig()) as Config & GameConfig; } catch (e) { console.error('config reload failed', e); } }, Number(process.env.CONFIG_RELOAD_MS ?? 60_000));
 setInterval(tick, 1000);
 setInterval(() => { refreshSnapshots().catch(e => console.error('snapshots failed', e)); }, 15_000);
-setInterval(() => { refreshStatsPage().catch(e => console.error('stats page failed', e.message)); }, 60_000);
+setInterval(() => { refreshStatsPage().catch(e => console.error('stats page failed', e.message)); }, 5 * 60_000);
+refreshStatsPage().catch(() => {});
 // safety net under the Helius webhook: re-read the chain every minute and count anything missed
 setInterval(() => {
   reconcileFees(cfg).then(n => n && console.log(`reconcile: ${n} fee(s) recovered`)).catch(e => console.error('fee reconcile failed', e.message));
@@ -291,7 +292,7 @@ setInterval(() => {
   db.from('trades').delete().lt('created_at', new Date(Date.now() - 3 * 86400_000).toISOString()).then(() => {});   // the live feed keeps 3 days
 }, 15 * 60_000);
 setInterval(() => { settleTeamWeek(cfg).then(r => r && console.log('team week settled', r)).catch(e => console.error('team week failed', e)); }, 10 * 60_000);
-setInterval(() => { distributeCreatorFees().then(r => r && console.log('fees distributed', r)).catch(e => console.error('fee distribution failed', e)); }, 30_000);
+setInterval(() => { distributeCreatorFees().then(r => r && console.log('fees distributed', r)).catch(e => console.error('fee distribution failed', e)); }, Number(process.env.FEE_DISTRIBUTE_MS ?? 45_000));   // each check costs a few RPC credits
 // graduation: the moment $CIRCO leaves the bonding curve, the circus throws a party
 setInterval(async () => {
   if ((cfg as any).graduated_at) return;
@@ -303,7 +304,7 @@ setInterval(async () => {
   await ringmaster('WE GRADUATED! $CIRCO just left the bonding curve for PumpSwap. The next balloon is a Grand Opening gold trophy!');
   for (const [i, effect] of ['gala', 'fireworks', 'goldrain'].entries()) await db.from('effects').insert({ wallet: 'ringmaster', effect, burn_tx: `gala-${now}-${i}`, tokens: 0 });
   postPop('$CIRCO just graduated to PumpSwap. The circus celebrates with a Grand Opening gold trophy balloon, live now. 🎪');
-}, 60_000);
+}, 180_000);
 // buyback: price sampled every minute; buys land on dips, on quiet drifting charts, or as a slow drip
 setInterval(() => { samplePrice().catch(e => console.error('price sample failed', e.message)); }, 60_000);
 setInterval(() => {

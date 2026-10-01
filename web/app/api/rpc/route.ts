@@ -23,6 +23,10 @@ export async function POST(req: Request) {
   let body: any; try { body = JSON.parse(text); } catch { return NextResponse.json({ error: 'bad json' }, { status: 400 }); }
   const calls = Array.isArray(body) ? body : [body];
   if (calls.length > 20 || calls.some(c => !ALLOWED.has(c?.method))) return NextResponse.json({ jsonrpc: '2.0', id: null, error: { code: -32601, message: 'Method not allowed' } }, { status: 403 });
-  const res = await fetch(process.env.RPC_URL!, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: text });
+  const call = (url: string) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: text });
+  let res = await call(process.env.RPC_URL!).catch(() => null);
+  // on a free RPC plan a launch spike can hit the rate limit: retry once on the fallback (public Solana RPC by default)
+  if (!res || res.status === 429 || res.status >= 500) res = await call(process.env.RPC_FALLBACK_URL || 'https://api.mainnet-beta.solana.com').catch(() => null);
+  if (!res) return NextResponse.json({ jsonrpc: '2.0', id: null, error: { code: -32000, message: 'RPC unavailable, try again.' } }, { status: 503 });
   return new NextResponse(await res.text(), { status: res.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 }

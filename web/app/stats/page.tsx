@@ -37,7 +37,7 @@ export default async function Stats() {
       <header>
         <a href="/" className="back">← Back to the show</a>
         <h1>The circus in numbers</h1>
-        <p className="lede">Every burn, every prize and every buyback of $CIRCO, read from the chain and the game's public data. Updated every minute{updated ? `, last at ${new Date(updated).toUTCString().slice(17, 22)} UTC` : ''}.</p>
+        <p className="lede">Every burn, every prize and every buyback of $CIRCO, read from the chain and the game's public data. Updated every few minutes{updated ? `, last at ${new Date(updated).toUTCString().slice(17, 22)} UTC` : ''}.</p>
       </header>
 
       <section className="figures">

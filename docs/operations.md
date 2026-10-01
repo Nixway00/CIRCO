@@ -34,6 +34,7 @@ How to run $CIRCO: setup, settings, deployment, costs.
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public read access |
 | `RPC_URL` | Solana RPC (server only: the browser reaches it through `/api/rpc`) |
+| `RPC_FALLBACK_URL` | Optional: used when the main RPC is rate-limited (default: public Solana RPC) |
 | `NEXT_PUBLIC_CIRCO_MINT` | The token's mint address |
 | `NEXT_PUBLIC_PUMPFUN_URL`, `NEXT_PUBLIC_SITE_URL` | Links and share images |
 | `SUPABASE_SERVICE_ROLE_KEY` | Nicknames, chat, team panel |
@@ -56,9 +57,18 @@ Changed from the team panel at `/admin` (signed by an admin wallet, range-checke
 | X API, one post per pop | about $0.015 per post without a link |
 | Domain | about €15 per year |
 
+## Starting on free plans
+
+The system is tuned to start on the free tiers and upgrade only when traffic proves it is needed:
+
+| Service | Free plan holds | Upgrade when |
+| --- | --- | --- |
+| Supabase | Viewers read one cached state (fast part every 2 s, slow part every 20 s at the CDN), so the database load does not grow with viewers. The engine keeps the project active, so it never pauses. | The usage page shows egress or database size above ~70% of the month's quota, or you want daily backups (Pro, $25/month). Upgrading takes minutes, no downtime. |
+| Helius | The engine uses roughly 15,000 credits a day (fee checks every 45 s, chain re-read every minute, balances once a minute); players add about one credit per minute while connected plus a few per purchase. 1 webhook is included. If the 10 requests/second limit is hit, the site's RPC proxy retries on the public Solana RPC. | Credits used pass ~60% of the month, or 429 errors show up in the engine logs (Developer, $49/month). |
+| Vercel | The free Hobby plan works technically. | Note: Hobby is meant for non-commercial use; switch to Pro ($20/month) once the project earns. |
+
 ## Before launch
 
-- **Supabase Pro** (free projects pause after 7 days of inactivity and have no daily backups).
 - **Uptime monitor** (any free service, e.g. UptimeRobot): ping `https://<engine host>/health` every minute and email the team on failure.
 - Two-factor authentication on every account; delete any deploy token used during development.
 
