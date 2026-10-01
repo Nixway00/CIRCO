@@ -34,8 +34,9 @@ The Ringmaster, a vinyl-toy circus host, runs the show: he comments every round,
 | --- | --- |
 | **Chain** | Solana |
 | **Launch** | pump.fun, creator fee sharing locked at launch |
-| **Contract address** | announced at launch, only by the official X account and the site. Anything before that is fake. |
-| **Site** | announced at launch |
+| **Contract address** | announced at launch, only by [@circodotfun](https://x.com/circodotfun) and playcirco.com. Anything before that is fake. |
+| **Site** | [playcirco.com](https://playcirco.com) |
+| **X** | [@circodotfun](https://x.com/circodotfun) |
 
 ## A round in 30 seconds
 

@@ -36,6 +36,6 @@ Two-factor authentication on GitHub, Vercel, Supabase, the engine's host, Helius
 
 ## Reporting a problem
 
-If you find a vulnerability, please contact the team privately through the X account's direct messages before disclosing it. We will answer, fix it, and credit you if you want.
+If you find a vulnerability, please contact the team privately through direct messages to [@circodotfun](https://x.com/circodotfun) before disclosing it. We will answer, fix it, and credit you if you want.
 
 **Bug bounty.** A valid report that could have cost players or the project money is rewarded in SOL, sized to the impact (from a thank-you for minor issues to a meaningful reward for anything that could move funds or change a draw). Testing must not touch real players' funds; a report of a test on the rehearsal kit is welcome.

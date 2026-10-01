@@ -643,7 +643,7 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
     <div class="acts"><div class="dots" id="bubDots"></div><div style="display:flex;gap:8px"><button type="button" id="bubSkip">Skip</button><button type="button" class="go" id="bubNext">Next</button></div></div>
   </section>
   <div id="bcChat" aria-hidden="true"></div>
-  <div id="liveBar"><span>Play at <b id="lvSite">the $CIRCO site</b></span><span class="sep"></span><span>Prize <b id="lvPrize">0.00 SOL</b></span><span class="sep"></span><span>Tickets <b id="lvT">0</b></span><span class="sep"></span><span>Last ticket <b id="lvLast">none yet</b></span><span class="sep"></span><span>Gold in <b id="lvGala" style="color:var(--gold)">--:--</b></span></div>
+  <div id="liveBar"><span>Play at <b id="lvSite">playcirco.com</b> · @circodotfun</span><span class="sep"></span><span>Prize <b id="lvPrize">0.00 SOL</b></span><span class="sep"></span><span>Tickets <b id="lvT">0</b></span><span class="sep"></span><span>Last ticket <b id="lvLast">none yet</b></span><span class="sep"></span><span>Gold in <b id="lvGala" style="color:var(--gold)">--:--</b></span></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -1637,7 +1637,7 @@ function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null
 function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
 function pageMissione(){
   var done = lsGet('circo_mission_day') === today(), handle = lsGet('circo_x_handle');
-  var share = 'https://x.com/intent/post?text=' + encodeURIComponent('Watching the balloon fill up on $CIRCO, the 24/7 memecoin circus. Round ' + S.round + ' is live.');
+  var share = 'https://x.com/intent/post?text=' + encodeURIComponent('Watching the balloon fill up on $CIRCO, the 24/7 memecoin circus. Round ' + S.round + ' is live. 🎈 @circodotfun playcirco.com');
   return '<div class="mission"><div class="mcard">'+
     '<h3>Share a round on X</h3>'+
     '<p class="small" style="margin:0">Post about a round, paste the link here and get <b style="color:var(--ink)">3 bonus tickets</b>. Once a day. Bonus tickets burn nothing and count toward your 10-ticket cap.</p>'+
@@ -1691,7 +1691,7 @@ function pageRegolamento(){
     d('Nickname and X', '<ul><li>A nickname is required to play. It is shown instead of your wallet address.</li><li>You can link your X account in Profile: your @handle is then shown instead. One X account per wallet.</li></ul>')+
     d('Chat', '<p>Anyone can read the live chat. Wallets holding at least '+fmt(CHAT_MIN,0)+' $CIRCO can write. Messages from the coin\'s pump.fun chat appear here too, with a pump.fun tag.</p>')+
     d('Tutorial', '<p><button class="btn" type="button" id="tutAgain">Replay the tutorial</button></p>')+
-    d('Risks', '<p>$CIRCO is a memecoin: its price can drop to zero. Tokens spent on tickets are burned and cannot be recovered. Only play with money you can afford to lose.</p><p>The only official contract address is the one shown on this site and posted by the official X account. Any other token called CIRCO is not ours.</p>')+
+    d('Risks', '<p>$CIRCO is a memecoin: its price can drop to zero. Tokens spent on tickets are burned and cannot be recovered. Only play with money you can afford to lose.</p><p>The only official contract address is the one shown on this site and posted by the official X account, @circodotfun. Any other token called CIRCO is not ours.</p>')+
   '</div>';
 }
 var TITLES = { storico:'Round history', classifiche:'Leaderboards', profilo:'Your profile', regolamento:'Rules', missioni:'Daily mission' };
@@ -3037,12 +3037,12 @@ function drawCard(r, who){
   g.fillText(bonus ? 'Bought the last ticket before the pop' : 'With ' + r.winT + ' of ' + r.tickets + ' tickets', 70, 456);
   g.fillStyle = '#EAF2FF'; g.font = '600 30px Onest, sans-serif'; g.fillText(bonus ? r.last : r.winner, 70, 520);
   g.fillStyle = '#5CE1FF'; g.font = '600 28px Unbounded, sans-serif'; g.fillText('The 24/7 memecoin circus', 70, 610);
-  g.fillStyle = '#A4B8EC'; g.font = '500 24px Onest, sans-serif'; g.fillText('[YOURSITE]', 900, 610);
+  g.fillStyle = '#A4B8EC'; g.font = '500 24px Onest, sans-serif'; g.fillText('playcirco.com · @circodotfun', 900, 610);
   return c.toDataURL('image/png');
 }
 function openCard(r, who){
   $('cardImg').src = drawCard(r, who);
-  var txt = who === 'last' ? 'I grabbed the last ticket and won ' + en(r.bonus) + ' SOL on $CIRCO, the 24/7 memecoin circus.' : 'I just won ' + en(r.main) + ' SOL when the balloon popped on $CIRCO, the 24/7 memecoin circus.';
+  var txt = (who === 'last' ? 'I grabbed the last ticket and won ' + en(r.bonus) + ' SOL on $CIRCO, the 24/7 memecoin circus.' : 'I just won ' + en(r.main) + ' SOL when the balloon popped on $CIRCO, the 24/7 memecoin circus.') + ' 🎈 @circodotfun playcirco.com';
   $('cardX').href = 'https://x.com/intent/post?text=' + encodeURIComponent(txt);
   $('shareCard').classList.add('on'); $('cardClose').focus();
 }

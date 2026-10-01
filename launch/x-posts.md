@@ -6,9 +6,9 @@ Links cost $0.20 per automated post, so automated posts have no links. Manual po
 ## Profile
 
 - **Name:** $CIRCO 🎈
-- **Handle ideas:** @circo_sol · @circocoin · @thecircofun
+- **Handle:** @circodotfun
 - **Bio:** The 24/7 memecoin circus. Every trade pumps the balloon, every ticket burns $CIRCO, every pop pays a winner in SOL. No refunds, only pops.
-- **Link:** the site
+- **Link:** playcirco.com
 
 ## Pinned post
 

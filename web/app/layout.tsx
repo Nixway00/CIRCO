@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     description: 'Every trade pumps the balloon. Every ticket burns $CIRCO. When it pops, someone wins.',
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary_large_image', site: '@circodotfun', creator: '@circodotfun',
     title: '$CIRCO · The 24/7 memecoin circus',
     description: 'Every trade pumps the balloon. Every ticket burns $CIRCO. When it pops, someone wins.',
   },
