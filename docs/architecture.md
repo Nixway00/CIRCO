@@ -27,7 +27,7 @@ flowchart TB
 | --- | --- | --- |
 | **Engine** | Node 22, TypeScript (run with type stripping, no build step) | Round state machine, ticket verification, draws, payouts, fee distribution, buybacks, snapshots, the pump.fun chat bridge, X posts. |
 | **Database** | Supabase (Postgres, Realtime, row-level security) | Rounds, tickets, fees, payouts, chat, games, profiles, settings. The public can read; only the engine's service key can write. |
-| **Site** | Next.js on Vercel | Wallet connect, builds burn transactions for the player to sign, forwards signatures to the engine, win pages with share images, team panel. |
+| **Site** | Next.js on Vercel | Wallet connect, builds burn transactions for the player to sign, forwards signatures to the engine, win pages, the public stats page, team panel. Viewers read one cached state (`/api/live`, 1 s at the CDN), so a thousand viewers cost the database the same as one; the browser's Solana calls go through `/api/rpc`, so the RPC key never reaches the browser. |
 | **Stage** | Three.js in a single HTML file | The 3D show. Receives live data from the site through `postMessage`; never talks to the chain or the database directly. |
 
 ## Life of a ticket
@@ -48,6 +48,8 @@ flowchart TB
 | **No blockhash shopping** | The draw uses the first finalized block at least 2 s after sales close, a rule anyone can check, so the engine cannot wait for a blockhash it likes. |
 | **Fair ordering** | The last-ticket bonus follows the slot each burn landed in on-chain, not the order the engine saw them. |
 | **Top-ups are not fees** | SOL sent to the prize wallet by the team (for example the network-fee reserve) is never counted as prize. |
+| **Self-healing** | `/health` reports a stuck game loop (HTTP 503); a watchdog exits after 3 minutes stuck and pm2 / Docker start a clean engine. An external uptime monitor pings `/health`. |
+| **Capped hot wallet** | The Mega Jackpot stops growing at 25 SOL (fees then go fully to the balloons), so the prize wallet never holds an ever-growing pot. |
 | **A reserve for fees** | 0.01 SOL always stays in the prize wallet to pay network fees. |
 | **Settings stay sane** | Every setting the team can change has a server-side range check. |
 
@@ -76,3 +78,4 @@ Migrations in [`supabase/migrations`](../supabase/migrations), applied in order:
 | `0011_lucky_meter_and_gala` | Lucky meter, graduation gala |
 | `0012_engine_state` | Buyback state that survives restarts, timer minimum fill |
 | `0013_hot_mode` | Express countdowns and supercharged balloons |
+| `0014_stats_page` | Daily numbers and burn sources for the public stats page, jackpot cap |

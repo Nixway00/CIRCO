@@ -4,7 +4,7 @@
 
 | Key | Where | Can do | Holds |
 | --- | --- | --- | --- |
-| Prize wallet | Engine server only | Pay winners | The current prizes, the jackpot and a 0.01 SOL reserve |
+| Prize wallet | Engine server only | Pay winners | The current prizes, the jackpot (capped at 25 SOL) and a 0.01 SOL reserve |
 | Buyback wallet | Engine server only | Swap SOL for $CIRCO and burn it | SOL waiting for the next dip: at most 10 SOL, never more than 24 hours |
 | Team wallet | Offline (team) | Nothing automatic | The team's 10% |
 | Launch wallet | Engine server (optional) | Speak in the pump.fun chat as the Ringmaster | A little SOL for fees |
@@ -30,6 +30,12 @@ The site never asks for a seed phrase or a private key. Nobody from the team wil
 - Team panel: admin wallets only, signed requests, range check on every setting.
 - Database: row-level security everywhere; secrets live in tables the public cannot read; sensitive functions can be called only by the engine.
 
+## Accounts
+
+Two-factor authentication on GitHub, Vercel, Supabase, the engine's host, Helius and X. Deploy tokens are created for a task and deleted after it.
+
 ## Reporting a problem
 
 If you find a vulnerability, please contact the team privately through the X account's direct messages before disclosing it. We will answer, fix it, and credit you if you want.
+
+**Bug bounty.** A valid report that could have cost players or the project money is rewarded in SOL, sized to the impact (from a thank-you for minor issues to a meaningful reward for anything that could move funds or change a draw). Testing must not touch real players' funds; a report of a test on the rehearsal kit is welcome.

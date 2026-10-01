@@ -5,7 +5,8 @@ module.exports = {
     script: 'src/index.ts',
     interpreter: 'node',
     interpreter_args: '--experimental-strip-types --env-file=.env',
-    max_restarts: 50,
-    restart_delay: 3000,
+    max_restarts: 1000,
+    exp_backoff_restart_delay: 2000,   // restarts quickly, backs off if something keeps failing
+    max_memory_restart: '600M',
   }],
 };

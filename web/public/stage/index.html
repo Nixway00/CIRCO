@@ -271,6 +271,8 @@ nav.pages .sm{ display:none; }
 .teamPick button{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px; min-height:80px; border-radius:14px; border:1px solid var(--line); background:rgba(8,16,52,.7); color:var(--ink); font-size:28px; cursor:pointer; }
 .teamPick button b{ font-size:14px; }
 .teamPick button[aria-checked="true"]{ border-color:var(--gold); background:rgba(255,211,77,.12); box-shadow:0 0 16px rgba(255,211,77,.25); }
+.statsLink{ grid-column:1 / -1; font-size:13px; color:var(--cyan); text-decoration:none; padding:6px 0 0; }
+@media (min-width: 901px){ .statsLink{ align-self:center; } }
 .teamBox{ margin:0 0 16px; padding:14px; border-radius:16px; border:1px solid var(--line); background:rgba(8,16,52,.6); }
 .teamBox h3{ margin:0 0 10px; font-family:'Unbounded',sans-serif; font-size:15px; }
 .teamBox .tbar{ display:flex; align-items:center; gap:10px; font-size:13px; }
@@ -536,6 +538,7 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
       <div class="stat"><b id="sBuy">0.00 SOL</b><span id="sBuyL">bought back</span></div>
       <div class="stat"><b id="sPrize">0.00 SOL</b><span>prizes paid</span></div>
       <div class="stat"><b id="sRounds">0</b><span>rounds played</span></div>
+      <a class="statsLink" id="statsLink" href="/stats" target="_top" hidden>All stats: burns, buybacks, wallets ↗</a>
       <div class="stat teamStat" id="teamStat"><div class="tbar"><span>🤡 <b id="tcP">50%</b></span><i><em id="tcBar" style="width:50%"></em></i><span><b id="taP">50%</b> 🤸</span></div><span id="teamL">Team battle · week ends in --</span></div>
       <div class="stat"><b id="sGala" style="color:var(--gold)">--:--:--</b><span id="sGalaL">gold guaranteed in</span></div>
     </div>
@@ -1656,7 +1659,7 @@ document.addEventListener('click', function(e){
 });
 function pageRegolamento(){
   function d(title, body, open){ return '<details'+(open?' open':'')+'><summary>'+title+'</summary>'+body+'</details>'; }
-  return '<div class="rules"><p class="small rulesTop">Everything is open: <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/story.md" target="_blank" rel="noopener">the story ↗</a> · <a href="https://github.com/Nixway00/CIRCO" target="_blank" rel="noopener">code on GitHub ↗</a> · <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/fairness.md" target="_blank" rel="noopener">check a draw ↗</a> · <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/rehearsal.md" target="_blank" rel="noopener">test report ↗</a></p>'+
+  return '<div class="rules"><p class="small rulesTop">Everything is open: '+(LIVE ? '<a href="/stats" target="_top">live stats ↗</a> · ' : '')+'<a href="https://github.com/Nixway00/CIRCO/blob/main/docs/story.md" target="_blank" rel="noopener">the story ↗</a> · <a href="https://github.com/Nixway00/CIRCO" target="_blank" rel="noopener">code on GitHub ↗</a> · <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/fairness.md" target="_blank" rel="noopener">check a draw ↗</a> · <a href="https://github.com/Nixway00/CIRCO/blob/main/docs/rehearsal.md" target="_blank" rel="noopener">test report ↗</a></p>'+
     d('How it works', '<p>Every $CIRCO trade creates fees. Part of them inflates a balloon full of coins. When the balloon is full, a countdown starts: everyone holding tickets joins the draw, and the wheel picks the winner.</p>', true)+
     d('Where the fees go', '<ul><li>45% into the balloon prize.</li><li>45% into $CIRCO buyback and burn. The buyback waits for the moments where it helps most: it buys dips in three steps as they deepen, waiting each time for the fall to stop, supports the chart gently when trading is quiet, and never sits on the money for more than a day. The SOL it holds for the next dip is shown in the stats.</li><li>10% to the team for servers, development and running costs.</li></ul><p>Of what reaches the prize wallet, '+Math.round(SHOW.jackpotShare*100)+'% feeds the Mega Jackpot and the rest fills the balloons.</p><p>All three wallets are public: <a href="#">prize ↗</a>, <a href="#">buyback ↗</a>, <a href="#">team ↗</a>.</p>')+
     d('The balloons', '<ul><li>Green balloon dog: 0.5 SOL, 40% of rounds, 50 tickets minimum.</li><li>Blue balloon: 1 SOL, 35%, 100 tickets minimum.</li><li>Red rocket: 2 SOL, 20%, 150 tickets minimum.</li><li>Gold trophy: 5 SOL, 5%, 300 tickets minimum.</li></ul><p>The first three rounds always use the green 0.5 SOL balloon dog. Every day at 01:00 UTC, if no gold trophy came out in the last 24 hours, the next balloon is a gold trophy. The countdown is always on screen.</p><p>Otherwise the next balloon is drawn from the previous round\'s revealed seed, so anyone can check it on the win page.</p>')+
@@ -2445,6 +2448,7 @@ $('dockPickItems').addEventListener('click', function(e){ var b = e.target.close
 document.addEventListener('click', function(e){ if (!e.target.closest('.dock')) document.querySelectorAll('.dock.open').forEach(function(d){ dockToggle(d.id, false); }); });
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') document.querySelectorAll('.dock.open').forEach(function(d){ dockToggle(d.id, false); }); });
 renderJackpot(); renderTeams(); renderFxList(); renderDock();
+if (LIVE) $('statsLink').hidden = false;
 setInterval(renderTeams, 30000);
 /* demo: the crowd plays too */
 if (!LIVE) setInterval(function(){

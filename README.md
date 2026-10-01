@@ -14,6 +14,7 @@
   <a href="docs/fairness.md">Provably fair</a> ·
   <a href="docs/architecture.md">Architecture</a> ·
   <a href="docs/buyback.md">Buyback</a> ·
+  Live stats at <code>/stats</code> ·
   <a href="docs/security.md">Security</a> ·
   <a href="docs/rehearsal.md">Rehearsal report</a> ·
   <a href="docs/journey.md">The journey</a>

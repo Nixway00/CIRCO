@@ -3,7 +3,7 @@
 // anything already counted is skipped, because every write is keyed by the transaction signature.
 import { PublicKey, type ParsedTransactionWithMeta } from '@solana/web3.js';
 import { connection, prizeKeypair, MINT } from './chain.ts';
-import { db, openRound } from './db.ts';
+import { db, openRound, jackpotShareNow } from './db.ts';
 import { feeTargetsCurrentRound, jackpotPart, LAMPORTS, type Config } from './rules.ts';
 import { env } from './env.ts';
 
@@ -54,7 +54,7 @@ export async function reconcileFees(cfg: Config) {
     if (lamports <= 0) continue;                         // payouts and other outgoing transactions
     const r = await openRound();
     const amount = lamports / LAMPORTS;
-    const { error } = await db.from('fees').upsert({ tx: s.signature, wallet: 'prize', amount_sol: amount, jackpot_sol: jackpotPart(amount, cfg.jackpot_share ?? 0), round_id: r && feeTargetsCurrentRound(r.phase) ? r.id : null }, { onConflict: 'tx', ignoreDuplicates: true });
+    const { error } = await db.from('fees').upsert({ tx: s.signature, wallet: 'prize', amount_sol: amount, jackpot_sol: jackpotPart(amount, jackpotShareNow(cfg.jackpot_share)), round_id: r && feeTargetsCurrentRound(r.phase) ? r.id : null }, { onConflict: 'tx', ignoreDuplicates: true });
     if (!error) added++;
   }
   lastPrizeSig = sigs[sigs.length - 1]?.signature ?? lastPrizeSig;

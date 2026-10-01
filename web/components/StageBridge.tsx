@@ -4,12 +4,24 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import bs58 from 'bs58';
-import { supabase } from '@/lib/supabase';
-import { buildTicketTx, buildGameTx, buildMemoBurnTx, circoBalanceClient } from '@/lib/tickets';
+import { buildTicketTx, buildGameTx, buildMemoBurnTx } from '@/lib/tickets';
+import type { Connection } from '@solana/web3.js';
+
+/** Waits for a transaction by polling its status (no websocket needed, so it works through the RPC proxy). */
+async function waitForSignature(connection: Connection, sig: string, timeoutMs = 90_000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs) {
+    const st = (await connection.getSignatureStatuses([sig])).value[0];
+    if (st?.err) throw new Error('The transaction failed on chain.');
+    if (st && (st.confirmationStatus === 'confirmed' || st.confirmationStatus === 'finalized')) return;
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  throw new Error('Not confirmed yet. If it lands, your tickets will still be counted.');
+}
 
 /**
  * The 3D stage runs in an iframe in "live data" mode. This component is its only source of truth:
- * it reads the game from Supabase (Realtime), sends it to the stage, and turns the stage's
+ * it reads the game from a cached endpoint (/api/live) shared by every viewer, sends it to the stage, and turns the stage's
  * requests (buy tickets, chat, mission, connect) into real wallet actions.
  */
 /** Changes on every deploy, so phones never keep an old copy of the stage. */
@@ -29,139 +41,75 @@ export default function StageBridge() {
     frame.current?.contentWindow?.postMessage({ type: 'circo-state', ...m }, window.location.origin);
   }, []);
 
-  // Live, per-round data: small queries, re-run on every game event.
-  // wallet -> nickname, refreshed every minute; the stage only ever sees the nickname when there is one
-  const nicks = useRef(new Map<string, string>());
-  const nickAge = useRef(0);
-  const loadNicks = useCallback(async (wallets: (string | null | undefined)[]) => {
-    if (Date.now() - nickAge.current > 60_000) { nicks.current.clear(); nickAge.current = Date.now(); }
-    const need = [...new Set(wallets.filter((w): w is string => !!w && w.length > 30 && !nicks.current.has(w)))];
-    if (!need.length) return;
-    const { data } = await supabase.from('profiles').select('wallet,nickname,x_handle').in('wallet', need);
-    for (const w of need) nicks.current.set(w, '');
-    for (const p of data ?? []) nicks.current.set(p.wallet, p.x_handle ? '@' + p.x_handle : p.nickname);
-  }, []);
-  const nm = (w: string | null | undefined) => (w && nicks.current.get(w)) || w;
+  // ---------- data: one cached snapshot for everyone, plus a small per-wallet request ----------
+  // The public state comes from /api/live, cached by the CDN for a second: a thousand viewers cost the
+  // database the same as one, with no per-viewer realtime connections.
+  const live = useRef<any>(null);
+  const me = useRef<any>(null);
+  const lastFx = useRef<number | null>(null);
 
-  const pushLive = useCallback(async () => {
-    const [{ data: rounds }, { data: trades }, { data: chat }, { data: cfgRows }] = await Promise.all([
-      supabase.from('rounds').select('*').order('id', { ascending: false }).limit(2),
-      supabase.from('trades').select('tx,wallet,side,amount_sol').order('id', { ascending: false }).limit(12),
-      supabase.from('chat_messages').select('id,wallet,body,is_ringmaster,source,author').order('id', { ascending: false }).limit(40),
-      supabase.from('config').select('key,value').in('key', ['ticket_price_tokens', 'chat_min_tokens', 'game_price_tokens', 'game_shots', 'game_hit_chance', 'game_daily_ticket_cap', 'fx_prices', 'pick_price_tokens', 'pick_return', 'balloons', 'jackpot_share', 'jackpot_chance', 'team_reward_tickets', 'lucky_every']),
-    ]);
-    const raw = Object.fromEntries((cfgRows ?? []).map(c => [c.key, c.value as any]));
-    const cfgMap = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Number(v)]));
+  const publish = useCallback(() => {
+    const L = live.current; if (!L) return;
+    const M = me.current;
+    const raw = L.config ?? {};
+    const n = (k: string) => (raw[k] !== undefined && raw[k] !== null ? Number(raw[k]) : undefined);
+    if (n('ticket_price_tokens')) price.current = n('ticket_price_tokens')!;
+    if (n('chat_min_tokens') !== undefined) chatMin.current = n('chat_min_tokens')!;
     showCfg.current = {
-      fxPrices: raw.fx_prices ?? undefined, pickPrice: cfgMap.pick_price_tokens || undefined, pickReturn: cfgMap.pick_return || undefined,
-      jackpotShare: raw.jackpot_share !== undefined ? cfgMap.jackpot_share : undefined, jackpotChance: raw.jackpot_chance !== undefined ? cfgMap.jackpot_chance : undefined,
-      teamReward: raw.team_reward_tickets !== undefined ? cfgMap.team_reward_tickets : undefined, gameCap: raw.game_daily_ticket_cap !== undefined ? cfgMap.game_daily_ticket_cap : undefined,
+      fxPrices: raw.fx_prices ?? undefined, pickPrice: n('pick_price_tokens'), pickReturn: n('pick_return'),
+      jackpotShare: n('jackpot_share'), jackpotChance: n('jackpot_chance'), teamReward: n('team_reward_tickets'), gameCap: n('game_daily_ticket_cap'),
       weights: raw.balloons ? Object.fromEntries(Object.entries(raw.balloons).map(([k, v]: [string, any]) => [k, v.weight])) : undefined,
     };
-    if (cfgMap.ticket_price_tokens) price.current = cfgMap.ticket_price_tokens;
-    if (cfgMap.chat_min_tokens !== undefined) chatMin.current = cfgMap.chat_min_tokens;
-    let wonToday = 0;
-    if (meRef.current) {
-      const d = new Date(), day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString();
-      const { data: g } = await supabase.from('games').select('tickets_given,credited').eq('wallet', meRef.current).eq('status', 'played').gte('played_at', day);
-      wonToday = (g ?? []).reduce((a, x) => a + (x.tickets_given ?? 0) + (x.credited ?? 0), 0);
-    }
-    const gameInfo = { price: cfgMap.game_price_tokens ?? 10000, shots: cfgMap.game_shots ?? 3, chance: cfgMap.game_hit_chance ?? 0.3, remaining: Math.max(0, (cfgMap.game_daily_ticket_cap ?? 5) - wonToday) };
-    const round = rounds?.[0], prev = rounds?.[1];
-    let tickets: { wallet: string; tickets: number }[] = [], lastBuyer: string | null = null;
-    if (round) {
-      const { data: t } = await supabase.from('tickets').select('wallet,count,kind,created_at').eq('round_id', round.id).order('created_at');
-      const m = new Map<string, number>();
-      for (const x of t ?? []) { m.set(x.wallet, (m.get(x.wallet) ?? 0) + x.count); if (x.kind === 'burn' || x.kind === 'late') lastBuyer = x.wallet; }
-      tickets = [...m].map(([wallet, n]) => ({ wallet, tickets: n }));
-    }
-    let myPick: any = null, pickResult: any = null, lucky: any = null;
-    if (meRef.current && round) {
-      const [{ data: cur }, { data: last }] = await Promise.all([
-        supabase.from('predictions').select('round_id,color,tickets_if_win').eq('wallet', meRef.current).eq('round_id', round.id).maybeSingle(),
-        supabase.from('predictions').select('id,status,tickets_if_win').eq('wallet', meRef.current).neq('status', 'open').order('id', { ascending: false }).limit(1).maybeSingle(),
-      ]);
-      myPick = cur ?? null; pickResult = last ?? null;
-      const { data: lm } = await supabase.from('lucky_meter').select('losing_tickets,free_given').eq('wallet', meRef.current).maybeSingle();
-      lucky = { losing: lm?.losing_tickets ?? 0, given: lm?.free_given ?? 0, every: Number(cfgMap.lucky_every || 20) };
-    }
-    await loadNicks([...tickets.map(t => t.wallet), lastBuyer, ...(trades ?? []).map(t => t.wallet), ...(chat ?? []).map(c => c.wallet), round?.winner_wallet, round?.last_buyer, prev?.winner_wallet, prev?.last_buyer, meRef.current]);
-    tickets = tickets.map(t => ({ ...t, wallet: nm(t.wallet)! }));
-    lastBuyer = nm(lastBuyer) ?? null;
-    const named = (r: any) => r && { ...r, winner_wallet: nm(r.winner_wallet), last_buyer: nm(r.last_buyer) };
+    const gameInfo = { price: n('game_price_tokens') ?? 10000, shots: n('game_shots') ?? 3, chance: n('game_hit_chance') ?? 0.3, remaining: Math.max(0, (n('game_daily_ticket_cap') ?? 5) - (M?.wonToday ?? 0)) };
     const pumpUrl = (process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').startsWith('https://pump.fun/coin/') && !(process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').includes('YOUR_MINT') ? process.env.NEXT_PUBLIC_PUMPFUN_URL : undefined;
-    post({ round: named(round), prev: named(prev), tickets, lastBuyer, trades: (trades ?? []).map(t => ({ ...t, wallet: nm(t.wallet) })).reverse(), chat: (chat ?? []).map(c => ({ ...c, wallet: c.is_ringmaster ? c.wallet : c.source === 'pumpfun' ? (c.author || 'pump.fun') : nm(c.wallet) })).reverse(), price: price.current, chatMin: chatMin.current, pumpUrl, gameInfo, showCfg: showCfg.current, myPick, pickResult, lucky });
-  }, [post, loadNicks]);
+    let leaderboard: any[] = L.leaderboard ?? [];
+    if (M?.leaderboardRow && !leaderboard.some(l => l.address === meRef.current)) leaderboard = [...leaderboard, { ...M.leaderboardRow, wallet: M.display || M.leaderboardRow.wallet }];
+    const history = (L.history ?? []).map((h: any) => ({ ...h, mine: M?.mine?.[h.round] ?? 0 }));
+    post({
+      round: L.round, prev: L.prev, tickets: L.tickets, lastBuyer: L.lastBuyer, trades: L.trades, chat: L.chat,
+      price: price.current, chatMin: chatMin.current, pumpUrl, gameInfo, showCfg: showCfg.current,
+      myPick: M?.myPick ?? null, pickResult: M?.pickResult ?? null,
+      lucky: M ? { losing: M.lucky.losing, given: M.lucky.given, every: n('lucky_every') ?? 20 } : undefined,
+      stats: L.stats, history, leaderboard, jackpot: L.jackpot, queue: L.queue, reserve: L.reserve, teams: L.teams ?? undefined,
+    });
+    // stage effects bought by anyone: play the new ones (not the ones that happened before you arrived)
+    const fx: any[] = L.effects ?? [];
+    const maxId = fx.reduce((a, e) => Math.max(a, e.id), 0);
+    if (lastFx.current === null) lastFx.current = maxId;
+    else for (const e of fx) if (e.id > lastFx.current) { post({ fx: { effect: e.effect, who: e.who } }); lastFx.current = Math.max(lastFx.current, e.id); }
+  }, [post]);
 
-  // Stats, leaderboard and history: one precomputed snapshot written by the engine, never aggregated here.
-  const pushSnapshots = useCallback(async () => {
-    const B2T: Record<string, string> = { green: 'verde', blue: 'blu', red: 'rosso', gold: 'oro' };
-    const { data: snaps } = await supabase.from('snapshots').select('key,data');
-    const snap = (k: string) => snaps?.find(x => x.key === k)?.data;
-    const st = snap('stats') ?? {};
-    const stats = { burned: Number(st.tokens_burned ?? 0), buyback: Number(st.sol_bought_back ?? 0), prizes: Number(st.sol_paid ?? 0), rounds: Number(st.rounds_played ?? 0) };
-    const me = meRef.current;
-    const mine = new Map<number, number>();
-    let leaderboard: any[] = (snap('leaderboard') as any[]) ?? [];
-    if (me) {
-      const [{ data: myT }, { data: meRow }] = await Promise.all([
-        supabase.from('tickets').select('round_id,count').eq('wallet', me).order('id', { ascending: false }).limit(500),
-        leaderboard.some(l => l.wallet === me) ? Promise.resolve({ data: null }) : supabase.from('leaderboard').select('*').eq('wallet', me).maybeSingle(),
-      ]);
-      for (const t of myT ?? []) mine.set(t.round_id, (mine.get(t.round_id) ?? 0) + t.count);
-      if (meRow) leaderboard = [...leaderboard, meRow];
-    }
-    await loadNicks([...leaderboard.map(l => l.wallet), ...(((snap('history') as any[]) ?? []).flatMap(r => [r.winner_wallet, r.last_buyer]))]);
-    leaderboard = leaderboard.map(l => ({ ...l, wallet: nm(l.wallet) }));
-    const history = ((snap('history') as any[]) ?? []).map(r => ({
-      round: r.id, type: B2T[r.balloon], cap: Number(r.capacity_sol), tickets: r.total_tickets, wallets: r.wallets,
-      mine: mine.get(r.id) ?? 0, rinvio: r.phase === 'postponed', winner: nm(r.winner_wallet), winT: r.winner_tickets ?? 0,
-      main: Number(r.prize_sol ?? 0) * 0.95, last: nm(r.last_buyer), bonus: r.last_buyer ? Number(r.prize_sol ?? 0) * 0.05 : 0,
-    }));
-    post({ stats, history, leaderboard, jackpot: Number(st.jackpot_sol ?? 0), queue: Number(st.queue_sol ?? 0), reserve: Number(st.buyback_reserve_sol ?? 0), teams: snap('teams') ?? undefined });
-  }, [post, loadNicks]);
+  const refreshLive = useCallback(async () => {
+    try { const r = await fetch('/api/live', { cache: 'no-store' }); if (r.ok) { live.current = await r.json(); publish(); } } catch { /* next poll */ }
+  }, [publish]);
+  const refreshMe = useCallback(async () => {
+    const addr = meRef.current;
+    if (!addr) { me.current = null; post({ me: null, balance: 0, nick: '' }); publish(); return; }
+    try {
+      const r = await fetch(`/api/me?wallet=${addr}`, { cache: 'no-store' }); if (!r.ok) return;
+      const m = await r.json(); me.current = m;
+      post({ me: m.display || addr, balance: m.balance, nick: m.nick, xHandle: m.xHandle, team: m.team, teamSetAt: m.teamSetAt, needNick: m.needNick });
+      publish();
+    } catch { /* next poll */ }
+  }, [post, publish]);
+  const pushLive = refreshLive;
+  const pushState = useCallback(async () => { await Promise.all([refreshLive(), refreshMe()]); }, [refreshLive, refreshMe]);
+  const sendIdentity = useCallback(async (_addr: string) => { await refreshMe(); }, [refreshMe]);
 
-  const pushState = useCallback(async () => { await Promise.all([pushLive(), pushSnapshots()]); }, [pushLive, pushSnapshots]);
-
-  // who you are on the stage: display name (X handle or nickname), and whether you still need a nickname
-  const sendIdentity = useCallback(async (addr: string) => {
-    nicks.current.delete(addr);
-    const { data: prof } = await supabase.from('profiles').select('nickname,x_handle,team,team_set_at').eq('wallet', addr).maybeSingle();
-    const display = prof ? (prof.x_handle ? '@' + prof.x_handle : prof.nickname) : '';
-    nicks.current.set(addr, display);
-    const balance = await circoBalanceClient(connection, new PublicKey(addr)).catch(() => 0);
-    post({ me: display || addr, balance, nick: prof?.nickname ?? '', xHandle: prof?.x_handle ?? '', team: prof?.team ?? '', teamSetAt: prof?.team_set_at ?? null, needNick: !prof });
-  }, [connection, post]);
-
-  // live updates: game tables re-send the round, the snapshot table re-sends stats (both debounced)
+  // polling: every 1.5 s while the page is visible, every 15 s in the background; your own data every 8 s
   useEffect(() => {
-    let tLive: ReturnType<typeof setTimeout> | null = null, tSnap: ReturnType<typeof setTimeout> | null = null;
-    const live = () => { if (tLive) clearTimeout(tLive); tLive = setTimeout(pushLive, 250); };
-    const snaps = () => { if (tSnap) clearTimeout(tSnap); tSnap = setTimeout(pushSnapshots, 500); };
-    const ch = supabase.channel('stage')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds' }, live)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, live)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trades' }, live)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, live)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'snapshots' }, snaps)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'effects' }, async (p: any) => {
-        const e = p.new; if (!e) return;
-        await loadNicks([e.wallet]);
-        post({ fx: { effect: e.effect, who: e.wallet === 'ringmaster' ? 'The Ringmaster' : nm(e.wallet) } });
-      })
-      .subscribe();
-    const safety = setInterval(pushState, 30_000);
-    return () => { supabase.removeChannel(ch); clearInterval(safety); };
-  }, [pushLive, pushSnapshots, pushState, loadNicks]);
+    let alive = true;
+    const loop = async () => { if (!alive) return; await refreshLive(); setTimeout(loop, document.visibilityState === 'visible' ? 1500 : 15000); };
+    loop();
+    const meTimer = setInterval(() => { if (document.visibilityState === 'visible') refreshMe(); }, 8000);
+    return () => { alive = false; clearInterval(meTimer); };
+  }, [refreshLive, refreshMe]);
 
   // wallet identity and balance for the chat gate
   useEffect(() => {
     meRef.current = publicKey ? publicKey.toBase58() : null;
-    pushState();
-    if (!publicKey) { post({ me: null, balance: 0, nick: '' }); return; }
-    const addr = publicKey.toBase58();
-    sendIdentity(addr);
-  }, [publicKey, connection, post, pushState, loadNicks, sendIdentity]);
+    refreshMe();
+  }, [publicKey, refreshMe]);
 
   // coming back from X: tell the player how the link went
   useEffect(() => {
@@ -188,19 +136,19 @@ export default function StageBridge() {
         if (m.type === 'circo-connect') { setVisible(true); return; }
         if (!publicKey) { setVisible(true); post(m.type === 'circo-game' ? { gameError: 'Connect your wallet first.' } : m.type === 'circo-nick' ? { nickError: 'Connect your wallet first.' } : { toast: 'Connect your wallet first.' }); return; }
         // playing needs a nickname: buying, chatting, games and the mission all ask for one first
-        if (['circo-buy', 'circo-chat', 'circo-game', 'circo-mission', 'circo-fx', 'circo-pick'].includes(m.type) && !nicks.current.get(publicKey.toBase58())) {
-          const { data: prof } = await supabase.from('profiles').select('wallet').eq('wallet', publicKey.toBase58()).maybeSingle();
-          if (!prof) { post({ needNick: true, ...(m.type === 'circo-game' ? { gameError: 'Choose a nickname first.' } : {}) }); return; }
+        if (['circo-buy', 'circo-chat', 'circo-game', 'circo-mission', 'circo-fx', 'circo-pick'].includes(m.type)) {
+          if (!me.current) await refreshMe();
+          if (!me.current || me.current.needNick) { post({ needNick: true, ...(m.type === 'circo-game' ? { gameError: 'Choose a nickname first.' } : {}) }); return; }
         }
         if (m.type === 'circo-buy' && m.round && m.n) {
           const tx = await buildTicketTx(connection, publicKey, m.round, m.n, price.current);
           const sig = await sendTransaction(tx, connection);
           post({ toast: 'Burning… waiting for confirmation.' });
-          await connection.confirmTransaction(sig, 'confirmed');
+          await waitForSignature(connection, sig);
           const res = await fetch('/api/tickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
           const out = await res.json();
           post({ toast: !res.ok ? out.error : out.credited > 0 ? `Done: ${out.given} tickets this round, ${out.credited} saved for the next rounds.` : `Done: you hold ${out.tickets} tickets this round.` });
-          circoBalanceClient(connection, publicKey).then(balance => post({ me: publicKey.toBase58(), balance }));
+          refreshMe(); refreshLive();
         }
         if (m.type === 'circo-nick' && typeof m.nick === 'string') {
           try {
@@ -227,7 +175,7 @@ export default function StageBridge() {
             const cost = showCfg.current.fxPrices?.[m.effect];
             if (!cost) { post({ toast: 'That effect is not available.' }); return; }
             const sig = await sendTransaction(await buildMemoBurnTx(connection, publicKey, cost, `CIRCO-FX:${m.effect}`), connection);
-            await connection.confirmTransaction(sig, 'confirmed');
+            await waitForSignature(connection, sig);
             const res = await fetch('/api/fx', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
             if (!res.ok) post({ toast: (await res.json()).error });
           } catch (err) { post({ toast: (err as Error).message }); }
@@ -237,7 +185,7 @@ export default function StageBridge() {
           try {
             const cost = showCfg.current.pickPrice ?? 10000;
             const sig = await sendTransaction(await buildMemoBurnTx(connection, publicKey, cost, `CIRCO-PICK:${m.round}:${m.color}`), connection);
-            await connection.confirmTransaction(sig, 'confirmed');
+            await waitForSignature(connection, sig);
             const res = await fetch('/api/pick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
             const out = await res.json();
             post({ toast: !res.ok ? out.error : out.refunded ? out.reason : `Guess saved: ${m.color}. It pays ${out.ticketsIfWin} tickets if it comes up.` });
@@ -271,7 +219,7 @@ export default function StageBridge() {
             if (!st.ok) { post({ gameError: game.error }); return; }
             const tx = await buildGameTx(connection, publicKey, game.id, game.price);
             const sig = await sendTransaction(tx, connection);
-            await connection.confirmTransaction(sig, 'confirmed');
+            await waitForSignature(connection, sig);
             const pl = await fetch('/api/game/play', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: game.id, signature: sig }) });
             const out = await pl.json();
             if (!pl.ok) { post({ gameError: out.error }); return; }
@@ -293,7 +241,7 @@ export default function StageBridge() {
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [publicKey, connection, sendTransaction, signMessage, setVisible, post, pushState, pushLive, sendIdentity]);
+  }, [publicKey, connection, sendTransaction, signMessage, setVisible, post, pushState, pushLive, sendIdentity, refreshMe, refreshLive]);
 
   return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}`} title="$CIRCO live stage" allow="autoplay" />;
 }

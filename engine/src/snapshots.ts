@@ -36,3 +36,28 @@ export async function refreshSnapshots() {
   ], { onConflict: 'key' });
   if (error) throw error;
 }
+
+// ---------- the public stats page: heavier numbers, refreshed every minute ----------
+import { MINT, prizeKeypair } from './chain.ts';
+export async function refreshStatsPage() {
+  const now = new Date().toISOString();
+  const [{ data: daily }, { data: breakdown }, { data: buys }, { data: big }, supply] = await Promise.all([
+    db.rpc('stats_daily', { p_days: 14 }),
+    db.rpc('burn_breakdown'),
+    db.from('buybacks').select('created_at,reason,sol_spent,tokens_burned,swap_tx,burn_tx').order('id', { ascending: false }).limit(20),
+    db.from('rounds').select('id,prize_sol,jackpot_won,winner_wallet,mega,ended_at').eq('phase', 'done').order('prize_sol', { ascending: false }).limit(5),
+    connection.getTokenSupply(MINT).then(x => Number(x.value.uiAmount ?? 0)).catch(() => null),
+  ]);
+  const bal = async (pk: any) => pk ? (await connection.getBalance(pk).catch(() => 0)) / LAMPORTS_PER_SOL : null;
+  const team = env.TEAM_WALLET || null;
+  const data = {
+    supply_now: supply, supply_start: 1_000_000_000,
+    daily: daily ?? [], breakdown: breakdown ?? [], buybacks: buys ?? [], biggest: big ?? [],
+    wallets: {
+      prize: { address: prizeKeypair.publicKey.toBase58(), sol: await bal(prizeKeypair.publicKey) },
+      buyback: buybackAddress ? { address: buybackAddress.toBase58(), sol: await bal(buybackAddress) } : null,
+      team: team ? { address: team, sol: await bal(new (await import('@solana/web3.js')).PublicKey(team)) } : null,
+    },
+  };
+  await db.from('snapshots').upsert({ key: 'stats_page', data, updated_at: now }, { onConflict: 'key' });
+}

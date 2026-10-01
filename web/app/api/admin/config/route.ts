@@ -25,6 +25,7 @@ const EDITABLE: Record<string, (v: unknown) => boolean> = {
   pumpfun_chat_relay: (v) => typeof v === 'boolean',
   lucky_every: int(0, 1000),
   timer_min_fill: num(0, 1),
+  jackpot_cap_sol: num(0, 1000),            // 0 = no cap
   hot_countdown_sec: int(0, 600),          // 0 switches express countdowns off
   supercharge_share: num(0, 1),             // 0 switches supercharged balloons off                 // 0 switches the lucky meter off
   buyback_mode: (v) => v === 'smart' || v === 'off',

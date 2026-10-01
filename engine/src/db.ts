@@ -67,3 +67,11 @@ export async function addTickets(roundId: number | null, wallet: string, count: 
   if (error) throw error;
   return data as AddResult;
 }
+
+/** Cached every minute: true while the Mega Jackpot sits at its cap (fees then go fully to the balloons). */
+let jackpotFull = false;
+export async function refreshJackpotCap(capSol: number) {
+  jackpotFull = capSol > 0 && (await jackpotBalance()) >= capSol;
+  return jackpotFull;
+}
+export function jackpotShareNow(share: number | undefined): number { return jackpotFull ? 0 : (share ?? 0); }

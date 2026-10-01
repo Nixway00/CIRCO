@@ -33,7 +33,7 @@ How to run $CIRCO: setup, settings, deployment, costs.
 | Variable | Meaning |
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public read access |
-| `NEXT_PUBLIC_RPC_URL`, `RPC_URL` | Solana RPC for the browser and the server |
+| `RPC_URL` | Solana RPC (server only: the browser reaches it through `/api/rpc`) |
 | `NEXT_PUBLIC_CIRCO_MINT` | The token's mint address |
 | `NEXT_PUBLIC_PUMPFUN_URL`, `NEXT_PUBLIC_SITE_URL` | Links and share images |
 | `SUPABASE_SERVICE_ROLE_KEY` | Nicknames, chat, team panel |
@@ -55,6 +55,12 @@ Changed from the team panel at `/admin` (signed by an admin wallet, range-checke
 | Vercel | free at first, Pro for commercial use |
 | X API, one post per pop | about $0.015 per post without a link |
 | Domain | about €15 per year |
+
+## Before launch
+
+- **Supabase Pro** (free projects pause after 7 days of inactivity and have no daily backups).
+- **Uptime monitor** (any free service, e.g. UptimeRobot): ping `https://<engine host>/health` every minute and email the team on failure.
+- Two-factor authentication on every account; delete any deploy token used during development.
 
 ## Health
 

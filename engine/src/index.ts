@@ -3,7 +3,7 @@
 import express from 'express';
 import { randomBytes } from 'node:crypto';
 import { env } from './env.ts';
-import { db, loadConfig, openRound, drawingRound, ticketTotals, prizeCollected, jackpotBalance, type Round } from './db.ts';
+import { db, loadConfig, openRound, drawingRound, ticketTotals, prizeCollected, jackpotBalance, refreshJackpotCap, jackpotShareNow, type Round } from './db.ts';
 import { isGalaDue, step, commit, drawSeed, pickWinner, lastBuyer, payoutPlan, overflowOnFull, feeTargetsCurrentRound, jackpotPart, isMegaPop, nextBalloonFromSeed, LAMPORTS, type Config, type BalloonKey } from './rules.ts';
 import { processFx, processPick, settlePredictions, settleTeamWeek } from './show.ts';
 import { readBurn } from './chain.ts';
@@ -12,7 +12,7 @@ import { reconcileFees, reconcileBurns, notFeeSenders } from './reconcile.ts';
 import { closingBlock } from './chain.ts';
 import { planPayouts, settlePayouts } from './payouts.ts';
 import { processBurn, grantCredits } from './tickets.ts';
-import { refreshSnapshots } from './snapshots.ts';
+import { refreshSnapshots, refreshStatsPage } from './snapshots.ts';
 import { startGame, playGame, settleGameFromBurn, cleanupGames, type GameConfig } from './games.ts';
 import { distributeCreatorFees, hasGraduated } from './fees.ts';
 import { runBuyback, samplePrice } from './buyback.ts';
@@ -20,6 +20,7 @@ import { postPop } from './xpost.ts';
 
 let cfg: Config & GameConfig;
 let busy = false;
+let lastTickOk = Date.now();          // watchdog: a tick that completes refreshes this
 let pumpChat: PumpFunChat | null = null;
 const MEMO_PROGRAMS = new Set(['MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', 'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVuDwQkkHtCv']);
 const short = (w: string) => `${w.slice(0, 4)}…${w.slice(-4)}`;
@@ -141,7 +142,7 @@ async function tick() {
       const fresh = await drawingRound();
       if (fresh) await continueDraw(fresh, action.forced);
     }
-  } catch (e) { if (!String((e as Error)?.message).includes('not finalized yet')) console.error('tick failed', e); } finally { busy = false; }
+  } catch (e) { if (!String((e as Error)?.message).includes('not finalized yet')) console.error('tick failed', e); } finally { busy = false; lastTickOk = Date.now(); }   // a hung call never reaches finally: that is what the watchdog catches
 }
 
 /**
@@ -220,7 +221,7 @@ app.post('/helius', async (req, res) => {
       for (const nt of ev.nativeTransfers ?? []) {
         if (nt.toUserAccount === env.PRIZE_WALLET_ADDRESS && nt.amount > 0 && !notFeeSenders.has(nt.fromUserAccount)) {
           const amount = nt.amount / LAMPORTS;
-          await db.from('fees').upsert({ tx: ev.signature, wallet: 'prize', amount_sol: amount, jackpot_sol: jackpotPart(amount, cfg.jackpot_share ?? 0), round_id: feeRound }, { onConflict: 'tx', ignoreDuplicates: true });
+          await db.from('fees').upsert({ tx: ev.signature, wallet: 'prize', amount_sol: amount, jackpot_sol: jackpotPart(amount, jackpotShareNow(cfg.jackpot_share)), round_id: feeRound }, { onConflict: 'tx', ignoreDuplicates: true });
         }
       }
       if (ev.type === 'SWAP' && ev.feePayer) {
@@ -263,7 +264,15 @@ app.post('/picks/confirm', async (req, res) => {
   try { res.json(await processPick(String(req.body.signature), cfg)); } catch (e) { res.status(400).json({ error: (e as Error).message }); }
 });
 
-app.get('/health', (_req, res) => res.json({ ok: true, busy }));
+// health: 200 while the game loop keeps completing, 503 otherwise (an uptime monitor pings this)
+app.get('/health', (_req, res) => {
+  const age = Math.round((Date.now() - lastTickOk) / 1000);
+  res.status(age < 90 ? 200 : 503).json({ ok: age < 90, busy, lastTickSecondsAgo: age });
+});
+// watchdog: if the loop has been stuck for 3 minutes (a hung network call), exit so pm2 / Docker restart a clean engine;
+// every write is idempotent and draws resume, so a restart is always safe
+setInterval(() => { if (Date.now() - lastTickOk > 180_000) { console.error('watchdog: game loop stuck, restarting'); process.exit(1); } }, 30_000);
+setInterval(() => { refreshJackpotCap(Number((cfg as any).jackpot_cap_sol ?? 25)).catch(() => {}); }, 60_000);
 
 // ---------- boot ----------
 // the database may still be waking up: keep trying instead of crashing
@@ -271,6 +280,7 @@ for (;;) { try { cfg = (await loadConfig()) as Config & GameConfig; break; } cat
 setInterval(async () => { try { cfg = (await loadConfig()) as Config & GameConfig; } catch (e) { console.error('config reload failed', e); } }, Number(process.env.CONFIG_RELOAD_MS ?? 60_000));
 setInterval(tick, 1000);
 setInterval(() => { refreshSnapshots().catch(e => console.error('snapshots failed', e)); }, 15_000);
+setInterval(() => { refreshStatsPage().catch(e => console.error('stats page failed', e.message)); }, 60_000);
 // safety net under the Helius webhook: re-read the chain every minute and count anything missed
 setInterval(() => {
   reconcileFees(cfg).then(n => n && console.log(`reconcile: ${n} fee(s) recovered`)).catch(e => console.error('fee reconcile failed', e.message));

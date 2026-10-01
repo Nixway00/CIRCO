@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 type Balloons = Record<'green' | 'blue' | 'red' | 'gold', { capacity_sol: number; weight: number; min_tickets: number; shape: string }>;
 
 const SETTINGS: { key: string; label: string; help: string; step?: number; min?: number; max?: number; bool?: boolean }[] = [
+  { key: 'jackpot_cap_sol', label: 'Mega Jackpot cap (SOL)', help: 'Above this the jackpot stops taking fees, so the hot wallet never holds too much (0 = no cap).', step: 1, min: 0 },
   { key: 'jackpot_share', label: 'Mega Jackpot share', help: 'Part of each prize-wallet fee that feeds the jackpot (0 to 0.3, e.g. 0.05 = 5%).', step: 0.01, min: 0, max: 0.3 },
   { key: 'jackpot_chance', label: 'Mega Pop chance', help: 'Chance that a draw is a Mega Pop (0 to 0.2, e.g. 0.02 = 2%).', step: 0.005, min: 0, max: 0.2 },
   { key: 'pick_price_tokens', label: 'Guess price ($CIRCO)', help: 'Cost of one guess on the next balloon.', min: 1 },
