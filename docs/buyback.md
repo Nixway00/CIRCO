@@ -2,6 +2,10 @@
 
 45% of every creator fee goes to the buyback wallet. Everything it buys is burned. The question is *when* to buy, because the same SOL can burn very different amounts of $CIRCO.
 
+## From the creator's wallet
+
+The buyback can run from the wallet that launched the coin. pump.fun then marks every buyback on the chart as a creator buy, so anyone watching sees the creator buying the dips and burning. Only the tokens a buyback buys are burned (the engine burns the difference in balance), so the creator's own tokens are never touched.
+
 ## Why not buy on a fixed clock
 
 A buyback every 10 minutes is simple and predictable, and that is the problem: bots learn the clock, buy just before it and sell into it. It also spends the same amount at the top of a pump as at the bottom of a dump.

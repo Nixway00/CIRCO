@@ -7,7 +7,7 @@
 | Prize wallet | Engine server only | Pay winners | The current prizes, the jackpot (capped at 25 SOL) and a 0.01 SOL reserve |
 | Buyback wallet | Engine server only | Swap SOL for $CIRCO and burn it | SOL waiting for the next dip: at most 10 SOL, never more than 24 hours |
 | Team wallet | Offline (team) | Nothing automatic | The team's 10% |
-| Launch wallet | Engine server (optional) | Speak in the pump.fun chat as the Ringmaster | A little SOL for fees |
+| Launch wallet | Engine server (optional) | Speak in the pump.fun chat as the Ringmaster; can also be the buyback wallet, so buybacks show as creator buys on pump.fun | A little SOL, plus the buyback's SOL waiting for the next dip if it doubles as the buyback wallet |
 | Database service key | Engine server and site server | Write game data | — |
 
 Private keys never enter the site, the repository or any chat. They are set only in the hosting panels' secret settings.

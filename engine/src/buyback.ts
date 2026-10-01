@@ -86,6 +86,9 @@ export async function runBuyback(cfg: any): Promise<{ reason: string; sol: numbe
   const d = out.decision;
   if (d.reason === 'wait') return null;
 
+  // the buyback wallet can be the launch (creator) wallet, which may hold its own tokens:
+  // only what THIS buyback buys is burned, never the rest of the balance
+  const tokensBefore = await tokenBalance(kp);
   let spent = 0;
   for (const chunk of splitChunks(d.spendSol, s.minBuySol)) {
     // shrink a chunk until its price impact is acceptable, or skip it
@@ -108,16 +111,20 @@ export async function runBuyback(cfg: any): Promise<{ reason: string; sol: numbe
     spent += lamports / LAMPORTS_PER_SOL;
     await sleep(4000 + Math.random() * 12000);             // spread the chunks over some blocks
   }
-  const burned = await burnAll(kp, d.reason);
+  const burned = await burnBought(kp, d.reason, tokensBefore);
   nextAllowedAt = Date.now() + (3 + Math.random() * 5) * 60_000;   // 3 to 8 minutes before the next one
   return spent > 0 ? { reason: d.reason, sol: spent, burned, note: d.note } : null;
 }
 
-/** Burns every $CIRCO the buyback wallet holds (including anything bought earlier). */
-async function burnAll(kp: Keypair, reason: string): Promise<string> {
+async function tokenBalance(kp: Keypair): Promise<bigint> {
+  try { return (await getAccount(connection, getAssociatedTokenAddressSync(MINT, kp.publicKey))).amount; } catch { return 0n; }
+}
+
+/** Burns exactly the $CIRCO this buyback added to the wallet (balance now minus balance before buying). */
+async function burnBought(kp: Keypair, reason: string, before: bigint): Promise<string> {
   const ata = getAssociatedTokenAddressSync(MINT, kp.publicKey);
-  let amount = 0n;
-  try { amount = (await getAccount(connection, ata)).amount; } catch { return '0'; }
+  const now = await tokenBalance(kp);
+  const amount = now > before ? now - before : 0n;
   if (amount === 0n) return '0';
   const dec = await mintDecimals();
   const burnSig = await connection.sendTransaction(new Transaction().add(createBurnCheckedInstruction(ata, MINT, kp.publicKey, amount, dec)), [kp]);
