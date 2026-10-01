@@ -7,7 +7,7 @@ How to run $CIRCO: setup, settings, deployment, costs.
 1. **Database.** Create a Supabase project and run every file in `supabase/migrations` in order.
 2. **Wallets.** On your own computer: `cd scripts && npm install && node new-wallets.mjs`. It creates the prize, buyback and team wallets. Secrets stay offline and go only into the engine's secret settings. Put the team wallet in `team_wallets`.
 3. **Helius.** Create an API key, then `node scripts/helius-webhook.mjs` with the variables listed at the top of the file.
-4. **Engine.** `cd engine && cp .env.example .env`, fill it in, `npm install`, `npm test`, `npm start`. Run it on an always-on server with `pm2 start ecosystem.config.cjs` or the included `Dockerfile`.
+4. **Engine.** `cd engine && cp .env.example .env`, fill it in, `npm install`, `npm test`, `npm start`. Run it on an always-on server with `pm2 start ecosystem.config.cjs` or the included `Dockerfile`. For the first days it can run on a home Windows PC with a Cloudflare Tunnel: see [`scripts/home-engine`](../scripts/home-engine/LEGGIMI.md) (one double-click starts the engine and the tunnel, and restarts the engine if it stops).
 5. **Site.** `cd web && cp .env.example .env.local`, fill it in, `npm install`, `npm run dev`. Deploy on Vercel. The team panel is at `/admin`.
 6. **Prize reserve.** Send about 0.02 SOL from the team wallet to the prize wallet (it pays network fees; it is not counted as prize).
 7. **Launch.** Create $CIRCO on pump.fun from the launch wallet; set creator fee sharing to 45% prize, 45% buyback, 10% team, and lock it.
@@ -51,7 +51,7 @@ Changed from the team panel at `/admin` (signed by an admin wallet, range-checke
 | Item | Cost per month |
 | --- | --- |
 | Helius RPC, Developer plan (webhooks, 50 requests/s) | $49 |
-| Engine server (small VPS, always on) | €5–15 |
+| Engine server (small VPS, always on) | €0 while it runs on a home PC, then €5–15 |
 | Supabase | free at first, then Pro |
 | Vercel | free at first, Pro for commercial use |
 | X API, one post per pop | about $0.015 per post without a link |
