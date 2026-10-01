@@ -73,29 +73,37 @@ In a simulated hour with 10 SOL of fees every 10 minutes, this doubled the SOL p
 - On average a guess returns 90% of its cost in tickets: less than buying tickets directly.
 - If the next balloon is fixed by the rules (first rounds or the gold guarantee), every guess comes back as 1 ticket.
 
-## 10. Lucky meter
+## 10. Loyalty tickets
+
+Hold at least **100,000 $CIRCO** for a full day and you get **1 free ticket every day**, automatically, as long as you keep holding. Holding is playing.
+
+## 11. Milestone balloons
+
+Every time $CIRCO sets a new market-cap record ($100k, $250k, $500k, $1M, $2.5M, $5M, $10M), the next balloon is a **Milestone gold trophy** with a party on stage. The stage shows how close the next milestone is.
+
+## 12. Lucky meter
 
 - Every ticket you buy in a round you do not win fills your lucky meter.
 - Every **20 losing tickets** you get **1 free ticket**, added automatically to the next round. The meter is shown under your tickets.
 
-## 11. Graduation gala
+## 13. Graduation gala
 
 When $CIRCO completes its pump.fun bonding curve and moves to PumpSwap, the circus throws a party: fireworks and gold rain for everyone watching, and the next balloon is a **Grand Opening gold trophy**.
 
-## 12. Stage effects
+## 14. Stage effects
 
 Burn a little $CIRCO to launch an effect that everyone watching sees, with your name on it: fireworks, a confetti storm, an air horn, a tomato at the Ringmaster, gold rain. Effects are pure burn and give no tickets.
 
-## 13. Clowns vs Acrobats
+## 15. Clowns vs Acrobats
 
 - Pick a team when you join; you can switch once a week.
 - Every Monday 00:00 UTC, the team whose members burned more $CIRCO that week wins: each member who burned something gets **2 bonus tickets** for the next rounds.
 
-## 14. Daily mission
+## 16. Daily mission
 
 Share a round on X and paste the link: 3 bonus tickets, once a day. Bonus tickets burn nothing but count toward the cap and the round minimum.
 
-## 15. Names and chat
+## 17. Names and chat
 
 - A nickname is required to play and is shown instead of your wallet. You can link your X account and show your @handle instead.
 - Anyone can read the chat; wallets holding at least 10,000 $CIRCO can write. Messages from the coin's pump.fun chat appear too, tagged "pump.fun". The Ringmaster announces winners there as well.

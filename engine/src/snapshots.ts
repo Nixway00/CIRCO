@@ -6,6 +6,8 @@ import { connection } from './chain.ts';
 import { env } from './env.ts';
 
 let reserveAt = 0, reserveSol = 0;
+let milestoneInfo: { mcap: number; next: number | null } | null = null;
+export function setMilestoneInfo(x: { mcap: number; next: number | null } | null) { milestoneInfo = x; }
 const buybackAddress = env.BUYBACK_WALLET_SECRET ? Keypair.fromSecretKey(bs58.decode(env.BUYBACK_WALLET_SECRET)).publicKey : null;
 
 /**
@@ -32,7 +34,7 @@ export async function refreshSnapshots() {
   const buyback_reserve_sol = reserveSol;
   const queue_sol = (over ?? []).reduce((a, r) => a + Number(r.overflow_sol), 0) + (waiting ?? []).reduce((a, f) => a + Number(f.amount_sol) - Number(f.jackpot_sol ?? 0), 0);
   const { error } = await db.from('snapshots').upsert([
-    { key: 'stats', data: { ...(stats ?? {}), queue_sol, buyback_reserve_sol }, updated_at: now },
+    { key: 'stats', data: { ...(stats ?? {}), queue_sol, buyback_reserve_sol, ...(milestoneInfo ? { mcap_usd: milestoneInfo.mcap, next_milestone_usd: milestoneInfo.next } : {}) }, updated_at: now },
     { key: 'leaderboard', data: board ?? [], updated_at: now },
     { key: 'history', data: history ?? [], updated_at: now },
     { key: 'teams', data: teams ?? {}, updated_at: now },

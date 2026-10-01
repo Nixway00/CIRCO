@@ -127,6 +127,11 @@ nav.pages button[aria-current="page"]{ background:var(--ink); color:#030716; fon
 .empty{ color:var(--muted); font-size:14px; padding:18px 0; }
 #liveBar{ display:none; position:absolute; left:50%; transform:translateX(-50%); bottom:28px; gap:14px; align-items:center; padding:12px 18px; border-radius:18px; background:var(--panel); border:1px solid var(--lineHi); backdrop-filter:blur(12px); font-size:18px; }
 body.livemode #liveBar{ display:flex; }
+#bcChat{ display:none; position:absolute; right:28px; bottom:110px; width:min(420px, 34vw); flex-direction:column; gap:6px; pointer-events:none; }
+body.livemode #bcChat{ display:flex; }
+#bcChat div{ padding:8px 12px; border-radius:12px; background:rgba(5,11,38,.72); border:1px solid var(--line); font-size:17px; line-height:1.35; color:#dbe4ff; animation:bcIn .4s ease-out; }
+#bcChat b{ color:var(--cyan); margin-right:6px; } #bcChat .rm b{ color:var(--gold); } #bcChat .pf b{ color:#86efac; }
+@keyframes bcIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
 #liveBar b{ font-family:'Unbounded',sans-serif; }
 #liveBar .sep{ width:1px; height:24px; background:var(--line); }
 #buyPop{ position:absolute; top:78px; right:24px; width:300px; display:none; flex-direction:column; gap:12px; padding:16px; border-radius:18px; background:rgba(5,11,38,.94); border:1px solid var(--lineHi); backdrop-filter:blur(16px); z-index:3; }
@@ -249,6 +254,7 @@ nav.pages .sm{ display:none; }
 .jackpot b{ font-family:'Unbounded',sans-serif; }
 .queue{ font-size:12px; color:#bfe9ff; background:rgba(47,123,255,.18); border:1px solid rgba(92,225,255,.35); padding:3px 10px; border-radius:999px; margin-top:4px; }
 .queue b{ font-family:'Unbounded',sans-serif; color:#fff; }
+.queue.ms{ color:#1a1030; background:linear-gradient(90deg,#FFD34D,#FF9A3D); border:0; font-weight:700; }
 .queue.hot{ color:#1a1030; background:linear-gradient(90deg,#5CE1FF,#2EF2A6); border:0; font-weight:700; }
 @keyframes jpShine{ to{ background-position:-200% 0; } }
 .showRow{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
@@ -507,6 +513,7 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
   </div>
   <div class="hud" aria-live="polite">
     <div id="jackpotPill" class="jackpot" aria-live="polite">💰 MEGA JACKPOT <b id="jpAmt">0.00 SOL</b></div>
+    <div id="msPill" class="queue ms" hidden></div>
     <div id="hotPill" class="queue hot" hidden></div>
     <div id="queuePill" class="queue" hidden>🎈 <b id="qAmt">+0.00 SOL</b> queued for the next balloons</div>
     <div id="hudTitle">Round 1</div>
@@ -635,7 +642,8 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
     <p id="bubText"></p>
     <div class="acts"><div class="dots" id="bubDots"></div><div style="display:flex;gap:8px"><button type="button" id="bubSkip">Skip</button><button type="button" class="go" id="bubNext">Next</button></div></div>
   </section>
-  <div id="liveBar"><span>Buy tickets at <b>[YOURSITE]</b></span><span class="sep"></span><span>Prize <b id="lvPrize">0.00 SOL</b></span><span class="sep"></span><span>Tickets <b id="lvT">0</b></span><span class="sep"></span><span>Last ticket <b id="lvLast">none yet</b></span><span class="sep"></span><span>Gold in <b id="lvGala" style="color:var(--gold)">--:--</b></span></div>
+  <div id="bcChat" aria-hidden="true"></div>
+  <div id="liveBar"><span>Play at <b id="lvSite">the $CIRCO site</b></span><span class="sep"></span><span>Prize <b id="lvPrize">0.00 SOL</b></span><span class="sep"></span><span>Tickets <b id="lvT">0</b></span><span class="sep"></span><span>Last ticket <b id="lvLast">none yet</b></span><span class="sep"></span><span>Gold in <b id="lvGala" style="color:var(--gold)">--:--</b></span></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -1553,6 +1561,7 @@ function sfx(kind){
   if (kind === 'coin'){ if (t - lastCoinSfx < 0.06) return; lastCoinSfx = t; tone(1320, t, 0.09, 'triangle', 0.12, null, 1980); tone(2640, t + 0.03, 0.06, 'sine', 0.05); }
   if (kind === 'tick') tone(2200, t, 0.025, 'square', 0.05);
   if (kind === 'beep') tone(880, t, 0.12, 'sine', 0.14);
+  if (kind === 'creak'){ if (t - (sfx.lastCreak || 0) < 0.7) return; sfx.lastCreak = t; tone(190 + Math.random() * 60, t, 0.22, 'sawtooth', 0.035, null, 150); tone(95, t + 0.02, 0.18, 'triangle', 0.04, null, 80); }
   if (kind === 'pop'){ noise(t, 0.35, 0.9, 5000); tone(140, t, 0.3, 'sine', 0.5, null, 45); }
   if (kind === 'fanfare'){ [523, 659, 784, 1047].forEach(function(f, i){ tone(f, t + i*0.11, i === 3 ? 0.6 : 0.16, 'square', 0.08); tone(f/2, t + i*0.11, 0.16, 'triangle', 0.08); }); }
   if (kind === 'swoosh') noise(t, 0.5, 0.25, 1400);
@@ -1671,6 +1680,9 @@ function pageRegolamento(){
     d('Shooting gallery', '<ul><li>Burn '+fmt(G.price,0)+' $CIRCO for '+G.shots+' shots. Each shot has a '+Math.round(G.chance*100)+'% chance to pop a balloon; every pop is 1 ticket for the current round.</li><li>You can win up to '+(SHOW.gameCap || 5)+' tickets a day in games.</li><li>The result is decided by the server with a secret committed before you burn, mixed with your burn signature; the secret is revealed after the game.</li></ul>')+
     d('Guess the next balloon', '<ul><li>One guess per round, it burns '+fmt(SHOW.pickPrice,0)+' $CIRCO. Guesses close with ticket sales.</li><li>A right guess pays tickets for the next round: '+KEYS.map(function(k){ return NAMES[k].toLowerCase()+' '+pickPay(k); }).join(', ')+'.</li><li>On average a guess returns less than buying tickets directly.</li><li>If the next balloon is fixed by the rules (first rounds or the gold guarantee), every guess comes back as 1 ticket.</li></ul>')+
     d('Busy markets', '<ul><li>When fees arrive faster than balloons pop, the extra SOL waits in a queue shown on stage.</li><li>If the queue already pays for the next balloon, the countdown is an express one (90 seconds).</li><li>If the queue holds more than two balloons, half of the excess supercharges the next balloon\'s prize.</li></ul>')+
+    d('Loyalty tickets', '<p>Hold at least '+fmtBig(SHOW.loyaltyMin || 100000)+' $CIRCO for a full day and you get a free ticket every day, automatically. Holding is playing.</p>')+
+    d('Milestone balloons', '<p>Every time $CIRCO sets a new market-cap record ($100k, $250k, $500k, $1M and up), the next balloon is a Milestone gold trophy, with a party on stage. The stage shows how close the next one is.</p>')+
+    d('Live 24/7', '<p>The circus is also streamed live on the coin\'s pump.fun page, with the chat shared between the two.</p>')+
     d('Lucky meter', '<ul><li>Every ticket you buy in a round you do not win fills your lucky meter.</li><li>Every '+(SHOW.luckyEvery || 20)+' losing tickets you get 1 free ticket, added automatically to the next round.</li></ul>')+
     d('Graduation gala', '<p>When $CIRCO completes its pump.fun bonding curve and moves to PumpSwap, the circus throws a party: fireworks and gold rain for everyone, and the next balloon is a Grand Opening gold trophy.</p>')+
     d('Stage effects', '<ul><li>Burn a little $CIRCO to launch an effect everyone watching sees, with your name: fireworks, confetti, air horn, a tomato at the Ringmaster, gold rain.</li><li>Effects are pure burn: they give no tickets.</li></ul>')+
@@ -1825,7 +1837,7 @@ function enter(phase){
     if (hadHint && LINES[phase]) say(pick(S.type === 'oro' && phase === 'gonfiaggio' ? LINES.gala : LINES[phase]), true);
   }, 900);
   S.saidHalf = S.saidAlmost = S.said10 = false;
-  S.phase = phase; S.t = 0; setStepper(phase); if (typeof SHOW !== 'undefined' && SHOW){ renderDock(); if (!LIVE){ if (phase === 'scelta'){ SHOW.superSol = (SHOW.queue || 0) > 0.6 && Math.random() < 0.5 ? (SHOW.queue || 0) * 0.5 : 0; SHOW.express = false; } if (phase === 'countdown') SHOW.express = (SHOW.queue || 0) > 0.4; } renderHot(); }
+  S.phase = phase; S.t = 0; setStepper(phase); if (typeof GFX !== 'undefined') GFX.onPhase(phase); if (typeof SHOW !== 'undefined' && SHOW){ renderDock(); if (!LIVE){ if (phase === 'scelta'){ SHOW.superSol = (SHOW.queue || 0) > 0.6 && Math.random() < 0.5 ? (SHOW.queue || 0) * 0.5 : 0; SHOW.express = false; } if (phase === 'countdown') SHOW.express = (SHOW.queue || 0) > 0.4; } renderHot(); }
   var c = CAMS[phase]; camPos.set(c.p[0], c.p[1], c.p[2]); camTarget.set(c.l[0], c.l[1], c.l[2]);
   var ty = TYPES[S.type];
   if (phase === 'scelta' && typeof ringmaster === 'function' && S.round > 1) ringmaster('Round '+S.round+'. Fresh balloon, fresh hopium.');
@@ -2004,6 +2016,8 @@ window.addEventListener('message', function(e){
   if (m.jackpot !== undefined){ SHOW.jackpot = +m.jackpot || 0; renderJackpot(); }
   if (m.lucky){ var before = SHOW.luckyGiven; SHOW.luckyN = +m.lucky.losing || 0; SHOW.luckyGiven = +m.lucky.given || 0; if (m.lucky.every) SHOW.luckyEvery = +m.lucky.every; renderLucky();
     if (before !== undefined && SHOW.luckyGiven > before){ toast('🍀 Lucky meter full: a free ticket is waiting for you in the next round!'); sfx('fanfare'); } }
+  if (m.milestone){ var mm = m.milestone, show = mm.next && mm.mcap && mm.mcap >= mm.next * 0.6; $('msPill').hidden = !show; if (show) $('msPill').textContent = '🏁 Milestone balloon at $'+fmtBig(mm.next)+' · now $'+fmtBig(mm.mcap); }
+  if (m.siteHost){ $('lvSite').textContent = m.siteHost; }
   if (m.reserve !== undefined){ SHOW.reserve = +m.reserve || 0; renderStats(); }
   if (m.queue !== undefined){ SHOW.queue = +m.queue || 0; renderJackpot(); }
   if (m.teams){ SHOW.teams.clowns = +m.teams.clowns || 0; SHOW.teams.acrobats = +m.teams.acrobats || 0; if (m.teams.ends_at) SHOW.teams.ends = Date.parse(m.teams.ends_at); SHOW.teams.last = m.teams.last_winner || null; renderTeams(); }
@@ -2482,6 +2496,7 @@ function chatAdd(who, text, cls){
   var b = document.createElement('b'); b.textContent = who; var t = document.createElement('span'); t.textContent = text;
   d.appendChild(b); d.appendChild(t); log.appendChild(d);
   while (log.children.length > 60) log.removeChild(log.firstChild);
+  if (document.body.classList.contains('livemode')){ var bc = $('bcChat'), line = document.createElement('div'); if (cls) line.className = cls; var bb = document.createElement('b'); bb.textContent = who; line.appendChild(bb); line.appendChild(document.createTextNode(text)); bc.appendChild(line); while (bc.children.length > 7) bc.removeChild(bc.firstChild); }
   log.scrollTop = log.scrollHeight; chatN++;
 }
 function ringmaster(text){ chatAdd('Ringmaster', text, 'rm'); if (typeof DIR !== 'undefined') DIR.talk = Math.min(4, 1 + text.length*0.04); }
@@ -2764,9 +2779,138 @@ function introFrame(dt){
   if (k >= 1) endIntro();
 }
 
+/* ---------- big-top scenery, audience, tension, slow motion, podium, gala lights, time of day ---------- */
+var GFX = (function(){
+  var tmpObj = new THREE.Object3D(), col = new THREE.Color();
+  // the big top: striped canvas walls and roof far behind the ring
+  function stripeTex(a, b, n){ var c = document.createElement('canvas'); c.width = 512; c.height = 8; var g = c.getContext('2d'); for (var i = 0; i < n; i++){ g.fillStyle = i % 2 ? a : b; g.fillRect(i * 512 / n, 0, 512 / n + 1, 8); } var t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; return t; }
+  var tentMat = new THREE.MeshBasicMaterial({ map: stripeTex('#3a0a1e', '#0b1440', 24), side: THREE.BackSide, fog: true });
+  var walls = new THREE.Mesh(new THREE.CylinderGeometry(22, 22, 9, 96, 1, true), tentMat); walls.position.y = 4.5; scene.add(walls);
+  var roof = new THREE.Mesh(new THREE.ConeGeometry(22, 9, 96, 1, true), new THREE.MeshBasicMaterial({ map: stripeTex('#2a0716', '#08102f', 24), side: THREE.BackSide, fog: true })); roof.position.y = 13.5; scene.add(roof);
+
+  // bulb garlands: warm lights strung across the back, twinkling (the bloom makes them glow)
+  var strands = [], bulbs = [];
+  for (var k = 0; k < 5; k++){
+    var a0 = Math.PI * (1.12 + k * 0.155), a1 = a0 + 0.17;
+    var p0 = new THREE.Vector3(Math.cos(a0) * 11, 6.2, Math.sin(a0) * 11), p1 = new THREE.Vector3(Math.cos(a1) * 11, 6.2, Math.sin(a1) * 11);
+    for (var i = 0; i <= 14; i++){ var t = i / 14, p = p0.clone().lerp(p1, t); p.y -= Math.sin(t * Math.PI) * 1.1; bulbs.push(p); }
+  }
+  var bulbMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), bulbs.length);
+  bulbs.forEach(function(p, i){ tmpObj.position.copy(p); tmpObj.updateMatrix(); bulbMesh.setMatrixAt(i, tmpObj.matrix); bulbMesh.setColorAt(i, col.setHex(0xffd38a)); });
+  scene.add(bulbMesh);
+
+  // the stands and the audience: silhouettes behind the ring; how many are lit follows how lively the round is
+  var standMat = new THREE.MeshStandardMaterial({ color: 0x050816, roughness: 0.95, metalness: 0.05 });
+  for (var tier = 0; tier < 3; tier++){
+    // cylinder angles run x = sin(t), z = cos(t): this arc matches the audience's angles 1.08π…1.92π (behind the ring)
+    var ring = new THREE.Mesh(new THREE.CylinderGeometry(10.4 + tier * 1.3, 10.4 + tier * 1.3, 0.5 + tier * 0.6, 64, 1, false, -Math.PI * 1.42, Math.PI * 0.84), standMat);
+    ring.position.y = (0.5 + tier * 0.6) / 2; scene.add(ring);
+  }
+  var personGeo = new THREE.LatheGeometry([new THREE.Vector2(0, 0), new THREE.Vector2(0.17, 0), new THREE.Vector2(0.2, 0.32), new THREE.Vector2(0.14, 0.52), new THREE.Vector2(0.06, 0.56), new THREE.Vector2(0.11, 0.66), new THREE.Vector2(0.1, 0.78), new THREE.Vector2(0, 0.82)], 10);
+  var MAXP = 210;
+  var crowd = new THREE.InstancedMesh(personGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0.0 }), MAXP);
+  var shirts = [0x0a0e22, 0x120b1c, 0x08141c, 0x180914, 0x0c1024, 0x140f0a];          // dark clothes: silhouettes, not statues
+  for (var cI = 0; cI < MAXP; cI++) crowd.setColorAt(cI, col.setHex(shirts[cI % shirts.length]));
+  var people = [];
+  for (var n = 0; n < MAXP; n++){
+    var tierN = n % 3, ang = Math.PI * (1.11 + Math.random() * 0.78), r = 10.6 + tierN * 1.3 + Math.random() * 0.4;
+    people.push({ x: Math.cos(ang) * r, z: Math.sin(ang) * r, y: 0.5 + tierN * 0.6, s: 0.85 + Math.random() * 0.35, ph: Math.random() * 6.28, jump: 0, on: false });
+  }
+  scene.add(crowd);
+  var phones = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.07, 0.11), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, side: THREE.DoubleSide }), MAXP);
+  scene.add(phones);
+  var target = 40, cheerT = 0;
+
+  // gala: two golden searchlights sweeping the tent
+  var galaSpots = [0, 1].map(function(i){ var l = new THREE.SpotLight(0xffd34d, 0, 30, 0.22, 0.5); l.position.set(i ? 6 : -6, 9, -4); scene.add(l); scene.add(l.target); return l; });
+
+  // podium for the winner: three gold steps and a glowing name card
+  var podium = new THREE.Group(); podium.visible = false; scene.add(podium);
+  var goldMat = new THREE.MeshStandardMaterial({ color: 0xffc94d, metalness: 0.85, roughness: 0.25, emissive: 0x3a2400, emissiveIntensity: 0.4 });
+  [[0, 0.5, 1.0], [-1.05, 0.32, 0.95], [1.05, 0.2, 0.95]].forEach(function(st){ var m = new THREE.Mesh(new THREE.BoxGeometry(st[2], st[1], 0.8), goldMat); m.position.set(st[0], st[1] / 2, 0); podium.add(m); });
+  var cardCanvas = document.createElement('canvas'); cardCanvas.width = 1024; cardCanvas.height = 300;
+  var cardTex = new THREE.CanvasTexture(cardCanvas);
+  var card = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.0), new THREE.MeshBasicMaterial({ map: cardTex, transparent: true, depthWrite: false }));
+  card.position.set(0, 1.55, 0.05); podium.add(card);
+  podium.position.set(2.9, 0, -0.6); podium.rotation.y = -0.45;
+  function drawCard(name, amount){
+    var g = cardCanvas.getContext('2d'); g.clearRect(0, 0, 1024, 300);
+    var grd = g.createLinearGradient(0, 0, 1024, 0); grd.addColorStop(0, 'rgba(255,211,77,.0)'); grd.addColorStop(.15, 'rgba(255,211,77,.18)'); grd.addColorStop(.85, 'rgba(255,211,77,.18)'); grd.addColorStop(1, 'rgba(255,211,77,0)');
+    g.fillStyle = grd; g.fillRect(0, 40, 1024, 220);
+    g.textAlign = 'center'; g.fillStyle = '#FFD34D'; g.font = '800 92px Unbounded, sans-serif'; g.fillText('🏆 ' + String(name).slice(0, 16), 512, 150);
+    g.fillStyle = '#EAF0FF'; g.font = '600 56px Onest, sans-serif'; g.fillText('+' + amount + ' SOL', 512, 232);
+    cardTex.needsUpdate = true;
+  }
+
+  // slow motion at the pop
+  var slow = 0;
+  function timeScale(){ return slow > 0 ? 0.28 : 1; }
+
+  // time of day (viewer's clock): night is the default, dusk and dawn tint the fog and the sky light
+  var hemi = null; scene.children.forEach(function(c){ if (c.isHemisphereLight) hemi = c; });
+  function applyDayTint(){
+    var h = new Date().getHours() + new Date().getMinutes() / 60;
+    var tint = h >= 6 && h < 9 ? 0x1a1240 : h >= 17 && h < 20.5 ? 0x24102e : h >= 9 && h < 17 ? 0x08143a : 0x030716;
+    scene.fog.color.setHex(tint); renderer.setClearColor(tint, 1);
+    if (hemi) hemi.intensity = h >= 9 && h < 17 ? 0.5 : 0.35;
+  }
+  applyDayTint(); setInterval(applyDayTint, 60000);
+
+  return {
+    timeScale: timeScale,
+    onPhase: function(phase){
+      if (phase === 'estrazione'){ if (!reduced) slow = 1.3; cheerT = 2.5; }
+      if (phase === 'vincitore'){ var w = S.winner ? S.winner.wallet : ''; var amt = fmt(S.cap * (1 - BONUS) + (S.mega ? (S.megaWon || 0) : 0)); drawCard(w, amt); podium.visible = true; podium.scale.setScalar(0.01); cheerT = 4; }
+      if (phase === 'scelta' || phase === 'gonfiaggio'){ podium.visible = false; }
+    },
+    tick: function(dt){
+      if (slow > 0) slow -= dt / 0.28;            // measured in real time even while the world runs slowly
+      // tension: a full balloon waiting to pop, or one about to fill, trembles and creaks
+      var tension = 0;
+      if (S.phase === 'countdown' && S.cdEnds){ var left = Math.max(0, (S.cdEnds - Date.now()) / 1000); tension = 0.35 + 0.65 * Math.max(0, 1 - left / 60); }
+      else if (S.phase === 'countdown') tension = 0.5;
+      else if (S.phase === 'gonfiaggio' && S.fill > 0.85) tension = (S.fill - 0.85) / 0.15 * 0.5;
+      if (cur && cur.group && !reduced){
+        var j = tension * 0.018;
+        cur.group.position.x = (Math.random() - 0.5) * j; cur.group.rotation.z = Math.sin(time * 23) * j * 1.6;
+        if (tension > 0.7 && Math.random() < dt * tension * 0.9) sfx('creak');
+        flash.intensity = Math.max(flash.intensity, tension > 0.85 && Math.random() < 0.05 ? 0.6 : 0);
+      }
+      // audience size: players in the round and chatter make the stands fill up
+      var players = S.tickets ? S.tickets.size : 0;
+      target = Math.min(MAXP, 30 + players * 9 + (S.phase === 'countdown' ? 30 : 0) + (S.type === 'oro' ? 40 : 0));
+      if (cheerT > 0) cheerT -= dt;
+      var shown = 0;
+      for (var i = 0; i < MAXP; i++){
+        var pp = people[i], vis = i < target;
+        if (vis && cheerT > 0 && Math.random() < dt * 3) pp.jump = 0.35 + Math.random() * 0.25;
+        pp.jump = Math.max(0, pp.jump - dt * 1.6);
+        var hop = Math.sin(Math.min(1, pp.jump / 0.6) * Math.PI) * 0.35 * (pp.jump > 0 ? 1 : 0);
+        tmpObj.position.set(pp.x, pp.y + hop + Math.sin(time * 1.3 + pp.ph) * 0.015, pp.z);
+        tmpObj.rotation.set(0, 0, Math.sin(time * 0.9 + pp.ph) * 0.05);
+        tmpObj.scale.setScalar(vis ? pp.s : 0.0001); tmpObj.updateMatrix(); crowd.setMatrixAt(i, tmpObj.matrix);
+        // phone flashlights: during the countdown and the gala, some fans hold up their phones
+        var phoneOn = vis && (S.phase === 'countdown' || S.phase === 'estrazione' || S.type === 'oro') && (i % 4 === 0);
+        tmpObj.position.set(pp.x * 0.985, pp.y + 0.95 * pp.s + hop, pp.z * 0.985); tmpObj.lookAt(camera.position); tmpObj.scale.setScalar(phoneOn ? 1 : 0.0001); tmpObj.updateMatrix(); phones.setMatrixAt(i, tmpObj.matrix);
+        if (vis) shown++;
+      }
+      crowd.instanceMatrix.needsUpdate = true; phones.instanceMatrix.needsUpdate = true;
+      // garlands twinkle; gala turns them gold and fast
+      var gala = S.type === 'oro' && S.phase !== 'scelta';
+      for (var b = 0; b < bulbs.length; b++){ var tw = 0.65 + 0.35 * Math.sin(time * (gala ? 7 : 2.2) + b * 1.7); bulbMesh.setColorAt(b, col.setHex(gala ? 0xffc23d : (b % 5 === 0 ? 0xff6e8e : 0xffd38a)).multiplyScalar(tw)); }
+      bulbMesh.instanceColor.needsUpdate = true;
+      galaSpots.forEach(function(l, i){ l.intensity = gala ? 3.2 : 0; l.target.position.set(Math.sin(time * 0.7 + i * 2.4) * 4, 0, Math.cos(time * 0.5 + i) * 2 - 1); });
+      // the podium rises with a spring
+      if (podium.visible){ var sc = podium.scale.x + (1 - podium.scale.x) * Math.min(1, dt * 6); podium.scale.setScalar(sc); card.position.y = 1.55 + Math.sin(time * 2) * 0.04; }
+      return shown;
+    }
+  };
+})();
+
 function frame(){
   requestAnimationFrame(frame);
-  var dt = Math.min(clock.getDelta(), 0.05); time += dt;
+  var realDt = Math.min(clock.getDelta(), 0.05), dt = realDt * GFX.timeScale(); time += dt;
+  GFX.tick(realDt);
   if (!S.paused){ if (!INTRO.on) S.t += dt; if (!LIVE) market(dt); else liveClock(); update(dt); }
   if (!S.paused) animDirector(dt);
   sheetTick += dt; if (sheetTick > 1.5 && (page === 'classifiche' || page === 'profilo')){ sheetTick = 0; refreshSheet(); }

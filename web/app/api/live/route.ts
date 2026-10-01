@@ -68,6 +68,7 @@ export async function GET(req: Request) {
     effects: (fx ?? []).map(e => ({ id: e.id, effect: e.effect, who: e.wallet === 'ringmaster' ? 'The Ringmaster' : nm(e.wallet), at: e.created_at })).reverse(),
     stats: { burned: Number(st.tokens_burned ?? 0), buyback: Number(st.sol_bought_back ?? 0), prizes: Number(st.sol_paid ?? 0), rounds: Number(st.rounds_played ?? 0) },
     jackpot: Number(st.jackpot_sol ?? 0), queue: Number(st.queue_sol ?? 0), reserve: Number(st.buyback_reserve_sol ?? 0),
+    milestone: st.next_milestone_usd ? { mcap: Number(st.mcap_usd ?? 0), next: Number(st.next_milestone_usd) } : null,
     serverTime: Date.now(),
   };
   void raw; void cfgRows; void leaderboard; void history;

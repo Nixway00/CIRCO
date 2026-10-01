@@ -78,4 +78,5 @@ Migrations in [`supabase/migrations`](../supabase/migrations), applied in order:
 | `0011_lucky_meter_and_gala` | Lucky meter, graduation gala |
 | `0012_engine_state` | Buyback state that survives restarts, timer minimum fill |
 | `0013_hot_mode` | Express countdowns and supercharged balloons |
+| `0015_loyalty_milestones` | Daily holder balances for loyalty tickets, milestone balloons |
 | `0014_stats_page` | Daily numbers and burn sources for the public stats page, jackpot cap |

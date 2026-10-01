@@ -9,10 +9,11 @@ import { processFx, processPick, settlePredictions, settleTeamWeek } from './sho
 import { readBurn } from './chain.ts';
 import { PumpFunChat } from './pumpchat.ts';
 import { reconcileFees, reconcileBurns, notFeeSenders } from './reconcile.ts';
+import { runLoyalty, checkMilestones } from './loyalty.ts';
 import { closingBlock } from './chain.ts';
 import { planPayouts, settlePayouts } from './payouts.ts';
 import { processBurn, grantCredits } from './tickets.ts';
-import { refreshSnapshots, refreshStatsPage } from './snapshots.ts';
+import { refreshSnapshots, refreshStatsPage, setMilestoneInfo } from './snapshots.ts';
 import { startGame, playGame, settleGameFromBurn, cleanupGames, type GameConfig } from './games.ts';
 import { distributeCreatorFees, hasGraduated } from './fees.ts';
 import { runBuyback, samplePrice } from './buyback.ts';
@@ -50,7 +51,8 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   if (gErr) throw gErr;
   const { data: first } = await db.from('rounds').select('started_at').order('id', { ascending: true }).limit(1).maybeSingle();
   const gradGala = !!(cfg as any).graduated_at && !(await db.from('rounds').select('id').eq('grand_opening', true).limit(1).maybeSingle()).data;
-  const galaDue = gradGala || isGalaDue(Date.now(), lastGold ? Date.parse(lastGold.started_at) : null, cfg.gala_check_utc_hour, first ? Date.parse(first.started_at) : null);
+  const milestone = Number((cfg as any).milestone_pending ?? 0) || 0;
+  const galaDue = gradGala || milestone > 0 || isGalaDue(Date.now(), lastGold ? Date.parse(lastGold.started_at) : null, cfg.gala_check_utc_hour, first ? Date.parse(first.started_at) : null);
   // the previous round's revealed seed draws this balloon, so guesses on it can be checked by anyone
   const { data: prev } = await db.from('rounds').select('id,next_seed').in('phase', ['done', 'postponed']).order('id', { ascending: false }).limit(1).maybeSingle();
   const pick = nextBalloonFromSeed((count ?? 0) + 1, galaDue, cfg, prev?.next_seed ?? null);
@@ -72,7 +74,7 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   const round = await must(db.from('rounds').insert({
     balloon, capacity_sol: baseCap + supercharged, supercharged_sol: supercharged, carried_sol: carried,
     collected_sol: carried, postpone_streak: opts.postpone_streak ?? 0, forced_gala: galaDue && balloon === 'gold',
-    seed_commit: commit(secret), grand_opening: gradGala && balloon === 'gold',
+    seed_commit: commit(secret), grand_opening: gradGala && balloon === 'gold', milestone_usd: !gradGala && milestone > 0 && balloon === 'gold' ? milestone : null,
   }).select().single());
   await ok(db.from('round_secrets').insert({ round_id: round.id, secret }));
   if (pending?.length) await ok(db.from('rounds').update({ overflow_pending: false }).in('id', pending.map(p => p.id)));
@@ -85,7 +87,11 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   }
   await grantCredits(round.id, cfg);
   if (prev) await settlePredictions(prev.id, round.id, balloon, pick.forced, cfg);
-  if (gradGala && balloon === 'gold') await ringmaster(`GRAND OPENING GALA! $CIRCO graduated, so tonight's balloon is a ${cfg.balloons.gold.capacity_sol} SOL gold trophy. Everybody in!`);
+  if (!gradGala && milestone > 0 && balloon === 'gold') {
+    await db.from('config').update({ value: 0 as any }).eq('key', 'milestone_pending'); (cfg as any).milestone_pending = 0;
+    await ringmaster(`MILESTONE BALLOON! $CIRCO crossed $${milestone.toLocaleString('en-US')}: this round is a ${cfg.balloons.gold.capacity_sol} SOL gold trophy. Party time!`);
+  }
+  else if (gradGala && balloon === 'gold') await ringmaster(`GRAND OPENING GALA! $CIRCO graduated, so tonight's balloon is a ${cfg.balloons.gold.capacity_sol} SOL gold trophy. Everybody in!`);
   else if (supercharged > 0) await ringmaster(`SUPERCHARGED! The crowd is wild, so this balloon swallows ${supercharged.toFixed(2)} extra SOL from the queue: ${(baseCap + supercharged).toFixed(2)} SOL up for grabs!`);
   else await ringmaster(balloon === 'gold' ? `GOLD TROPHY. ${cfg.balloons.gold.capacity_sol} SOL. Seatbelts on, degens, it is gala night.` : `Round ${round.id}. Fresh balloon, fresh hopium.`);
   console.log(`round ${round.id} started: ${balloon}, carried ${carried} SOL`);
@@ -305,6 +311,18 @@ setInterval(async () => {
   for (const [i, effect] of ['gala', 'fireworks', 'goldrain'].entries()) await db.from('effects').insert({ wallet: 'ringmaster', effect, burn_tx: `gala-${now}-${i}`, tokens: 0 });
   postPop('$CIRCO just graduated to PumpSwap. The circus celebrates with a Grand Opening gold trophy balloon, live now. 🎪');
 }, 180_000);
+// loyalty: once a day (after 00:30 UTC) holders who kept the minimum for a full day get free tickets
+setInterval(() => { if (new Date().getUTCHours() === 0 && new Date().getUTCMinutes() < 30) return; runLoyalty(cfg).then(r => r && console.log('loyalty', r)).catch(e => console.error('loyalty failed', e.message)); }, 15 * 60_000);
+// milestones: every 5 minutes, check the market cap against the next record
+let mcapInfo: { mcap: number; next: number | null } | null = null;
+setInterval(() => {
+  checkMilestones(cfg, async (usd) => {
+    await ringmaster(`NEW RECORD! $CIRCO just crossed $${usd.toLocaleString('en-US')}. The next balloon is a Milestone gold trophy!`);
+    const now = new Date().toISOString();
+    for (const [i, effect] of ['gala', 'fireworks'].entries()) await db.from('effects').insert({ wallet: 'ringmaster', effect, burn_tx: `milestone-${usd}-${now}-${i}`, tokens: 0 });
+    postPop(`$CIRCO just crossed $${usd.toLocaleString('en-US')} market cap. The circus answers with a Milestone gold trophy balloon, live now. 🎪`);
+  }).then(r => { if (r) { mcapInfo = r; setMilestoneInfo(r); } }).catch(e => console.error('milestones failed', e.message));
+}, 5 * 60_000);
 // buyback: price sampled every minute; buys land on dips, on quiet drifting charts, or as a slow drip
 setInterval(() => { samplePrice().catch(e => console.error('price sample failed', e.message)); }, 60_000);
 setInterval(() => {

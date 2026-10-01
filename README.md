@@ -80,6 +80,9 @@ Tickets are paid by **burning** $CIRCO (10,000 per ticket at launch). Buybacks b
 - **Stage effects**: fireworks, confetti, an air horn, a tomato for the Ringmaster, seen live by everyone.
 - **Clowns vs Acrobats**: pick a team; the team that burns more each week earns bonus tickets.
 - **Hot mode**: when fees pour in faster than balloons pop, express countdowns and supercharged balloons keep prizes flowing.
+- **Loyalty tickets**: hold $CIRCO for a full day and get a free ticket every day.
+- **Milestone balloons**: every new market-cap record unlocks a gold trophy round.
+- **Live 24/7 on pump.fun**: the stage streams on the coin page, chat shared ([how](docs/broadcast.md)).
 - **Lucky meter**: every 20 tickets that do not win give you a free one.
 - **Graduation gala**: when $CIRCO leaves the bonding curve, a party and a Grand Opening gold trophy.
 - **Live chat** shared with the coin's pump.fun chat.

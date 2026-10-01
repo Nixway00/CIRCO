@@ -27,7 +27,7 @@ async function waitForSignature(connection: Connection, sig: string, timeoutMs =
 /** Changes on every deploy, so phones never keep an old copy of the stage. */
 const STAGE_VERSION = (process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 8);
 
-export default function StageBridge() {
+export default function StageBridge({ broadcast = false }: { broadcast?: boolean } = {}) {
   const frame = useRef<HTMLIFrameElement>(null);
   const { connection } = useConnection();
   const { publicKey, sendTransaction, signMessage } = useWallet();
@@ -74,6 +74,7 @@ export default function StageBridge() {
       myPick: M?.myPick ?? null, pickResult: M?.pickResult ?? null,
       lucky: M ? { losing: M.lucky.losing, given: M.lucky.given, every: n('lucky_every') ?? 20 } : undefined,
       stats: L.stats, history, leaderboard, jackpot: L.jackpot, queue: L.queue, reserve: L.reserve, teams: L.teams ?? undefined,
+      milestone: L.milestone ?? undefined, siteHost: typeof window !== 'undefined' ? window.location.host : undefined,
     });
     // stage effects bought by anyone: play the new ones (not the ones that happened before you arrived)
     const fx: any[] = L.effects ?? [];
@@ -253,5 +254,5 @@ export default function StageBridge() {
     return () => window.removeEventListener('message', onMessage);
   }, [publicKey, connection, sendTransaction, signMessage, setVisible, post, pushState, pushLive, sendIdentity, refreshMe, refreshLive]);
 
-  return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}`} title="$CIRCO live stage" allow="autoplay" />;
+  return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}${broadcast ? "&live=1" : ""}`} title="$CIRCO live stage" allow="autoplay" />;
 }
