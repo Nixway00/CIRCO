@@ -2792,28 +2792,29 @@ var GFX = (function(){
   var strands = [], bulbs = [];
   for (var k = 0; k < 5; k++){
     var a0 = Math.PI * (1.12 + k * 0.155), a1 = a0 + 0.17;
-    var p0 = new THREE.Vector3(Math.cos(a0) * 11, 6.2, Math.sin(a0) * 11), p1 = new THREE.Vector3(Math.cos(a1) * 11, 6.2, Math.sin(a1) * 11);
+    var p0 = new THREE.Vector3(Math.cos(a0) * 17, 7.4, Math.sin(a0) * 17), p1 = new THREE.Vector3(Math.cos(a1) * 17, 7.4, Math.sin(a1) * 17);
     for (var i = 0; i <= 14; i++){ var t = i / 14, p = p0.clone().lerp(p1, t); p.y -= Math.sin(t * Math.PI) * 1.1; bulbs.push(p); }
   }
-  var bulbMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), bulbs.length);
+  var bulbMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.11, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), bulbs.length);
   bulbs.forEach(function(p, i){ tmpObj.position.copy(p); tmpObj.updateMatrix(); bulbMesh.setMatrixAt(i, tmpObj.matrix); bulbMesh.setColorAt(i, col.setHex(0xffd38a)); });
   scene.add(bulbMesh);
 
   // the stands and the audience: silhouettes behind the ring; how many are lit follows how lively the round is
+  var STAND_R = 15.5;                       // far behind the ring: the balloons always stand in front of the crowd
   var standMat = new THREE.MeshStandardMaterial({ color: 0x050816, roughness: 0.95, metalness: 0.05 });
   for (var tier = 0; tier < 3; tier++){
     // cylinder angles run x = sin(t), z = cos(t): this arc matches the audience's angles 1.08π…1.92π (behind the ring)
-    var ring = new THREE.Mesh(new THREE.CylinderGeometry(10.4 + tier * 1.3, 10.4 + tier * 1.3, 0.5 + tier * 0.6, 64, 1, false, -Math.PI * 1.42, Math.PI * 0.84), standMat);
+    var ring = new THREE.Mesh(new THREE.CylinderGeometry(STAND_R + tier * 1.4, STAND_R + tier * 1.4, 0.5 + tier * 0.6, 72, 1, false, -Math.PI * 1.42, Math.PI * 0.84), standMat);
     ring.position.y = (0.5 + tier * 0.6) / 2; scene.add(ring);
   }
   var personGeo = new THREE.LatheGeometry([new THREE.Vector2(0, 0), new THREE.Vector2(0.17, 0), new THREE.Vector2(0.2, 0.32), new THREE.Vector2(0.14, 0.52), new THREE.Vector2(0.06, 0.56), new THREE.Vector2(0.11, 0.66), new THREE.Vector2(0.1, 0.78), new THREE.Vector2(0, 0.82)], 10);
   var MAXP = 210;
   var crowd = new THREE.InstancedMesh(personGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0.0 }), MAXP);
-  var shirts = [0x0a0e22, 0x120b1c, 0x08141c, 0x180914, 0x0c1024, 0x140f0a];          // dark clothes: silhouettes, not statues
+  var shirts = [0x1c2550, 0x2a1838, 0x123044, 0x3a1428, 0x1e2a5a, 0x34261a];          // dark clothes: silhouettes, not statues
   for (var cI = 0; cI < MAXP; cI++) crowd.setColorAt(cI, col.setHex(shirts[cI % shirts.length]));
   var people = [];
   for (var n = 0; n < MAXP; n++){
-    var tierN = n % 3, ang = Math.PI * (1.11 + Math.random() * 0.78), r = 10.6 + tierN * 1.3 + Math.random() * 0.4;
+    var tierN = n % 3, ang = Math.PI * (1.11 + Math.random() * 0.78), r = STAND_R + 0.2 + tierN * 1.4 + Math.random() * 0.4;
     people.push({ x: Math.cos(ang) * r, z: Math.sin(ang) * r, y: 0.5 + tierN * 0.6, s: 0.85 + Math.random() * 0.35, ph: Math.random() * 6.28, jump: 0, on: false });
   }
   scene.add(crowd);
