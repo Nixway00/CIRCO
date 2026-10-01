@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;800&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#030716}canvas{display:block}</style></head><body>
+<canvas id="c" width="1600" height="900"></canvas>
+<script src="chart.js"></script>
+<script>
+window.S = null;
+fetch('story.json').then(r => r.json()).then(j => { window.S = j; });
+window.render = (t) => { const ctx = document.getElementById('c').getContext('2d'); drawFrame(ctx, window.S, t); return document.getElementById('c').toDataURL('image/png'); };
+</script></body></html>

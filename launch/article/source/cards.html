@@ -1,0 +1,171 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;800&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --night:#030716; --navy:#0A1442; --ink:#EAF0FF; --muted:#93A0C8; --cyan:#5CE1FF; --red:#FF3D6E; --gold:#FFD34D; --mint:#2EF2A6; --blue:#2F7BFF; --line:rgba(120,150,255,.22); }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:#222; font-family:Onest, sans-serif; color:var(--ink); }
+  .card{ position:relative; width:1600px; height:900px; overflow:hidden; background:var(--night); margin-bottom:20px; padding:84px 96px; }
+  .card::before{ content:""; position:absolute; inset:0; background:
+      radial-gradient(900px 520px at 30% 0%, rgba(47,123,255,.22), transparent 70%),
+      repeating-linear-gradient(90deg, rgba(255,61,110,.03) 0 100px, transparent 100px 200px); pointer-events:none; }
+  .card > *{ position:relative; }
+  h2{ font-family:Unbounded; font-weight:800; font-size:58px; line-height:1.08; letter-spacing:-.01em; max-width:15ch; }
+  .lede{ font-size:26px; line-height:1.45; color:var(--muted); max-width:44ch; margin-top:22px; }
+  .foot{ position:absolute; left:96px; bottom:42px; font-family:Unbounded; font-weight:800; font-size:22px; }
+  .foot small{ font-family:Onest; font-weight:400; font-size:17px; color:var(--muted); margin-left:18px; }
+
+  /* cover 1500x600 */
+  .cover{ width:1500px; height:600px; padding:72px 80px; }
+  .cover h1{ font-family:Unbounded; font-weight:800; font-size:76px; line-height:1.02; letter-spacing:-.015em; max-width:11ch; }
+  .cover p{ font-size:26px; color:var(--muted); margin-top:26px; max-width:30ch; line-height:1.4; }
+  .cover .art{ position:absolute; right:-40px; top:-40px; width:700px; height:700px; border-radius:50%; overflow:hidden; box-shadow:0 0 120px rgba(47,123,255,.35); }
+  .cover .art img{ width:100%; height:100%; object-fit:cover; }
+  .cover .tag{ position:absolute; left:80px; bottom:58px; font-family:Unbounded; font-weight:800; font-size:24px; color:var(--gold); }
+
+  /* hero shot with caption */
+  .shot{ padding:0; }
+  .shot img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .shot .cap{ position:absolute; right:96px; bottom:96px; max-width:560px; }
+  .shot .cap h2{ font-size:54px; text-shadow:0 4px 30px rgba(0,0,0,.6); }
+  .shot .cap p{ font-size:24px; color:#cfd8ff; margin-top:14px; line-height:1.45; text-shadow:0 2px 18px rgba(0,0,0,.8); }
+  .shot::after{ content:""; position:absolute; inset:0; background:linear-gradient(270deg, rgba(3,7,22,.9), rgba(3,7,22,0) 50%); }
+  .shot .cap, .shot .foot{ z-index:2; }
+
+  /* fees */
+  .split{ position:absolute; left:96px; right:96px; top:430px; }
+  .bar{ display:flex; height:112px; border-radius:20px; overflow:hidden; }
+  .bar div{ display:flex; align-items:center; padding:0 28px; font-family:Unbounded; font-weight:800; font-size:44px; color:#04122b; }
+  .bar .p{ width:45%; background:var(--gold); } .bar .b{ width:45%; background:var(--mint); } .bar .t{ width:10%; background:#7d89b8; justify-content:center; padding:0; font-size:30px; }
+  .legend{ display:grid; grid-template-columns:45% 45% 10%; margin-top:26px; }
+  .legend div{ padding-right:34px; } .legend h3{ font-family:Unbounded; font-size:24px; font-weight:700; margin-bottom:8px; }
+  .legend p{ font-size:20px; color:var(--muted); line-height:1.45; }
+
+  /* round sequence */
+  .steps{ position:absolute; left:96px; right:96px; top:420px; display:grid; grid-template-columns:repeat(5, 1fr); gap:0; }
+  .steps div{ border-top:3px solid var(--line); padding:26px 26px 0 0; position:relative; }
+  .steps div::before{ content:""; position:absolute; top:-11px; left:0; width:18px; height:18px; border-radius:50%; background:var(--cyan); box-shadow:0 0 18px var(--cyan); }
+  .steps div:nth-child(3)::before{ background:var(--red); box-shadow:0 0 18px var(--red); }
+  .steps div:nth-child(5)::before{ background:var(--gold); box-shadow:0 0 18px var(--gold); }
+  .steps em{ font-style:normal; font-size:46px; display:block; margin-bottom:12px; }
+  .steps h3{ font-family:Unbounded; font-size:26px; font-weight:700; margin-bottom:10px; }
+  .steps p{ font-size:19px; color:var(--muted); line-height:1.45; }
+
+  /* balloons */
+  .row4{ position:absolute; left:60px; right:60px; top:300px; display:grid; grid-template-columns:repeat(4,1fr); gap:24px; }
+  .row4 figure{ text-align:center; }
+  .row4 .ph{ height:380px; border-radius:24px; overflow:hidden; background:#000; }
+  .row4 .ph img{ width:100%; height:100%; object-fit:cover; object-position:56% 30%; transform:scale(1.55); transform-origin:56% 32%; }
+  .row4 figcaption{ margin-top:22px; }
+  .row4 b{ display:block; font-family:Unbounded; font-size:40px; font-weight:800; }
+  .row4 span{ font-size:20px; color:var(--muted); }
+
+  /* fairness */
+  .fair{ position:absolute; left:96px; right:96px; top:400px; display:grid; grid-template-columns:repeat(3,1fr); gap:56px; }
+  .fair div{ border-left:3px solid var(--line); padding-left:28px; }
+  .fair small{ font-family:Unbounded; font-size:18px; color:var(--cyan); display:block; margin-bottom:12px; font-weight:600; }
+  .fair h3{ font-family:Unbounded; font-size:28px; font-weight:700; margin-bottom:12px; line-height:1.2; }
+  .fair p{ font-size:20px; color:var(--muted); line-height:1.5; }
+  .cmd{ position:absolute; left:96px; bottom:110px; font-family:Onest; font-size:24px; padding:16px 24px; border-radius:14px; background:rgba(46,242,166,.1); border:1px solid rgba(46,242,166,.4); color:var(--mint); }
+
+  /* extras */
+  .grid6{ position:absolute; left:96px; right:96px; top:330px; display:grid; grid-template-columns:repeat(3,1fr); gap:44px 64px; }
+  .grid6 em{ font-style:normal; font-size:44px; }
+  .grid6 h3{ font-family:Unbounded; font-size:26px; font-weight:700; margin:10px 0 8px; }
+  .grid6 p{ font-size:19px; color:var(--muted); line-height:1.45; }
+
+  /* tested */
+  .tested h2{ font-size:64px; max-width:18ch; }
+  .facts{ position:absolute; left:96px; right:96px; bottom:120px; display:grid; grid-template-columns:repeat(3,1fr); gap:56px; }
+  .facts b{ font-family:Unbounded; font-weight:800; font-size:64px; color:var(--mint); display:block; }
+  .facts span{ font-size:21px; color:var(--muted); line-height:1.45; display:block; margin-top:8px; }
+</style></head><body>
+
+<section class="card cover" id="c-cover">
+  <h1>We built a memecoin you can play</h1>
+  <p>$CIRCO, the 24/7 memecoin circus on Solana.</p>
+  <div class="art"><img src="token.png" alt=""></div>
+  <div class="tag">$CIRCO</div>
+</section>
+
+<section class="card shot" id="c-stage">
+  <img src="shot_hero.jpg" alt="">
+  <div class="cap"><h2>Every trade pumps the balloon</h2><p>A live 3D show on the site. Creator fees fill the balloon in real time. When it is full, it pops, and someone wins what is inside.</p></div>
+  <div class="foot">$CIRCO</div>
+</section>
+
+<section class="card" id="c-fees">
+  <h2>Where every trade goes</h2>
+  <p class="lede">Each $CIRCO trade generates creator fees, split automatically by pump.fun and locked at launch.</p>
+  <div class="split">
+    <div class="bar"><div class="p">45%</div><div class="b">45%</div><div class="t">10%</div></div>
+    <div class="legend">
+      <div><h3>Prize balloon</h3><p>Fills the balloons and the Mega Jackpot. Winners are paid in SOL, automatically.</p></div>
+      <div><h3>Buyback and burn</h3><p>Buys $CIRCO in the dips and burns every token it buys.</p></div>
+      <div><h3>Team</h3><p>Servers and development.</p></div>
+    </div>
+  </div>
+  <div class="foot">$CIRCO</div>
+</section>
+
+<section class="card" id="c-round">
+  <h2>A round, from first trade to payout</h2>
+  <p class="lede">You enter by burning $CIRCO: 10,000 per ticket, up to 10 per wallet. Every ticket is one slice of the wheel.</p>
+  <div class="steps">
+    <div><em>🎈</em><h3>Inflate</h3><p>Fees fill the balloon. Tickets are on sale.</p></div>
+    <div><em>⏱️</em><h3>Countdown</h3><p>Full balloon: three minutes to get in.</p></div>
+    <div><em>💥</em><h3>Pop</h3><p>Sales close. The wheel spins.</p></div>
+    <div><em>🎡</em><h3>Wheel</h3><p>95% to the winner, 5% to the last ticket bought.</p></div>
+    <div><em>💸</em><h3>Paid</h3><p>SOL lands in the winner's wallet. A new balloon appears.</p></div>
+  </div>
+  <div class="foot">$CIRCO</div>
+</section>
+
+<section class="card" id="c-balloons">
+  <h2>Four balloons</h2>
+  <p class="lede" style="max-width:none">The size of each round is a surprise. At least one gold trophy every day.</p>
+  <div class="row4">
+    <figure><div class="ph"><img src="shot_verde.jpg" alt=""></div><figcaption><b>0.5 SOL</b><span>Green balloon dog · 40% of rounds</span></figcaption></figure>
+    <figure><div class="ph"><img src="shot_blu.jpg" alt=""></div><figcaption><b>1 SOL</b><span>Blue balloon · 35%</span></figcaption></figure>
+    <figure><div class="ph"><img src="shot_rosso.jpg" alt=""></div><figcaption><b>2 SOL</b><span>Red rocket · 20%</span></figcaption></figure>
+    <figure><div class="ph"><img src="shot_oro.jpg" alt=""></div><figcaption><b>5 SOL</b><span>Gold trophy · 5%</span></figcaption></figure>
+  </div>
+  <div class="foot">$CIRCO</div>
+</section>
+
+<section class="card" id="c-fair">
+  <h2>Nobody picks the winner. Not even us.</h2>
+  <div class="fair">
+    <div><small>Before the first ticket</small><h3>We publish the hash of a secret</h3><p>From that moment the secret cannot change without everyone noticing.</p></div>
+    <div><small>When sales close</small><h3>Solana adds a blockhash nobody can know</h3><p>The first block two seconds after the close. We cannot choose it or wait for a better one.</p></div>
+    <div><small>After the pop</small><h3>We reveal the secret</h3><p>Anyone can recompute the winner from public data, on their own computer.</p></div>
+  </div>
+  <div class="cmd">node scripts/verify-round.mjs 42</div>
+  <div class="foot">$CIRCO</div>
+</section>
+
+<section class="card" id="c-extras">
+  <h2>While the balloon fills</h2>
+  <div class="grid6">
+    <div><em>🎯</em><h3>Shooting gallery</h3><p>Three shots at the balloons. Every pop is a ticket.</p></div>
+    <div><em>🔮</em><h3>Guess the next balloon</h3><p>Call the colour, win tickets for the next round.</p></div>
+    <div><em>💰</em><h3>Mega Jackpot</h3><p>Any draw can become a Mega Pop and pay the jackpot too.</p></div>
+    <div><em>🍅</em><h3>Stage effects</h3><p>Fireworks, an air horn, or a tomato for the Ringmaster.</p></div>
+    <div><em>🍀</em><h3>Lucky meter</h3><p>Every 20 tickets that do not win, one free ticket.</p></div>
+    <div><em>🤡</em><h3>Clowns vs Acrobats</h3><p>The team that burns more each week wins bonus tickets.</p></div>
+  </div>
+  <div class="foot">$CIRCO</div>
+</section>
+
+<section class="card tested" id="c-tested">
+  <h2>We tried to break it before you could</h2>
+  <p class="lede">The whole circus ran on a test Solana chain with bots playing round after round. Then we killed the engine in the middle of paying a winner.</p>
+  <div class="facts">
+    <div><b>1×</b><span>Every payout landed exactly once, even after the crash.</span></div>
+    <div><b>5</b><span>Bugs found before launch, all fixed and documented in public.</span></div>
+    <div><b>31</b><span>Automated tests on the game rules and the buyback bot.</span></div>
+  </div>
+  <div class="foot">$CIRCO</div>
+</section>
+
+</body></html>
