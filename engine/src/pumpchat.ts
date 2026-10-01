@@ -111,6 +111,10 @@ export class PumpFunChat {
   /** A pump.fun message becomes a site chat line (deduplicated by its pump.fun id). */
   private async store(m: PfMessage) {
     if (!m?.id || !m.message || !this.enabled()) return;
+    // anti-scam: links and addresses from the pump.fun chat are masked before they reach our chat
+    m.message = String(m.message).replace(/pump\.fun(?!\S*\/)/gi, 'pump·fun')
+      .replace(/(https?:\/\/\S+|www\.\S+|t\.me\/\S+|discord\.(gg|com)\/\S+|\b[a-z0-9-]+\.(com|io|xyz|fun|app|net|org|gg|co|me|link|site|online|live|pro|vip|top|cc|ru|to)\b\S*)/gi, '[link removed]')
+      .replace(/\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g, a => (a === this.mint ? a : '[address removed]'));
     if (m.username === 'CIRCO Ringmaster' || (this.ringmaster && m.userAddress === this.ringmasterAddress)) return;   // our own lines
     await db.from('chat_messages').upsert({
       ext_id: `pf:${m.id}`, source: 'pumpfun', author: String(m.username || 'anon').slice(0, 24),

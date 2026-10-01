@@ -1,0 +1,25 @@
+# Every push: the game rules and the buyback bot are tested, and engine and site must typecheck.
+name: CI
+on: [push, pull_request]
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: engine } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci || npm install
+      - run: npx tsc --noEmit
+      - run: npm test
+      - name: Buyback simulation still runs
+        run: node --experimental-strip-types sim/buyback-sim.ts > /dev/null
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci || npm install
+      - run: npx tsc --noEmit
