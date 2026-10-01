@@ -68,6 +68,7 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
       fxPrices: raw.fx_prices ?? undefined, pickPrice: n('pick_price_tokens'), pickReturn: n('pick_return'),
       jackpotShare: n('jackpot_share'), jackpotChance: n('jackpot_chance'), teamReward: n('team_reward_tickets'), gameCap: n('game_daily_ticket_cap'),
       weights: raw.balloons ? Object.fromEntries(Object.entries(raw.balloons).map(([k, v]: [string, any]) => [k, v.weight])) : undefined,
+      balloonCfg: raw.balloons ?? undefined,
     };
     const gameInfo = { price: n('game_price_tokens') ?? 10000, shots: n('game_shots') ?? 3, chance: n('game_hit_chance') ?? 0.3, remaining: Math.max(0, (n('game_daily_ticket_cap') ?? 5) - (M?.wonToday ?? 0)) };
     const pumpUrl = (process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').startsWith('https://pump.fun/coin/') && !(process.env.NEXT_PUBLIC_PUMPFUN_URL ?? '').includes('YOUR_MINT') ? process.env.NEXT_PUBLIC_PUMPFUN_URL : undefined;
