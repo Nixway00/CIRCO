@@ -36,8 +36,20 @@ const STAGE_VERSION = (process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'dev').s
 export default function StageBridge({ broadcast = false }: { broadcast?: boolean } = {}) {
   const frame = useRef<HTMLIFrameElement>(null);
   const { connection } = useConnection();
-  const { publicKey, sendTransaction, signMessage } = useWallet();
+  const { publicKey, sendTransaction, signMessage, wallets } = useWallet();
   const { setVisible } = useWalletModal();
+  // On a phone's normal browser (Safari, Chrome) no wallet is installed in the page: signing would bounce
+  // between apps and lose the session. Open the site inside Phantom's own browser instead, where it just works.
+  const openWallet = useCallback(() => {
+    const mobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+    const hasWallet = wallets.some(w => w.readyState === 'Installed');
+    if (mobile && !hasWallet) {
+      const here = window.location.href;
+      window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(here)}?ref=${encodeURIComponent(window.location.origin)}`;
+      return;
+    }
+    setVisible(true);
+  }, [wallets, setVisible]);
   const price = useRef(10000);
   const chatMin = useRef(10000);
   const showCfg = useRef<any>({});
@@ -151,8 +163,8 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
       const m = e.data as { type: string; n?: number; round?: number; text?: string; url?: string; nick?: string; team?: string; effect?: string; color?: string };
       try {
         if (m.type === 'circo-ready') { pushState(); return; }
-        if (m.type === 'circo-connect') { setVisible(true); return; }
-        if (!publicKey) { setVisible(true); post(m.type === 'circo-game' ? { gameError: 'Connect your wallet first.' } : m.type === 'circo-nick' ? { nickError: 'Connect your wallet first.' } : { toast: 'Connect your wallet first.' }); return; }
+        if (m.type === 'circo-connect') { openWallet(); return; }
+        if (!publicKey) { openWallet(); post(m.type === 'circo-game' ? { gameError: 'Connect your wallet first.' } : m.type === 'circo-nick' ? { nickError: 'Connect your wallet first.' } : { toast: 'Connect your wallet first.' }); return; }
         // playing needs a nickname: buying, chatting, games and the mission all ask for one first
         if (['circo-buy', 'circo-chat', 'circo-game', 'circo-mission', 'circo-fx', 'circo-pick'].includes(m.type)) {
           if (!me.current) await refreshMe();
@@ -259,7 +271,7 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [publicKey, connection, sendTransaction, signMessage, setVisible, post, pushState, pushLive, sendIdentity, refreshMe, refreshLive]);
+  }, [publicKey, connection, sendTransaction, signMessage, setVisible, openWallet, post, pushState, pushLive, sendIdentity, refreshMe, refreshLive]);
 
   return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}${broadcast ? "&live=1" : ""}`} title="$CIRCO live stage" allow="autoplay" />;
 }

@@ -679,7 +679,8 @@ var B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 function rw(){ var s=''; for(var i=0;i<8;i++) s+=B58[Math.floor(Math.random()*B58.length)]; return s.slice(0,4)+'…'+s.slice(4); }
 var POOL = []; for (var i=0;i<40;i++) POOL.push(rw());
 var ME = 'You (demo)';
-function fmt(n, d){ return n.toLocaleString('en-US',{minimumFractionDigits:d===undefined?2:d, maximumFractionDigits:d===undefined?2:d}); }
+function fmt(n, d){ if (d === undefined && n > 0 && n < 0.01) d = 4;   // tiny amounts (test balloons) keep their digits
+  return n.toLocaleString('en-US',{minimumFractionDigits:d===undefined?2:d, maximumFractionDigits:d===undefined?2:d}); }
 function fmtBig(n){ if(n>=1e6) return fmt(n/1e6,2)+' M'; if(n>=1e3) return fmt(n/1e3,1)+' k'; return fmt(n,0); }
 function mmss(s){ s=Math.max(0,Math.ceil(s)); var m=Math.floor(s/60), r=s%60; return m+':'+(r<10?'0':'')+r; }
 function ease(t){ return 1-Math.pow(1-t,3); }
@@ -1951,13 +1952,13 @@ S.liveRoundId = null; S.pendingRound = null; S.liveWinner = null; S.cdEnds = nul
 function startLiveRound(r){
   lastTicketsKey = ''; S.liveRoundId = r.id; S.round = r.id; S.liveType = B2T[r.balloon] || 'blu'; S.liveWinner = null; S.pendingRound = null;
   enter('scelta');
-  S.cap = Math.max(0.01, +r.capacity_sol); S.fill = Math.min(0.999, (+r.collected_sol || 0) / S.cap);
+  S.cap = Math.max(0.0001, +r.capacity_sol); S.fill = Math.min(0.999, (+r.collected_sol || 0) / S.cap);
   applyLiveRound(r);
 }
 function applyLiveRound(r){
   if (typeof SHOW !== 'undefined'){ var sn = +r.snipes || 0; if (sn > (SHOW.snipes || 0) && r.phase === 'countdown'){ sfx('beep'); shake = Math.max(shake, 0.12); } SHOW.snipes = sn; SHOW.superSol = +r.supercharged_sol || 0; SHOW.express = !!r.express; renderHot(); }
   if (r.id === S.liveRoundId) S.liveR = r;
-  S.cap = Math.max(0.01, +r.capacity_sol);
+  S.cap = Math.max(0.0001, +r.capacity_sol);
   if (r.phase === 'inflate'){ if (S.phase === 'gonfiaggio' || S.phase === 'scelta') S.fill = Math.min(0.999, (+r.collected_sol || 0) / S.cap); }
   if (r.phase === 'countdown'){ var newEnd = Date.parse(r.countdown_ends_at); if (S.cdEnds && newEnd > S.cdEnds + 20000 && S.phase === 'countdown'){ say(pick(LINES.extend), true); S.said10 = false; } S.cdEnds = newEnd; if (S.phase === 'gonfiaggio'){ S.fill = 1; enter('countdown'); } }
   if (r.phase === 'drawing' && (S.phase === 'gonfiaggio' || S.phase === 'countdown')) enter('esplosione');
