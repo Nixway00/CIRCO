@@ -49,10 +49,10 @@ test('quiet support: small, below the hourly average, then rate-limited', () => 
   assert.ok(Math.abs((a.decision as any).spendSol - 10 * 0.3 * 0.15) < 1e-9);
   assert.equal(run(vals, 10, 1, a.state).decision.reason, 'wait');   // not again right away
 });
-test('drip: paced over hours when too much waits, and dust is ignored', () => {
+test('drip: paced when too much waits, and dust is ignored', () => {
   const d = run([1, 1, 1, 1, 1], 22, 40);
-  assert.equal(d.decision.reason, 'drip'); assert.ok(Math.abs((d.decision as any).spendSol - 2) < 1e-9);   // (22 - 10) / 6
-  assert.equal(run([1, 1, 1, 1, 1], 22, 40, d.state).decision.reason, 'wait');                            // at most once an hour
+  assert.equal(d.decision.reason, 'drip'); assert.ok(Math.abs((d.decision as any).spendSol - 4) < 1e-9);   // (22 - 10) / 3
+  assert.equal(run([1, 1, 1, 1, 1], 22, 40, d.state).decision.reason, 'wait');                            // at most every 20 minutes
   assert.equal(run([1, 0.5, 0.3], 0.01, 0).decision.reason, 'wait');
 });
 test('chunks add up and vary', () => {

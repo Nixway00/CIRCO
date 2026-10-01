@@ -249,6 +249,7 @@ nav.pages .sm{ display:none; }
 .jackpot b{ font-family:'Unbounded',sans-serif; }
 .queue{ font-size:12px; color:#bfe9ff; background:rgba(47,123,255,.18); border:1px solid rgba(92,225,255,.35); padding:3px 10px; border-radius:999px; margin-top:4px; }
 .queue b{ font-family:'Unbounded',sans-serif; color:#fff; }
+.queue.hot{ color:#1a1030; background:linear-gradient(90deg,#5CE1FF,#2EF2A6); border:0; font-weight:700; }
 @keyframes jpShine{ to{ background-position:-200% 0; } }
 .showRow{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
 #mCta .showRow{ grid-column:1 / -1; margin-top:0; }
@@ -504,6 +505,7 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
   </div>
   <div class="hud" aria-live="polite">
     <div id="jackpotPill" class="jackpot" aria-live="polite">💰 MEGA JACKPOT <b id="jpAmt">0.00 SOL</b></div>
+    <div id="hotPill" class="queue hot" hidden></div>
     <div id="queuePill" class="queue" hidden>🎈 <b id="qAmt">+0.00 SOL</b> queued for the next balloons</div>
     <div id="hudTitle">Round 1</div>
     <div class="mSteps" id="mSteps" aria-hidden="true"><span data-p="scelta">Pick</span><span data-p="gonfiaggio">Inflate</span><span data-p="countdown">Countdown</span><span data-p="estrazione">Draw</span></div>
@@ -1665,6 +1667,7 @@ function pageRegolamento(){
     d('Mega Jackpot', '<ul><li>'+Math.round(SHOW.jackpotShare*100)+'% of the fees reaching the prize wallet build the Mega Jackpot, shown live on stage.</li><li>Every draw has a '+(SHOW.jackpotChance*100).toFixed(0)+'% chance to be a Mega Pop: the winner takes the balloon prize and the whole jackpot.</li><li>The Mega Pop is decided by the same provably fair seed as the wheel.</li></ul>')+
     d('Shooting gallery', '<ul><li>Burn '+fmt(G.price,0)+' $CIRCO for '+G.shots+' shots. Each shot has a '+Math.round(G.chance*100)+'% chance to pop a balloon; every pop is 1 ticket for the current round.</li><li>You can win up to '+(SHOW.gameCap || 5)+' tickets a day in games.</li><li>The result is decided by the server with a secret committed before you burn, mixed with your burn signature; the secret is revealed after the game.</li></ul>')+
     d('Guess the next balloon', '<ul><li>One guess per round, it burns '+fmt(SHOW.pickPrice,0)+' $CIRCO. Guesses close with ticket sales.</li><li>A right guess pays tickets for the next round: '+KEYS.map(function(k){ return NAMES[k].toLowerCase()+' '+pickPay(k); }).join(', ')+'.</li><li>On average a guess returns less than buying tickets directly.</li><li>If the next balloon is fixed by the rules (first rounds or the gold guarantee), every guess comes back as 1 ticket.</li></ul>')+
+    d('Busy markets', '<ul><li>When fees arrive faster than balloons pop, the extra SOL waits in a queue shown on stage.</li><li>If the queue already pays for the next balloon, the countdown is an express one (90 seconds).</li><li>If the queue holds more than two balloons, half of the excess supercharges the next balloon\'s prize.</li></ul>')+
     d('Lucky meter', '<ul><li>Every ticket you buy in a round you do not win fills your lucky meter.</li><li>Every '+(SHOW.luckyEvery || 20)+' losing tickets you get 1 free ticket, added automatically to the next round.</li></ul>')+
     d('Graduation gala', '<p>When $CIRCO completes its pump.fun bonding curve and moves to PumpSwap, the circus throws a party: fireworks and gold rain for everyone, and the next balloon is a Grand Opening gold trophy.</p>')+
     d('Stage effects', '<ul><li>Burn a little $CIRCO to launch an effect everyone watching sees, with your name: fireworks, confetti, air horn, a tomato at the Ringmaster, gold rain.</li><li>Effects are pure burn: they give no tickets.</li></ul>')+
@@ -1819,7 +1822,7 @@ function enter(phase){
     if (hadHint && LINES[phase]) say(pick(S.type === 'oro' && phase === 'gonfiaggio' ? LINES.gala : LINES[phase]), true);
   }, 900);
   S.saidHalf = S.saidAlmost = S.said10 = false;
-  S.phase = phase; S.t = 0; setStepper(phase); if (typeof SHOW !== 'undefined' && SHOW) renderDock();
+  S.phase = phase; S.t = 0; setStepper(phase); if (typeof SHOW !== 'undefined' && SHOW){ renderDock(); if (!LIVE){ if (phase === 'scelta'){ SHOW.superSol = (SHOW.queue || 0) > 0.6 && Math.random() < 0.5 ? (SHOW.queue || 0) * 0.5 : 0; SHOW.express = false; } if (phase === 'countdown') SHOW.express = (SHOW.queue || 0) > 0.4; } renderHot(); }
   var c = CAMS[phase]; camPos.set(c.p[0], c.p[1], c.p[2]); camTarget.set(c.l[0], c.l[1], c.l[2]);
   var ty = TYPES[S.type];
   if (phase === 'scelta' && typeof ringmaster === 'function' && S.round > 1) ringmaster('Round '+S.round+'. Fresh balloon, fresh hopium.');
@@ -1936,6 +1939,7 @@ function startLiveRound(r){
   applyLiveRound(r);
 }
 function applyLiveRound(r){
+  if (typeof SHOW !== 'undefined'){ SHOW.superSol = +r.supercharged_sol || 0; SHOW.express = !!r.express; renderHot(); }
   if (r.id === S.liveRoundId) S.liveR = r;
   S.cap = Math.max(0.01, +r.capacity_sol);
   if (r.phase === 'inflate'){ if (S.phase === 'gonfiaggio' || S.phase === 'scelta') S.fill = Math.min(0.999, (+r.collected_sol || 0) / S.cap); }
@@ -2232,6 +2236,12 @@ function renderLucky(){
   document.querySelectorAll('.luckyFill').forEach(function(x){ x.style.width = (n / e * 100)+'%'; });
   document.querySelectorAll('.luckyTxt').forEach(function(x){ x.textContent = n+'/'+e; });
 }
+function renderHot(){
+  var t = [];
+  if (SHOW.superSol > 0) t.push('⚡ Supercharged: +'+fmt(SHOW.superSol)+' SOL from the queue');
+  if (SHOW.express && S.phase === 'countdown') t.push('⚡ Express countdown');
+  $('hotPill').hidden = !t.length; $('hotPill').textContent = t.join(' · ');
+}
 function renderJackpot(){ $('jpAmt').textContent = fmt(SHOW.jackpot)+' SOL'; var q = SHOW.queue || 0; $('queuePill').hidden = q < 0.01; $('qAmt').textContent = '+'+fmt(q)+' SOL'; }
 
 /* ----- stage effects ----- */
@@ -2440,7 +2450,7 @@ setInterval(renderTeams, 30000);
 if (!LIVE) setInterval(function(){
   if (S.phase === 'gonfiaggio'){ SHOW.jackpot += 0.004; }
   if (S.phase === 'countdown' || S.phase === 'estrazione' || S.phase === 'vincitore') SHOW.queue = (SHOW.queue || 0) + 0.006 + Math.random()*0.01;
-  if (S.phase === 'scelta') SHOW.queue = 0;
+  if (S.phase === 'scelta') SHOW.queue = SHOW.superSol ? 0 : 0;
   SHOW.reserve = (SHOW.reserve || 1.2) + 0.004;
   renderJackpot();
   if (Math.random() < 0.006 && page === 'gioca' && !INTRO.on){ var b = Math.max(0.1, (SHOW.reserve || 1) * 0.25), t = Math.round(b*2.1e6); SHOW.reserve = Math.max(0, (SHOW.reserve || 1) - b); S.stats.buyback += b; S.stats.burned += t; renderStats(); ringmaster('Dip spotted! The buyback just scooped '+fmt(b)+' SOL of $CIRCO and burned '+fmtBig(t)+' tokens. 🔥'); }

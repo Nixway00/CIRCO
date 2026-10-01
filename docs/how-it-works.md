@@ -38,56 +38,64 @@ All three wallets are public. Fees that arrive while a countdown or draw is runn
 - If the balloon's ticket minimum is not reached, the countdown extends by 1 minute, up to 3 times.
 - Still under the minimum: the round is **postponed**, and its prize and tickets carry over to the next round. After three postponements in a row, the next round is drawn anyway.
 
-## 5. The draw
+## 5. Busy markets
+
+- When fees arrive faster than balloons pop, the extra SOL waits in a queue shown on stage, and moves into the next balloons.
+- **Express countdown:** if the queue already pays for another balloon, the countdown lasts 90 seconds instead of 3 minutes.
+- **Supercharged balloons:** if the queue holds more than two balloons' worth, half of the excess is added to the next balloon's prize.
+
+In a simulated hour with 10 SOL of fees every 10 minutes, this doubled the SOL paid to winners (from 10 to 19.7) and kept the queue under 3.5 SOL instead of letting it climb past 13.
+
+## 6. The draw
 
 - Every ticket is one slice of the wheel.
 - **95%** of the prize to the winner, **5%** to the buyer of the last ticket before sales closed (free tickets cannot take this bonus).
 - Payouts are automatic; every transaction is linked from the round's win page.
 - Team wallets can play like anyone else and are labelled as team wallets.
 
-## 6. Mega Jackpot
+## 7. Mega Jackpot
 
 - 5% of the fees reaching the prize wallet build the Mega Jackpot, shown live on stage.
 - Every draw has a **2% chance** to be a **Mega Pop**: the winner also takes the whole jackpot.
 - The Mega Pop is decided by the same seed as the wheel.
 
-## 7. Shooting gallery
+## 8. Shooting gallery
 
 - Burn 10,000 $CIRCO for **3 shots**, each with a **30%** chance to pop a balloon. Every pop is 1 ticket for the current round.
 - On average a game returns 0.9 tickets, so buying tickets directly stays slightly cheaper.
 - Up to 5 game tickets per wallet per day.
 - The result is decided by a secret committed before your burn, mixed with your burn signature, and revealed after the game.
 
-## 8. Guess the next balloon
+## 9. Guess the next balloon
 
 - One guess per round, 10,000 $CIRCO, burned. Guesses close with ticket sales.
 - A right guess pays tickets for the next round: green 2, blue 2, red 4, gold 18.
 - On average a guess returns 90% of its cost in tickets: less than buying tickets directly.
 - If the next balloon is fixed by the rules (first rounds or the gold guarantee), every guess comes back as 1 ticket.
 
-## 9. Lucky meter
+## 10. Lucky meter
 
 - Every ticket you buy in a round you do not win fills your lucky meter.
 - Every **20 losing tickets** you get **1 free ticket**, added automatically to the next round. The meter is shown under your tickets.
 
-## 10. Graduation gala
+## 11. Graduation gala
 
 When $CIRCO completes its pump.fun bonding curve and moves to PumpSwap, the circus throws a party: fireworks and gold rain for everyone watching, and the next balloon is a **Grand Opening gold trophy**.
 
-## 11. Stage effects
+## 12. Stage effects
 
 Burn a little $CIRCO to launch an effect that everyone watching sees, with your name on it: fireworks, a confetti storm, an air horn, a tomato at the Ringmaster, gold rain. Effects are pure burn and give no tickets.
 
-## 12. Clowns vs Acrobats
+## 13. Clowns vs Acrobats
 
 - Pick a team when you join; you can switch once a week.
 - Every Monday 00:00 UTC, the team whose members burned more $CIRCO that week wins: each member who burned something gets **2 bonus tickets** for the next rounds.
 
-## 13. Daily mission
+## 14. Daily mission
 
 Share a round on X and paste the link: 3 bonus tickets, once a day. Bonus tickets burn nothing but count toward the cap and the round minimum.
 
-## 14. Names and chat
+## 15. Names and chat
 
 - A nickname is required to play and is shown instead of your wallet. You can link your X account and show your @handle instead.
 - Anyone can read the chat; wallets holding at least 10,000 $CIRCO can write. Messages from the coin's pump.fun chat appear too, tagged "pump.fun". The Ringmaster announces winners there as well.

@@ -27,7 +27,7 @@ The first smart version bought 40% of its SOL whenever the price fell 12% from t
 | **Wait for the fall to stop** | A tranche fires only when the price is no longer making new lows (or has fallen 8 points past the level). |
 | **Episodes end** | When the price recovers half of the first level, or after 3 hours. |
 | **Gentle quiet-chart support** | Only when fewer than 5 SOL traded in 30 minutes and the price is 3% under its hourly average: one buy of 15% of the flow budget (the other 30%), at most every 20 to 40 minutes. |
-| **No hoarding, no dumping** | Above 10 SOL, or 24 hours without a buy, the excess is dripped out over about six hours. |
+| **No hoarding, no dumping** | Above 10 SOL, or 24 hours without a buy, a third of the excess is bought every 20 minutes. |
 | **Nothing to front-run** | Levels carry ±10% random jitter, buys are split into 2-4 uneven chunks at random moments, 3-8 minutes of random pause between buys, and each chunk is capped at 2% price impact. |
 | **Survives restarts** | The dip episode and the pacing clocks are stored, so a restart never repeats a tranche. |
 

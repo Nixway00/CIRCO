@@ -95,9 +95,9 @@ export function decideBuyback(state: BuybackState, availableSol: number, m: Mark
     return { state: s, decision: { reason: 'quiet_support', spendSol: flow * 0.15, note: 'quiet chart below its hourly average' } };
   }
   const heldTooLong = s.lastBuyAt !== null ? m.now - s.lastBuyAt > c.maxHoldHours * HOUR : false;
-  if ((availableSol > c.maxHoldSol || heldTooLong) && m.now - s.lastDripAt > HOUR) {
+  if ((availableSol > c.maxHoldSol || heldTooLong) && m.now - s.lastDripAt > 20 * MIN) {
     const excess = heldTooLong ? availableSol * 0.5 : availableSol - c.maxHoldSol;
-    const spend = Math.min(availableSol, Math.max(c.minBuySol, excess / 6));   // spread over about six hours
+    const spend = Math.min(availableSol, Math.max(c.minBuySol, excess / 3));   // a third of the excess every 20 minutes
     s.lastDripAt = m.now; s.lastBuyAt = m.now;
     return { state: s, decision: { reason: 'drip', spendSol: spend, note: heldTooLong ? 'held too long' : 'above the holding cap' } };
   }

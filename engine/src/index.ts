@@ -60,10 +60,16 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   const overflow = (pending ?? []).reduce((a, r) => a + Number(r.overflow_sol), 0);
   const postponed = opts.carried_sol ?? 0;
   const carried = postponed + overflow;
+  // hot mode: when the queue holds more than two of these balloons, part of the excess supercharges this one
+  const { data: waiting } = await db.from('fees').select('amount_sol,jackpot_sol').is('round_id', null).eq('wallet', 'prize');
+  const queueTotal = carried + (waiting ?? []).reduce((a, f) => a + Number(f.amount_sol) - Number(f.jackpot_sol ?? 0), 0);
+  const baseCap = cfg.balloons[balloon].capacity_sol + postponed;
+  const share = Number((cfg as any).supercharge_share ?? 0);
+  const supercharged = share > 0 && queueTotal > baseCap * 2 ? Math.floor((queueTotal - baseCap) * share * 1e9) / 1e9 : 0;
 
   const secret = randomBytes(32).toString('hex');
   const round = await must(db.from('rounds').insert({
-    balloon, capacity_sol: cfg.balloons[balloon].capacity_sol + postponed, carried_sol: carried,
+    balloon, capacity_sol: baseCap + supercharged, supercharged_sol: supercharged, carried_sol: carried,
     collected_sol: carried, postpone_streak: opts.postpone_streak ?? 0, forced_gala: galaDue && balloon === 'gold',
     seed_commit: commit(secret), grand_opening: gradGala && balloon === 'gold',
   }).select().single());
@@ -79,6 +85,7 @@ async function startRound(opts: { carried_sol?: number; carryTicketsFrom?: numbe
   await grantCredits(round.id, cfg);
   if (prev) await settlePredictions(prev.id, round.id, balloon, pick.forced, cfg);
   if (gradGala && balloon === 'gold') await ringmaster(`GRAND OPENING GALA! $CIRCO graduated, so tonight's balloon is a ${cfg.balloons.gold.capacity_sol} SOL gold trophy. Everybody in!`);
+  else if (supercharged > 0) await ringmaster(`SUPERCHARGED! The crowd is wild, so this balloon swallows ${supercharged.toFixed(2)} extra SOL from the queue: ${(baseCap + supercharged).toFixed(2)} SOL up for grabs!`);
   else await ringmaster(balloon === 'gold' ? `GOLD TROPHY. ${cfg.balloons.gold.capacity_sol} SOL. Seatbelts on, degens, it is gala night.` : `Round ${round.id}. Fresh balloon, fresh hopium.`);
   console.log(`round ${round.id} started: ${balloon}, carried ${carried} SOL`);
 }
@@ -106,11 +113,17 @@ async function tick() {
 
     if (action.type === 'start_countdown') {
       const overflow = action.reason === 'full' ? overflowOnFull(r.collected_sol, r.capacity_sol) : 0;
+      // express countdown: if the queue already pays for another balloon this size, there is no reason to make people wait
+      const { data: others } = await db.from('rounds').select('overflow_sol').eq('overflow_pending', true).neq('id', r.id);
+      const queueNow = overflow + (others ?? []).reduce((a, x) => a + Number(x.overflow_sol), 0);
+      const hotSec = Number((cfg as any).hot_countdown_sec ?? 0);
+      const express = action.reason === 'full' && hotSec > 0 && hotSec < cfg.countdown_sec && queueNow >= action.capacity_sol;
+      const endsAt = express ? Date.now() + hotSec * 1000 : action.ends_at;
       await ok(db.from('rounds').update({
-        phase: 'countdown', countdown_ends_at: new Date(action.ends_at).toISOString(), capacity_sol: action.capacity_sol,
-        overflow_sol: overflow, overflow_pending: overflow > 0,
+        phase: 'countdown', countdown_ends_at: new Date(endsAt).toISOString(), capacity_sol: action.capacity_sol,
+        overflow_sol: overflow, overflow_pending: overflow > 0, express,
       }).eq('id', r.id));
-      await ringmaster(action.reason === 'full' ? 'It is full. Three minutes. Last ticket takes 5%, snipers to your stations.' : '30 minutes and still not full. Fine, we pop what we have.');
+      await ringmaster(express ? `It is full, and the next one is already paid for. Express countdown: ${hotSec} seconds!` : action.reason === 'full' ? 'It is full. Three minutes. Last ticket takes 5%, snipers to your stations.' : '30 minutes and still not full. Fine, we pop what we have.');
     }
     if (action.type === 'extend') {
       await ok(db.from('rounds').update({ countdown_ends_at: new Date(action.ends_at).toISOString(), extensions: action.extensions }).eq('id', r.id));
