@@ -2803,7 +2803,8 @@ var GFX = (function(){
   var STAND_R = 19;                         // far behind the ring, and only on the two sides: nothing behind the balloons
   var ARCS = [[1.06, 1.34], [1.66, 1.94]];  // in units of π: back-left and back-right, leaving the centre clear
   var standMat = new THREE.MeshStandardMaterial({ color: 0x050816, roughness: 0.95, metalness: 0.05 });
-  for (var tier = 0; tier < 3; tier++) ARCS.forEach(function(arc){
+  var CROWD_ON = false;                      // the audience was removed: it kept crossing the balloons on screen
+  if (CROWD_ON) for (var tier = 0; tier < 3; tier++) ARCS.forEach(function(arc){
     // cylinder angles run x = sin(t), z = cos(t), so an audience angle a becomes t = π/2 − a
     var ring = new THREE.Mesh(new THREE.CylinderGeometry(STAND_R + tier * 1.4, STAND_R + tier * 1.4, 0.5 + tier * 0.6, 40, 1, false, Math.PI * (0.5 - arc[1]), Math.PI * (arc[1] - arc[0])), standMat);
     ring.position.y = (0.5 + tier * 0.6) / 2; scene.add(ring);
@@ -2818,9 +2819,9 @@ var GFX = (function(){
     var arcP = ARCS[n % 2], tierN = Math.floor(n / 2) % 3, ang = Math.PI * (arcP[0] + 0.02 + Math.random() * (arcP[1] - arcP[0] - 0.04)), r = STAND_R + 0.2 + tierN * 1.4 + Math.random() * 0.4;
     people.push({ x: Math.cos(ang) * r, z: Math.sin(ang) * r, y: 0.5 + tierN * 0.6, s: 0.85 + Math.random() * 0.35, ph: Math.random() * 6.28, jump: 0, on: false });
   }
-  scene.add(crowd);
+  if (CROWD_ON) scene.add(crowd);
   var phones = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.07, 0.11), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, side: THREE.DoubleSide }), MAXP);
-  scene.add(phones);
+  if (CROWD_ON) scene.add(phones);
   var target = 40, cheerT = 0;
 
   // gala: two golden searchlights sweeping the tent
@@ -2883,7 +2884,7 @@ var GFX = (function(){
       target = Math.min(MAXP, 30 + players * 9 + (S.phase === 'countdown' ? 30 : 0) + (S.type === 'oro' ? 40 : 0));
       if (cheerT > 0) cheerT -= dt;
       var shown = 0;
-      for (var i = 0; i < MAXP; i++){
+      for (var i = 0; CROWD_ON && i < MAXP; i++){
         var pp = people[i], vis = i < target;
         if (vis && cheerT > 0 && Math.random() < dt * 3) pp.jump = 0.35 + Math.random() * 0.25;
         pp.jump = Math.max(0, pp.jump - dt * 1.6);
@@ -2896,7 +2897,7 @@ var GFX = (function(){
         tmpObj.position.set(pp.x * 0.985, pp.y + 0.95 * pp.s + hop, pp.z * 0.985); tmpObj.lookAt(camera.position); tmpObj.scale.setScalar(phoneOn ? 1 : 0.0001); tmpObj.updateMatrix(); phones.setMatrixAt(i, tmpObj.matrix);
         if (vis) shown++;
       }
-      crowd.instanceMatrix.needsUpdate = true; phones.instanceMatrix.needsUpdate = true;
+      if (CROWD_ON){ crowd.instanceMatrix.needsUpdate = true; phones.instanceMatrix.needsUpdate = true; }
       // garlands twinkle; gala turns them gold and fast
       var gala = S.type === 'oro' && S.phase !== 'scelta';
       for (var b = 0; b < bulbs.length; b++){ var tw = 0.65 + 0.35 * Math.sin(time * (gala ? 7 : 2.2) + b * 1.7); bulbMesh.setColorAt(b, col.setHex(gala ? 0xffc23d : (b % 5 === 0 ? 0xff6e8e : 0xffd38a)).multiplyScalar(tw)); }
