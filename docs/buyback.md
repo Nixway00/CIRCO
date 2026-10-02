@@ -4,7 +4,7 @@
 
 ## From the creator's wallet
 
-The buyback can run from the wallet that launched the coin. pump.fun then marks every buyback on the chart as a creator buy, so anyone watching sees the creator buying the dips and burning. Only the tokens a buyback buys are burned (the engine burns the difference in balance), so the creator's own tokens are never touched.
+The buyback can run from the wallet that launched the coin. pump.fun then marks every buyback on the chart as a creator buy, so anyone watching sees the creator buying the dips and burning. Only the tokens a buyback buys are burned (the engine burns the difference in balance), so the creator's own tokens are never touched. The same goes for SOL: the bot's budget is what fee sharing paid it (its 45% equals the prize wallet's 45%) minus what it already spent, so the creator's own SOL in that wallet is never used.
 
 ## Why not buy on a fixed clock
 

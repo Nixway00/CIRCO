@@ -30,7 +30,14 @@ export async function refreshSnapshots() {
   ]);
   // SOL the buyback is holding for the next dip (public, so everyone sees the buy wall waiting)
   // read once a minute (the snapshot itself refreshes every 15 s): RPC credits matter on a free plan
-  if (buybackAddress && Date.now() - reserveAt > 60_000) { reserveAt = Date.now(); reserveSol = Math.max(0, (await connection.getBalance(buybackAddress).catch(() => 0)) / LAMPORTS_PER_SOL - 0.02); }
+  if (buybackAddress && Date.now() - reserveAt > 60_000) {
+    reserveAt = Date.now();
+    // only the buyback's own budget (fees received minus buybacks spent), not other SOL in the wallet
+    const [{ data: f }, { data: b }] = await Promise.all([db.from('fees').select('amount_sol'), db.from('buybacks').select('sol_spent')]);
+    const budget = (f ?? []).reduce((a, x) => a + Number(x.amount_sol), 0) - (b ?? []).reduce((a, x) => a + Number(x.sol_spent), 0);
+    const wallet = (await connection.getBalance(buybackAddress).catch(() => 0)) / LAMPORTS_PER_SOL - 0.02;
+    reserveSol = Math.max(0, Math.min(wallet, budget));
+  }
   const buyback_reserve_sol = reserveSol;
   const queue_sol = (over ?? []).reduce((a, r) => a + Number(r.overflow_sol), 0) + (waiting ?? []).reduce((a, f) => a + Number(f.amount_sol) - Number(f.jackpot_sol ?? 0), 0);
   const { error } = await db.from('snapshots').upsert([

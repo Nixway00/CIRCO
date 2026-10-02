@@ -35,7 +35,7 @@ export function buybackSettings(cfg: any): BuybackSettings {
     maxHoldSol: Number(cfg.buyback_max_hold_sol ?? 10),
     maxHoldHours: Number(cfg.buyback_max_hold_hours ?? 24),
     maxImpact: Number(cfg.buyback_max_impact ?? 0.02),
-    minBuySol: 0.05,
+    minBuySol: Number(cfg.buyback_min_buy_sol ?? 0.05),
   };
 }
 
@@ -77,7 +77,17 @@ export async function runBuyback(cfg: any): Promise<{ reason: string; sol: numbe
   const s = buybackSettings(cfg);
   if (!s.enabled || Date.now() < nextAllowedAt) return null;
   const kp = Keypair.fromSecretKey(bs58.decode(env.BUYBACK_WALLET_SECRET));
-  const available = (await connection.getBalance(kp.publicKey)) / LAMPORTS_PER_SOL - RESERVE_SOL;
+  // The buyback wallet may also be the creator's wallet, holding SOL of its own. The bot only spends
+  // what fee sharing gave it: its 45% equals the prize wallet's 45%, so the budget is the fees counted
+  // so far minus what the buybacks already spent. The creator's own SOL is never touched.
+  const [{ data: feeRows }, { data: buyRows }] = await Promise.all([
+    db.from('fees').select('amount_sol'),
+    db.from('buybacks').select('sol_spent'),
+  ]);
+  const earned = (feeRows ?? []).reduce((a, f) => a + Number(f.amount_sol), 0);
+  const spentSoFar = (buyRows ?? []).reduce((a, b) => a + Number(b.sol_spent), 0);
+  const wallet = (await connection.getBalance(kp.publicKey)) / LAMPORTS_PER_SOL - RESERVE_SOL;
+  const available = Math.max(0, Math.min(wallet, earned - spentSoFar));
   const now = Date.now();
   const m = await market(now);
   const before = await loadState();
