@@ -2924,9 +2924,11 @@ var GFX = (function(){
 
 function frame(){
   requestAnimationFrame(frame);
-  var realDt = Math.min(clock.getDelta(), 0.05), dt = realDt * GFX.timeScale(); time += dt;
+  // wall: real seconds since the last frame. Animations step at most 50 ms per frame (smooth physics),
+  // but in live mode the phases follow the real clock: a slow device shows fewer frames, never a late show
+  var wall = Math.min(clock.getDelta(), 1.0), realDt = Math.min(wall, 0.05), dt = realDt * GFX.timeScale(); time += dt;
   GFX.tick(realDt);
-  if (!S.paused){ if (!INTRO.on) S.t += dt; if (!LIVE) market(dt); else liveClock(); update(dt); }
+  if (!S.paused){ if (!INTRO.on) S.t += LIVE ? wall * GFX.timeScale() : dt; if (!LIVE) market(dt); else liveClock(); update(dt); }
   if (!S.paused) animDirector(dt);
   sheetTick += dt; if (sheetTick > 1.5 && (page === 'classifiche' || page === 'profilo')){ sheetTick = 0; refreshSheet(); }
   dust.rotation.y += dt*0.012; dust.position.y = Math.sin(time*0.2)*0.2;
