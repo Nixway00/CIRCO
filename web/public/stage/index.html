@@ -661,7 +661,7 @@ body.paging #stageDock, body.intro #stageDock, body.livemode #stageDock, body.re
 'use strict';
 var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 var LITE = /[?&]lite=1/.test(location.search);   // only on request: everyone else gets full quality
-var MAX_DPR = LITE ? 1 : 3;   // native screen resolution, never lowered automatically
+var MAX_DPR = LITE ? 1 : 2;   // up to 2x: on 3x phone screens the difference is invisible, the cost is not
 if (LITE) reduced = true;
 function $(id){ return document.getElementById(id); }
 
@@ -1419,6 +1419,20 @@ function applyView(fov, shift, shiftX){
   camera.fov = fov;
   if (Math.abs(shift) > 0.0001 || Math.abs(shiftX) > 0.0001) camera.setViewOffset(w, h, w*shiftX, h*shift, w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
+}
+/* Smoothness guard: if this device draws fewer than 25 frames a second, the render resolution steps down
+   (never below 1x) until it is smooth again, and climbs back when there is room. Effects, lights and models
+   stay identical; only the sharpness on a struggling device changes. */
+var DPR_NOW = Math.min(window.devicePixelRatio || 1, MAX_DPR), DPR_TOP = DPR_NOW, fpsN = 0, fpsT = 0, slowWins = 0, fastWins = 0;
+function setDpr(x){ DPR_NOW = x; renderer.setPixelRatio(x); if (composer.setPixelRatio) composer.setPixelRatio(x); lastW = -1; resize(); }
+function fpsGuard(wall){
+  if (document.hidden) return;
+  fpsN++; fpsT += wall;
+  if (fpsT < 2) return;
+  var fps = fpsN / fpsT; fpsN = 0; fpsT = 0;
+  if (fps < 25){ slowWins++; fastWins = 0; if (slowWins >= 2 && DPR_NOW > 1){ setDpr(Math.max(1, +(DPR_NOW - 0.5).toFixed(2))); slowWins = 0; } }
+  else if (fps > 55){ fastWins++; slowWins = 0; if (fastWins >= 5 && DPR_NOW < DPR_TOP){ setDpr(Math.min(DPR_TOP, DPR_NOW + 0.25)); fastWins = 0; } }
+  else { slowWins = 0; fastWins = 0; }
 }
 function resize(){
   var w = stage.clientWidth, h = stage.clientHeight;
@@ -2927,6 +2941,7 @@ function frame(){
   // wall: real seconds since the last frame. Animations step at most 50 ms per frame (smooth physics),
   // but in live mode the phases follow the real clock: a slow device shows fewer frames, never a late show
   var wall = Math.min(clock.getDelta(), 1.0), realDt = Math.min(wall, 0.05), dt = realDt * GFX.timeScale(); time += dt;
+  fpsGuard(wall);
   GFX.tick(realDt);
   if (!S.paused){ if (!INTRO.on) S.t += LIVE ? wall * GFX.timeScale() : dt; if (!LIVE) market(dt); else liveClock(); update(dt); }
   if (!S.paused) animDirector(dt);
