@@ -232,9 +232,15 @@ app.post('/helius', async (req, res) => {
           await db.from('fees').upsert({ tx: ev.signature, wallet: 'prize', amount_sol: amount, jackpot_sol: jackpotPart(amount, jackpotShareNow(cfg.jackpot_share)), round_id: feeRound }, { onConflict: 'tx', ignoreDuplicates: true });
         }
       }
-      if (ev.type === 'SWAP' && ev.feePayer) {
-        const amt = Math.abs((ev.nativeTransfers ?? []).reduce((a: number, t: any) => a + (t.fromUserAccount === ev.feePayer ? -t.amount : t.toUserAccount === ev.feePayer ? t.amount : 0), 0)) / LAMPORTS;
-        const side = (ev.tokenTransfers ?? []).some((t: any) => t.toUserAccount === ev.feePayer && t.mint === env.CIRCO_MINT) ? 'buy' : 'sell';
+      // a trade: the payer swaps $CIRCO for SOL or back. Helius labels pump.fun trades in several ways
+      // (SWAP, BUY, SELL, UNKNOWN…), so look at what moved instead of trusting the label
+      const tt = (ev.tokenTransfers ?? []).filter((t: any) => t.mint === env.CIRCO_MINT);
+      const got = tt.some((t: any) => t.toUserAccount === ev.feePayer && t.fromUserAccount);
+      const gave = tt.some((t: any) => t.fromUserAccount === ev.feePayer && t.toUserAccount);
+      const solMove = (ev.accountData ?? []).find((a: any) => a.account === ev.feePayer)?.nativeBalanceChange ?? 0;
+      if (ev.feePayer && (got || gave) && Math.abs(solMove) > 0.0005 * LAMPORTS && ev.feePayer !== env.PRIZE_WALLET_ADDRESS) {
+        const amt = Math.abs(solMove) / LAMPORTS;
+        const side = got ? 'buy' : 'sell';
         await db.from('trades').upsert({ tx: ev.signature, wallet: ev.feePayer, side, amount_sol: amt }, { onConflict: 'tx', ignoreDuplicates: true });
       }
       if ((ev.instructions ?? []).some((i: any) => MEMO_PROGRAMS.has(i.programId))) {
