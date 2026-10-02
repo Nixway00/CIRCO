@@ -8,6 +8,13 @@ export const prizeKeypair = Keypair.fromSecretKey(bs58.decode(env.PRIZE_WALLET_S
 const MEMO_PROGRAMS = new Set(['MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', 'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVuDwQkkHtCv']);
 
 let decimalsCache: number | null = null;
+let programCache: PublicKey | null = null;
+/** The token program that owns the mint (Token-2022 for current pump.fun coins, classic SPL Token for older ones). */
+export async function mintProgram(): Promise<PublicKey> {
+  if (!programCache) { const acc = await connection.getAccountInfo(MINT); if (!acc) throw new Error('mint not found'); programCache = acc.owner; }
+  return programCache;
+}
+
 export async function mintDecimals(): Promise<number> {
   if (decimalsCache === null) {
     const info = await connection.getParsedAccountInfo(MINT);

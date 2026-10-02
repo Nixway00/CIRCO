@@ -1,7 +1,7 @@
 import { Keypair, LAMPORTS_PER_SOL, Transaction, VersionedTransaction } from '@solana/web3.js';
 import { createBurnCheckedInstruction, getAssociatedTokenAddressSync, getAccount } from '@solana/spl-token';
 import bs58 from 'bs58';
-import { connection, MINT, mintDecimals } from './chain.ts';
+import { connection, MINT, mintDecimals, mintProgram } from './chain.ts';
 import { env } from './env.ts';
 import { db } from './db.ts';
 import { decideBuyback, splitChunks, initialState, type BuybackCfg, type BuybackState } from './buybackStrategy.ts';
@@ -117,17 +117,19 @@ export async function runBuyback(cfg: any): Promise<{ reason: string; sol: numbe
 }
 
 async function tokenBalance(kp: Keypair): Promise<bigint> {
-  try { return (await getAccount(connection, getAssociatedTokenAddressSync(MINT, kp.publicKey))).amount; } catch { return 0n; }
+  const prog = await mintProgram();
+  try { return (await getAccount(connection, getAssociatedTokenAddressSync(MINT, kp.publicKey, false, prog), 'confirmed', prog)).amount; } catch { return 0n; }
 }
 
 /** Burns exactly the $CIRCO this buyback added to the wallet (balance now minus balance before buying). */
 async function burnBought(kp: Keypair, reason: string, before: bigint): Promise<string> {
-  const ata = getAssociatedTokenAddressSync(MINT, kp.publicKey);
+  const prog = await mintProgram();
+  const ata = getAssociatedTokenAddressSync(MINT, kp.publicKey, false, prog);
   const now = await tokenBalance(kp);
   const amount = now > before ? now - before : 0n;
   if (amount === 0n) return '0';
   const dec = await mintDecimals();
-  const burnSig = await connection.sendTransaction(new Transaction().add(createBurnCheckedInstruction(ata, MINT, kp.publicKey, amount, dec)), [kp]);
+  const burnSig = await connection.sendTransaction(new Transaction().add(createBurnCheckedInstruction(ata, MINT, kp.publicKey, amount, dec, [], prog)), [kp]);
   await connection.confirmTransaction(burnSig, 'confirmed');
   const whole = (amount / 10n ** BigInt(dec)).toString();
   await db.from('buybacks').insert({ burn_tx: burnSig, sol_spent: 0, tokens_burned: whole, reason });
