@@ -91,7 +91,7 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
     if (M?.leaderboardRow && !leaderboard.some(l => l.address === meRef.current)) leaderboard = [...leaderboard, { ...M.leaderboardRow, wallet: M.display || M.leaderboardRow.wallet }];
     const history = (L.history ?? []).map((h: any) => ({ ...h, mine: M?.mine?.[h.round] ?? 0 }));
     post({
-      round: L.round, prev: L.prev, tickets: L.tickets, lastBuyer: L.lastBuyer, trades: L.trades, chat: L.chat,
+      round: L.round, prev: L.prev, tickets: L.tickets, lastBuyer: L.lastBuyer, ticketsRound: L.ticketsRound, prevTickets: L.prevTickets, trades: L.trades, chat: L.chat,
       price: price.current, chatMin: chatMin.current, pumpUrl, gameInfo, showCfg: showCfg.current,
       myPick: M?.myPick ?? null, pickResult: M?.pickResult ?? null,
       lucky: M ? { losing: M.lucky.losing, given: M.lucky.given, every: n('lucky_every') ?? 20 } : undefined,

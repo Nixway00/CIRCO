@@ -1881,6 +1881,7 @@ function enter(phase){
   }
   if (phase === 'estrazione'){
     var arr = Array.from(S.tickets.entries()).sort(function(a,b){ return b[1]-a[1]; });
+    if (!arr.length) arr = [[(LIVE && S.liveWinner) || 'the winner', (S.liveR && +S.liveR.winner_tickets) || 1]];   // never an empty wheel
     var top = arr.slice(0,6), rest = arr.slice(6);
     S.entries = top.map(function(x,i){ return { label:x[0], n:x[1], color:SEG_COLORS[i], dark:i===0 || i===4 }; });
     if (rest.length) S.entries.push({ label:rest.length+' others', n:rest.reduce(function(a,x){ return a+x[1]; },0), color:'#1B2A66', dark:true });
@@ -1991,6 +1992,12 @@ window.addEventListener('message', function(e){
   if (m.needNick && !MYNICK && $('nickModal').hidden){ nickAsk(); }   // never reopen it on top of itself, never once a nickname is known
   if (m.me !== undefined){ ME = m.me ? sh(m.me) : 'Not connected'; $('connectBtn').textContent = m.me ? sh(m.me) : 'Connect wallet'; S.bal = m.balance || 0; renderChatGate(); }
   if (m.stats){ S.stats.burned = m.stats.burned; S.stats.buyback = m.stats.buyback; S.stats.prizes = m.stats.prizes; S.stats.rounds = m.stats.rounds; renderStats(); }
+  // the tickets sent belong to the newest round; while the stage still shows the previous one (wheel, winner),
+  // use that round's tickets instead, so the wheel never loses its players
+  if (m.tickets && m.ticketsRound != null && S.liveRoundId != null && m.ticketsRound !== S.liveRoundId){
+    m.tickets = (m.prev && m.prev.id === S.liveRoundId && m.prevTickets && m.prevTickets.length) ? m.prevTickets : null;
+    m.lastBuyer = m.lastBuyer && m.tickets ? S.lastBuyer : null;
+  }
   if (m.tickets){
     var key = JSON.stringify(m.tickets) + (m.lastBuyer || '');
     if (key !== lastTicketsKey){ lastTicketsKey = key; S.tickets = new Map(m.tickets.map(function(t){ return [sh(t.wallet), t.tickets]; }));

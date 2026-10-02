@@ -30,23 +30,28 @@ export async function GET(req: Request) {
   const round = rounds?.[0], prev = rounds?.[1];
 
   // tickets of the current round, totalled per wallet, and the last purchase (on-chain order)
-  let tickets: { wallet: string; tickets: number }[] = [], lastBuyer: string | null = null;
-  if (round) {
-    const { data: t } = await supabase.from('tickets').select('wallet,count,kind,burn_slot,created_at').eq('round_id', round.id);
-    const m = new Map<string, number>(); let best = -1;
+  // tickets of a round, totalled per wallet, and its last purchase (on-chain order)
+  async function ticketsOf(roundId: number) {
+    const { data: t } = await supabase.from('tickets').select('wallet,count,kind,burn_slot,created_at').eq('round_id', roundId);
+    const m = new Map<string, number>(); let best = -1, last: string | null = null;
     for (const x of t ?? []) {
       m.set(x.wallet, (m.get(x.wallet) ?? 0) + x.count);
-      if (x.kind === 'burn' || x.kind === 'late') { const k = x.burn_slot != null ? Number(x.burn_slot) : Date.parse(x.created_at) / 400; if (k >= best) { best = k; lastBuyer = x.wallet; } }
+      if (x.kind === 'burn' || x.kind === 'late') { const k = x.burn_slot != null ? Number(x.burn_slot) : Date.parse(x.created_at) / 400; if (k >= best) { best = k; last = x.wallet; } }
     }
-    tickets = [...m].map(([wallet, n]) => ({ wallet, tickets: n }));
+    return { list: [...m].map(([wallet, n]) => ({ wallet, tickets: n })), last };
   }
+  let tickets: { wallet: string; tickets: number }[] = [], lastBuyer: string | null = null;
+  let prevTickets: { wallet: string; tickets: number }[] = [];
+  if (round) { const t = await ticketsOf(round.id); tickets = t.list; lastBuyer = t.last; }
+  // the previous round may still be on the stage (wheel, winner): its players are needed too
+  if (prev && prev.phase !== 'postponed') prevTickets = (await ticketsOf(prev.id)).list;
   const snap = (k: string) => snaps?.find(s => s.key === k)?.data as any;
   const leaderboard: any[] = [];
   const history: any[] = [];
 
   // display names: @handle if linked, else nickname, else the address (the stage shortens it)
   const wallets = new Set<string>([
-    ...tickets.map(t => t.wallet), ...(trades ?? []).map(t => t.wallet), ...(chat ?? []).map(c => c.wallet), ...(fx ?? []).map(e => e.wallet),
+    ...tickets.map(t => t.wallet), ...prevTickets.map(t => t.wallet), ...(trades ?? []).map(t => t.wallet), ...(chat ?? []).map(c => c.wallet), ...(fx ?? []).map(e => e.wallet),
     round?.winner_wallet, round?.last_buyer, prev?.winner_wallet, prev?.last_buyer, lastBuyer,
   ].filter((w): w is string => !!w && w.length > 30));
   const names = new Map<string, string>();
@@ -62,7 +67,8 @@ export async function GET(req: Request) {
   const st = snap('stats') ?? {};
   const body = {
     round: named(round), prev: named(prev),
-    tickets: tickets.map(t => ({ wallet: nm(t.wallet), tickets: t.tickets })), lastBuyer: nm(lastBuyer) ?? null,
+    tickets: tickets.map(t => ({ wallet: nm(t.wallet), tickets: t.tickets })), lastBuyer: nm(lastBuyer) ?? null, ticketsRound: round?.id ?? null,
+    prevTickets: prevTickets.map(t => ({ wallet: nm(t.wallet), tickets: t.tickets })),
     trades: (trades ?? []).map(t => ({ ...t, wallet: nm(t.wallet) })).reverse(),
     chat: (chat ?? []).map(c => ({ ...c, wallet: c.is_ringmaster ? c.wallet : c.source === 'pumpfun' ? (c.author || 'pump.fun') : nm(c.wallet) })).reverse(),
     effects: (fx ?? []).map(e => ({ id: e.id, effect: e.effect, who: e.wallet === 'ringmaster' ? 'The Ringmaster' : nm(e.wallet), at: e.created_at })).reverse(),
