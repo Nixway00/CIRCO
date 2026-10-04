@@ -5,7 +5,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import bs58 from 'bs58';
 import { buildTicketTx, buildGameTx, buildMemoBurnTx } from '@/lib/tickets';
-import type { Connection } from '@solana/web3.js';
+import { ComputeBudgetProgram, type Connection, type Transaction } from '@solana/web3.js';
 
 /** Waits for a transaction by polling its status (no websocket needed, so it works through the RPC proxy). */
 /** Reads a JSON reply, or turns a server crash into a readable error. */
@@ -36,7 +36,26 @@ const STAGE_VERSION = (process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'dev').s
 export default function StageBridge({ broadcast = false, sound = false }: { broadcast?: boolean; sound?: boolean } = {}) {
   const frame = useRef<HTMLIFrameElement>(null);
   const { connection } = useConnection();
-  const { publicKey, sendTransaction, signMessage, wallets } = useWallet();
+  const { publicKey, sendTransaction, signTransaction, signMessage, wallets } = useWallet();
+  /**
+   * Sends a burn reliably. A small priority fee helps it land when the network is busy; a fresh blockhash is
+   * taken from our RPC. If the wallet's own sending fails (some wallets answer "Unexpected error" when their
+   * node has not seen the blockhash yet), the wallet only signs and we send it ourselves, retrying a few times.
+   */
+  const sendTx = useCallback(async (tx: Transaction): Promise<string> => {
+    if (!publicKey) throw new Error('Connect your wallet first.');
+    tx.instructions.unshift(ComputeBudgetProgram.setComputeUnitLimit({ units: 60_000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50_000 }));
+    const fresh = async () => { const b = await connection.getLatestBlockhash('confirmed'); tx.recentBlockhash = b.blockhash; tx.feePayer = publicKey; };
+    await fresh();
+    try { return await sendTransaction(tx, connection, { maxRetries: 3 }); }
+    catch (e) {
+      const msg = String((e as Error)?.message ?? e);
+      if (/reject|cancel|denied|declined/i.test(msg) || !signTransaction) throw e;     // the player said no: respect it
+      await fresh();
+      const signed = await signTransaction(tx);
+      return await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false, maxRetries: 5 });
+    }
+  }, [publicKey, connection, sendTransaction, signTransaction]);
   const { setVisible } = useWalletModal();
   // On a phone's normal browser (Safari, Chrome) no wallet is installed in the page: signing would bounce
   // between apps and lose the session. Open the site inside Phantom's own browser instead, where it just works.
@@ -181,7 +200,7 @@ export default function StageBridge({ broadcast = false, sound = false }: { broa
           const need = m.n * price.current, have = Number(me.current?.balance ?? 0);
           if (have < need) { post({ toast: `You need ${need.toLocaleString('en-US')} $CIRCO for ${m.n} ticket${m.n > 1 ? 's' : ''}, you have ${Math.floor(have).toLocaleString('en-US')}. Buy some on Pump.fun first.` }); return; }
           const tx = await buildTicketTx(connection, publicKey, m.round, m.n, price.current);
-          const sig = await sendTransaction(tx, connection);
+          const sig = await sendTx(tx);
           post({ toast: 'Burning… waiting for confirmation.' });
           await waitForSignature(connection, sig);
           const res = await fetch('/api/tickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
@@ -213,7 +232,7 @@ export default function StageBridge({ broadcast = false, sound = false }: { broa
           try {
             const cost = showCfg.current.fxPrices?.[m.effect];
             if (!cost) { post({ toast: 'That effect is not available.' }); return; }
-            const sig = await sendTransaction(await buildMemoBurnTx(connection, publicKey, cost, `CIRCO-FX:${m.effect}`), connection);
+            const sig = await sendTx(await buildMemoBurnTx(connection, publicKey, cost, `CIRCO-FX:${m.effect}`));
             await waitForSignature(connection, sig);
             const res = await fetch('/api/fx', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
             if (!res.ok) post({ toast: (await readJson(res)).error });
@@ -223,7 +242,7 @@ export default function StageBridge({ broadcast = false, sound = false }: { broa
         if (m.type === 'circo-pick' && m.color && m.round) {
           try {
             const cost = showCfg.current.pickPrice ?? 10000;
-            const sig = await sendTransaction(await buildMemoBurnTx(connection, publicKey, cost, `CIRCO-PICK:${m.round}:${m.color}`), connection);
+            const sig = await sendTx(await buildMemoBurnTx(connection, publicKey, cost, `CIRCO-PICK:${m.round}:${m.color}`));
             await waitForSignature(connection, sig);
             const res = await fetch('/api/pick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig }) });
             const out = await readJson(res);
@@ -257,7 +276,7 @@ export default function StageBridge({ broadcast = false, sound = false }: { broa
             const game = await st.json();
             if (!st.ok) { post({ gameError: game.error }); return; }
             const tx = await buildGameTx(connection, publicKey, game.id, game.price);
-            const sig = await sendTransaction(tx, connection);
+            const sig = await sendTx(tx);
             await waitForSignature(connection, sig);
             const pl = await fetch('/api/game/play', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: game.id, signature: sig }) });
             const out = await pl.json();
@@ -280,7 +299,7 @@ export default function StageBridge({ broadcast = false, sound = false }: { broa
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [publicKey, connection, sendTransaction, signMessage, setVisible, openWallet, post, pushState, pushLive, sendIdentity, refreshMe, refreshLive]);
+  }, [publicKey, connection, sendTx, signMessage, setVisible, openWallet, post, pushState, pushLive, sendIdentity, refreshMe, refreshLive]);
 
   return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}${broadcast ? "&live=1" : ""}${sound ? "&sound=1" : ""}`} title="$CIRCO live stage" allow="autoplay" />;
 }
