@@ -1603,6 +1603,7 @@ $('audioBtn').addEventListener('click', function(){
   audioOn = !audioOn; this.setAttribute('aria-pressed', audioOn ? 'true' : 'false'); this.textContent = audioOn ? 'Audio: on' : 'Audio: off';
   master.gain.setTargetAtTime(audioOn ? 0.8 : 0, AC.currentTime, 0.05); if (audioOn) nextNote = AC.currentTime + 0.05;
 });
+if (/[?&]sound=1/.test(location.search)) setTimeout(function(){ try { $('audioBtn').click(); } catch(e){} }, 1500);
 /* ---------- site pages ---------- */
 var page = 'gioca', board = 'won';
 function esc(x){ return String(x).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
