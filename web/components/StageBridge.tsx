@@ -47,14 +47,21 @@ export default function StageBridge({ broadcast = false, sound = false }: { broa
     tx.instructions.unshift(ComputeBudgetProgram.setComputeUnitLimit({ units: 60_000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50_000 }));
     const fresh = async () => { const b = await connection.getLatestBlockhash('confirmed'); tx.recentBlockhash = b.blockhash; tx.feePayer = publicKey; };
     await fresh();
-    try { return await sendTransaction(tx, connection, { maxRetries: 3 }); }
-    catch (e) {
-      const msg = String((e as Error)?.message ?? e);
-      if (/reject|cancel|denied|declined/i.test(msg) || !signTransaction) throw e;     // the player said no: respect it
-      await fresh();
-      const signed = await signTransaction(tx);
-      return await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false, maxRetries: 5 });
+    // First choice: the wallet only signs, we send it through our own RPC. Some wallets add their own
+    // protection steps when they send by themselves, and with newer tokens those can fail ("Unexpected error").
+    if (signTransaction) {
+      let signed: Transaction;
+      try { signed = await signTransaction(tx); }
+      catch (e) { throw new Error(/reject|cancel|denied|declined/i.test(String((e as Error)?.message)) ? 'Cancelled in your wallet.' : `Your wallet could not sign: ${(e as Error)?.message ?? e}`); }
+      try { return await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false, maxRetries: 5 }); }
+      catch (e) {
+        const logs: string[] = (e as any)?.logs ?? [];
+        const why = logs.find(l => /insufficient|error|failed/i.test(l));
+        throw new Error(`The network refused the burn${why ? `: ${why.replace(/^Program log: /, '')}` : `: ${(e as Error)?.message ?? e}`}`);
+      }
     }
+    // Wallets that cannot sign without sending
+    return await sendTransaction(tx, connection, { maxRetries: 3 });
   }, [publicKey, connection, sendTransaction, signTransaction]);
   const { setVisible } = useWalletModal();
   // On a phone's normal browser (Safari, Chrome) no wallet is installed in the page: signing would bounce
