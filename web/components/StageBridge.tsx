@@ -33,7 +33,7 @@ async function waitForSignature(connection: Connection, sig: string, timeoutMs =
 /** Changes on every deploy, so phones never keep an old copy of the stage. */
 const STAGE_VERSION = (process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 8);
 
-export default function StageBridge({ broadcast = false }: { broadcast?: boolean } = {}) {
+export default function StageBridge({ broadcast = false, sound = false }: { broadcast?: boolean; sound?: boolean } = {}) {
   const frame = useRef<HTMLIFrameElement>(null);
   const { connection } = useConnection();
   const { publicKey, sendTransaction, signMessage, wallets } = useWallet();
@@ -282,5 +282,5 @@ export default function StageBridge({ broadcast = false }: { broadcast?: boolean
     return () => window.removeEventListener('message', onMessage);
   }, [publicKey, connection, sendTransaction, signMessage, setVisible, openWallet, post, pushState, pushLive, sendIdentity, refreshMe, refreshLive]);
 
-  return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}${broadcast ? "&live=1" + (typeof window !== "undefined" && /[?&]sound=1/.test(window.location.search) ? "&sound=1" : "") : ""}`} title="$CIRCO live stage" allow="autoplay" />;
+  return <iframe ref={frame} className="stage" src={`/stage/index.html?data=live&v=${STAGE_VERSION}${broadcast ? "&live=1" : ""}${sound ? "&sound=1" : ""}`} title="$CIRCO live stage" allow="autoplay" />;
 }
