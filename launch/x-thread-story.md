@@ -1,88 +1,90 @@
 # X thread: the story of $CIRCO
 
-Post as a thread. Attach the 3D banner to post 1 and a stage clip (balloon popping + wheel) to post 5. Every post is under 280 characters (checked).
+Post as a thread. Each post has its media suggestion in brackets. Every post is under 280 characters (checked).
 
 ---
 
-**1/**
+**1/** [00-cover.png]
 Most memecoins give you one thing to do: stare at the chart.
 
 We built one you can play.
 
 This is $CIRCO, the 24/7 memecoin circus 🎪🧵
 
-**2/**
-The idea started with a single picture: a balloon that inflates in real time with every trade.
+**2/** [01-stage.png]
+It started with one picture: a balloon that inflates in real time with every trade.
 
 Everyone watches it grow. When it's full, it pops. Someone walks away with what's inside.
 
-**3/**
+**3/** [02-fees.png]
 Where does the prize come from? Not from our pocket.
 
-Every $CIRCO trade generates creator fees, split automatically on pump.fun:
+Every trade generates creator fees, split on pump.fun and locked forever:
 🎈 45% prize balloon
-🔥 45% buyback + burn, bought on the dips
+🔥 45% buyback + burn
 🛠 10% team
 
-**4/**
+Nobody can change it. Not even us.
+
+**4/** [03-round.png]
 How do you enter? You burn $CIRCO.
 
-~$0.25 of $CIRCO = 1 ticket, max 10 per wallet per round. Every ticket makes the supply smaller.
+~$0.25 of $CIRCO = 1 ticket, max 10 per wallet per round.
 
-Playing the game is a burn. Buybacks are a burn. The supply only goes one way.
+Playing is a burn. Buybacks are a burn. The supply only goes one way.
 
 **5/**
-When the balloon is full: 3-minute countdown. Then POP 💥 and the wheel spins.
+Balloon full: 3-minute countdown. In the last 15 seconds every ticket pushes the clock back. The last-ticket war is real.
 
+Then POP 💥 and the wheel spins.
 🏆 95% to the winner
-🎯 5% to whoever bought the last ticket
+🎯 5% to the last ticket
 
-Paid automatically in SOL. Then a new balloon appears. Day and night.
+Paid in SOL, automatically.
 
-**6/**
+**6/** [04-balloons.png]
 Four balloons:
 🐶 Green dog · 0.5 SOL
 🎈 Blue · 1 SOL
 🚀 Red rocket · 2 SOL
 🏆 Gold trophy · 5 SOL
 
-And at least one gold trophy every day.
+At least one gold trophy every day, and one at every new market-cap record.
 
-**7/**
+**7/** [06-buyback-bot.mp4]
+Our buyback doesn't buy on a timer. It waits for real dips, buys in steps, and burns everything.
+
+It buys from the dev wallet, so on the chart you'll see the dev buying the dips. Every time.
+
+**8/** [05-fair.png]
 Fair or nothing.
 
-Before any ticket is sold we publish the hash of a secret. At the close we mix it with a Solana blockhash nobody can predict. After the pop we reveal it.
+Before tickets go on sale we publish a hash. At the close we mix the secret with a Solana blockhash nobody can predict, then reveal it.
 
 Anyone can recompute every winner with one command.
 
-**8/**
-While the balloon fills there's plenty to do:
+**9/** [07-extras.png]
+While the balloon fills:
 🎯 shooting gallery for tickets
 🔮 guess the next balloon
 💰 Mega Jackpot on random pops
-🍅 throw a tomato at the Ringmaster
-🍀 a lucky meter: bad luck = free tickets
-🤡 Clowns vs 🤸 Acrobats, every week
+🍀 bad luck = free tickets
+🎟 hold for a day = a free ticket daily
+🤡 Clowns vs 🤸 Acrobats
 
-**9/**
-Meet the Ringmaster 🎩
+**10/** [08-tested.png]
+We tested twice.
 
-He opens every round, comments the tension, calls the winner by name, and takes the occasional tomato to the face.
+First on a test chain with bots, killing the engine mid-payout. Every payment landed once.
 
-He also talks in our pump.fun chat.
-
-**10/**
-Before launch we ran the whole circus on a test chain with bots playing round after round.
-
-We even killed the engine in the middle of paying a winner. Every payout still landed exactly once.
-
-We found 4 bugs. All fixed. All documented.
+Then on mainnet, in public, with a throwaway token: CIRCO TEST. Real fees, real burns, a real winner paid in SOL.
 
 **11/**
-Everything is open: the code, the rules, the fairness maths, the rehearsal report.
+Everything is open: code, rules, fairness maths, rehearsal reports.
 
 GitHub: github.com/Nixway00/CIRCO
+Play: playcirco.com
 
-The only real contract address will be posted from this account on launch day.
+The only real contract address will be posted from this account.
 
 The tent is up. 🎪
