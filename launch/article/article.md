@@ -26,7 +26,7 @@ Not from the team. Every $CIRCO trade on pump.fun generates creator fees, and pu
 
 **[Image: `02-fees.png`]**
 
-All three wallets are public. You can watch the money move.
+The split is locked forever: nobody, not even us, can change it. All three wallets are public, and the site has a live stats page where you can watch the money move.
 
 ## How you play
 
@@ -54,10 +54,10 @@ Ours waits for the moments where buying helps most.
 - **It buys in three steps.** 70% of its SOL is kept for dips and spent as the dip deepens: 25%, then 35%, then 40%.
 - **It never catches a falling knife.** Each step waits until the price stops making new lows.
 - **It supports quiet charts gently.** When trading goes quiet and the price slips, it makes one small buy every 20 to 40 minutes.
-- **It never hoards and never dumps.** Above 10 SOL, or after a day without buying, it spreads the rest out over hours.
+- **It never hoards and never dumps.** Above 10 SOL, or after a day without buying, it spends a third of the excess every 20 minutes.
 - **Nothing to front-run.** Random timing, uneven chunks, at most 2% price impact per chunk.
 
-Everything it buys is burned, and the SOL it is holding for the next dip is shown live on the site. Over 160 simulated days it burned **26% to 49% more $CIRCO** for the same SOL than a timer, with ten times fewer transactions. The code and the simulation are public.
+It buys from the wallet that launched the coin, so on the pump.fun chart every buyback shows up as **the dev buying the dip**. Everything it buys is burned on the spot, and the SOL it is holding for the next dip is shown live on the site. Over 160 simulated days it burned **26% to 49% more $CIRCO** for the same SOL than a timer, with ten times fewer transactions. The code and the simulation are public.
 
 ## Fair, and you can check it
 
@@ -71,17 +71,25 @@ Every round has a page that recomputes the winner in front of you, and a one-lin
 
 **[Image: `07-extras.png`]**
 
-And every circus needs a host. Ours is a vinyl-toy Ringmaster who opens every round, reads the room ("it is almost full, snipers to your stations"), calls the winner by name, and does not appreciate tomatoes. He also lives in the coin's pump.fun chat: the two chats are one, so livestream viewers and players talk in the same place.
+A few more acts under the tent:
+
+- **Loyalty tickets.** Hold at least 100,000 $CIRCO for a full day and you get a free ticket every day. Holding is playing.
+- **Milestone balloons.** Every new market-cap record ($100k, $250k, $500k, $1M and up) unlocks a gold trophy round, with a party on stage.
+- **Busy days.** When fees pour in faster than balloons pop, the countdowns get shorter and the next balloons get supercharged with the extra SOL.
+
+And every circus needs a host. Ours is a vinyl-toy Ringmaster who opens every round, reads the room ("it is almost full, snipers to your stations"), calls the winner by name, and does not appreciate tomatoes. He also lives in the coin's pump.fun chat, and the show streams live on the coin page: the two chats are one, so viewers and players talk in the same place.
 
 The day $CIRCO leaves the bonding curve, the circus throws a party: fireworks for everyone and a Grand Opening gold trophy.
 
-## Tested before a single real SOL moved
+## Tested twice, the second time with real money
 
 **[Image: `08-tested.png`]**
 
 Before launch we ran the entire circus on a test Solana chain: the real engine, the real site, a copy of the real database, and six bots buying tickets, playing and throwing tomatoes, round after round. Then we tried to break it.
 
-We killed the engine in the middle of paying a winner. When it came back it finished the job, and the chain shows every payment landing exactly once. The rehearsal found five bugs, including one that would have opened launch day with a forced 5 SOL balloon. All fixed, all written down in the public rehearsal report.
+We killed the engine in the middle of paying a winner. When it came back it finished the job, and the chain shows every payment landing exactly once. That rehearsal found five bugs, including one that would have opened launch day with a forced 5 SOL balloon.
+
+Then we did it again on mainnet, in public, with a throwaway token from the same dev wallet: **CIRCO TEST (CTEST)**, named so nobody would mistake it for the real thing. Locked fee split, real trades, real tickets burned, a real winner paid in SOL, and the buyback bot buying and burning from the creator wallet. It caught what only a live test can: pump.fun coins now use a newer token standard, and our burns had to speak it. Every transaction of that rehearsal is on chain for anyone to check.
 
 ## Open by default
 
@@ -89,7 +97,7 @@ The code, the rules, the fairness maths, the buyback simulation and the rehearsa
 
 ## What's next
 
-A final rehearsal on mainnet with a throwaway token, then the tent opens.
+The tent opens now. Play at **playcirco.com**.
 
 See you under the big top. 🎪
 
